@@ -1,18 +1,16 @@
-import { useChatStore } from '../stores/chatStore';
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function SettingsPanel() {
-  const setView = useChatStore((s) => s.setView);
-  const connectionStatus = useChatStore((s) => s.connectionStatus);
-  const checkConnection = useChatStore((s) => s.checkConnection);
-  const { clawPath, theme, hideOnClickOutside, fontSize, updateSetting } = useSettingsStore();
+  const setView = useSettingsStore((s) => s.setView);
+  const { gatewayUrl, authMode, authToken, authPassword, theme, hideOnClickOutside, updateSetting } = useSettingsStore();
 
-  const statusLabel =
-    connectionStatus === 'connected'
-      ? '🟢 已连接'
-      : connectionStatus === 'connecting'
-        ? '🟡 连接中...'
-        : '🔴 已断开';
+  const inputStyle = {
+    backgroundColor: 'var(--color-bg-input)',
+    color: 'var(--color-text-primary)',
+    border: '1px solid var(--color-border-primary)',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '11px',
+  };
 
   return (
     <div
@@ -39,58 +37,90 @@ export function SettingsPanel() {
         >
           设置
         </span>
-        <div className="w-12" /> {/* spacer for centering */}
+        <div className="w-12" />
       </div>
 
       <div className="p-4 space-y-5">
-        {/* Connection */}
+        {/* Gateway Connection */}
         <section>
           <h3
             className="text-xs font-semibold uppercase mb-2"
             style={{ color: 'var(--color-text-secondary)' }}
           >
-            连接
+            OpenClaw 网关
           </h3>
           <div
             className="rounded-lg p-3 space-y-3"
             style={{ backgroundColor: 'var(--color-bg-secondary)' }}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                CLI 路径
+            <div className="space-y-1">
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                Gateway URL
               </span>
               <input
                 type="text"
-                value={clawPath}
-                onChange={(e) => updateSetting('clawPath', e.target.value)}
-                className="text-sm text-right px-2 py-1 rounded outline-none w-40"
+                value={gatewayUrl}
+                onChange={(e) => updateSetting('gatewayUrl', e.target.value)}
+                placeholder="http://localhost:18789"
+                className="w-full text-sm px-2 py-1.5 rounded outline-none"
+                style={inputStyle}
+              />
+              <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>
+                本地默认 http://localhost:18789，远程填入服务器地址
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                认证方式
+              </span>
+              <select
+                value={authMode}
+                onChange={(e) => updateSetting('authMode', e.target.value)}
+                className="w-full text-sm px-2 py-1.5 rounded outline-none"
                 style={{
                   backgroundColor: 'var(--color-bg-input)',
                   color: 'var(--color-text-primary)',
                   border: '1px solid var(--color-border-primary)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '11px',
                 }}
-              />
+              >
+                <option value="none">无需认证（本地连接）</option>
+                <option value="token">Token</option>
+                <option value="password">密码</option>
+              </select>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                状态
-              </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{statusLabel}</span>
-                <button
-                  onClick={() => checkConnection()}
-                  className="text-xs px-2 py-0.5 rounded"
-                  style={{
-                    color: 'var(--color-text-link)',
-                    border: '1px solid var(--color-border-primary)',
-                  }}
-                >
-                  重试
-                </button>
+
+            {authMode === 'token' && (
+              <div className="space-y-1">
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  Gateway Token
+                </span>
+                <input
+                  type="password"
+                  value={authToken}
+                  onChange={(e) => updateSetting('authToken', e.target.value)}
+                  placeholder="粘贴 gateway token..."
+                  className="w-full text-sm px-2 py-1.5 rounded outline-none"
+                  style={inputStyle}
+                />
               </div>
-            </div>
+            )}
+
+            {authMode === 'password' && (
+              <div className="space-y-1">
+                <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                  密码
+                </span>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => updateSetting('authPassword', e.target.value)}
+                  placeholder="输入 gateway 密码..."
+                  className="w-full text-sm px-2 py-1.5 rounded outline-none"
+                  style={inputStyle}
+                />
+              </div>
+            )}
           </div>
         </section>
 
@@ -123,27 +153,6 @@ export function SettingsPanel() {
                 <option value="system">跟随系统</option>
                 <option value="light">亮色</option>
                 <option value="dark">暗色</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
-                字号
-              </span>
-              <select
-                value={fontSize}
-                onChange={(e) => updateSetting('fontSize', Number(e.target.value))}
-                className="text-sm px-2 py-1 rounded outline-none"
-                style={{
-                  backgroundColor: 'var(--color-bg-input)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border-primary)',
-                }}
-              >
-                <option value={11}>11px</option>
-                <option value={12}>12px</option>
-                <option value={13}>13px</option>
-                <option value={14}>14px</option>
-                <option value={16}>16px</option>
               </select>
             </div>
           </div>

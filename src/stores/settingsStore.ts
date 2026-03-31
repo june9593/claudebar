@@ -1,23 +1,30 @@
 import { create } from 'zustand';
-import type { Settings } from '../types';
+import type { Settings, ViewState } from '../types';
 
 interface SettingsState extends Settings {
   resolvedTheme: 'light' | 'dark';
+  view: ViewState;
+  setView: (view: ViewState) => void;
   loadSettings: () => Promise<void>;
   updateSetting: (key: string, value: unknown) => Promise<void>;
 }
 
 const defaults: Settings = {
-  clawPath: 'openclaw',
+  gatewayUrl: 'http://localhost:18789',
+  authMode: 'none',
+  authToken: '',
+  authPassword: '',
   theme: 'system',
   hideOnClickOutside: false,
   autoLaunch: false,
-  fontSize: 13,
 };
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...defaults,
   resolvedTheme: 'light',
+  view: 'chat',
+
+  setView: (view: ViewState) => set({ view }),
 
   loadSettings: async () => {
     if (!window.electronAPI?.settings) {
@@ -31,7 +38,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       let resolvedTheme: 'light' | 'dark' = 'light';
       if (merged.theme === 'system') {
         resolvedTheme = await window.electronAPI.theme.getSystemTheme();
-        // Listen for system theme changes
         window.electronAPI.theme.onThemeChange((t) => {
           if (get().theme === 'system') {
             set({ resolvedTheme: t });
@@ -54,12 +60,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       }
       set((s) => {
         const next = { ...s, [key]: value };
-        // Recalculate resolved theme
         if (key === 'theme') {
           if (value === 'light' || value === 'dark') {
             next.resolvedTheme = value as 'light' | 'dark';
           }
-          // 'system' case handled by the listener
         }
         return next;
       });

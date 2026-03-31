@@ -23,12 +23,14 @@ export interface Agent {
 }
 
 export interface Settings {
-  clawPath: string;
+  gatewayUrl: string;       // e.g. "http://localhost:18789"
+  authMode: 'none' | 'token' | 'password';
+  authToken: string;
+  authPassword: string;
   theme: 'light' | 'dark' | 'system';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
-  fontSize: number;
 }
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
-export type ViewState = 'chat' | 'settings' | 'session-switcher';
+export type ViewState = 'chat' | 'settings';

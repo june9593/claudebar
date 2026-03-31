@@ -1,12 +1,11 @@
 import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain } from 'electron';
 import * as path from 'path';
-import { setupOpenClawIPC } from './ipc/openclaw';
-import { setupSessionsIPC } from './ipc/sessions';
 import { setupSettingsIPC } from './ipc/settings';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
+let lastHideTime = 0; // Track when window was last hidden (for tray click debounce)
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -73,7 +72,12 @@ function createTray() {
 
     if (mainWindow.isVisible()) {
       mainWindow.hide();
+      lastHideTime = Date.now();
     } else {
+      // Debounce: if window was just hidden (e.g. by blur racing with tray click),
+      // don't immediately re-show it. 300ms threshold.
+      if (Date.now() - lastHideTime < 300) return;
+
       // Position window near tray icon
       const trayBounds = tray!.getBounds();
       const windowBounds = mainWindow.getBounds();
@@ -150,8 +154,6 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   setupWindowIPC();
-  setupOpenClawIPC();
-  setupSessionsIPC();
   setupSettingsIPC();
 });
 

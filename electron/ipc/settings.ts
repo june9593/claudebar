@@ -3,19 +3,23 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 interface AppSettings {
-  clawPath: string;
+  gatewayUrl: string;
+  authMode: 'none' | 'token' | 'password';
+  authToken: string;
+  authPassword: string;
   theme: 'light' | 'dark' | 'system';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
-  fontSize: number;
 }
 
 const defaults: AppSettings = {
-  clawPath: 'openclaw',
+  gatewayUrl: 'http://localhost:18789',
+  authMode: 'none',
+  authToken: '',
+  authPassword: '',
   theme: 'system',
   hideOnClickOutside: false,
   autoLaunch: false,
-  fontSize: 13,
 };
 
 function getConfigPath(): string {
@@ -55,23 +59,11 @@ export function setupSettingsIPC() {
   ipcMain.handle('settings:set', (_, key: string, value: unknown) => {
     if (typeof key !== 'string' || !key) return;
 
-    // Whitelist allowed keys
-    const allowedKeys = ['clawPath', 'theme', 'hideOnClickOutside', 'autoLaunch', 'fontSize'];
+    const allowedKeys = ['gatewayUrl', 'authMode', 'authToken', 'authPassword', 'theme', 'hideOnClickOutside', 'autoLaunch'];
     if (!allowedKeys.includes(key)) return;
 
     const settings = readStore();
     (settings as unknown as Record<string, unknown>)[key] = value;
-    writeStore(settings);
-  });
-
-  ipcMain.handle('settings:get-claw-path', () => {
-    return readStore().clawPath;
-  });
-
-  ipcMain.handle('settings:set-claw-path', (_, clawPath: string) => {
-    if (typeof clawPath !== 'string') return;
-    const settings = readStore();
-    settings.clawPath = clawPath;
     writeStore(settings);
   });
 }
