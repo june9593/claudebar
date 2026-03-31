@@ -1,0 +1,34 @@
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp?: string;
+}
+
+export interface Session {
+  id: string;
+  key: string;
+  agent: string;
+  model: string;
+  channel: string;
+  sessionId?: string;
+  status: 'active' | 'idle' | 'inactive';
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  model: string;
+  workspace?: string;
+}
+
+export interface Settings {
+  clawPath: string;
+  theme: 'light' | 'dark' | 'system';
+  hideOnClickOutside: boolean;
+  autoLaunch: boolean;
+  fontSize: number;
+}
+
+export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
+export type ViewState = 'chat' | 'settings' | 'session-switcher';
