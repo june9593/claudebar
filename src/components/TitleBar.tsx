@@ -7,7 +7,7 @@ export function TitleBar() {
   const connectionStatus = useChatStore((s) => s.connectionStatus);
 
   const handleTogglePin = async () => {
-    await window.electronAPI.window.togglePin();
+    try { await window.electronAPI?.window?.togglePin(); } catch { /* browser mode */ }
   };
 
   const statusColor =
@@ -46,12 +46,12 @@ export function TitleBar() {
           }}
         >
           <span
-            className="w-2 h-2 rounded-full shrink-0"
+            className="w-1.5 h-1.5 rounded-full shrink-0"
             style={{ backgroundColor: statusColor }}
           />
-          <span>🦞</span>
-          <span>{currentAgent?.name || 'ClawBar'}</span>
-          <span style={{ color: 'var(--color-text-tertiary)' }}>▾</span>
+          <span style={{ fontSize: '14px' }}>🦞</span>
+          <span className="font-semibold">{currentAgent?.name || 'ClawBar'}</span>
+          <span style={{ color: 'var(--color-text-tertiary)', fontSize: '10px' }}>▾</span>
         </button>
       </div>
 

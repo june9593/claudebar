@@ -96,6 +96,13 @@ html, body, #root {
   user-select: none;
 }
 
+/* Window chrome — rounded corners + subtle border */
+#root {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--color-border-primary);
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;
@@ -126,4 +133,35 @@ html, body, #root {
 /* Message content user-select */
 .message-content {
   user-select: text;
+}
+
+/* Prose styles for markdown in assistant bubbles */
+.prose p { margin: 0.25em 0; }
+.prose p:first-child { margin-top: 0; }
+.prose p:last-child { margin-bottom: 0; }
+.prose ul, .prose ol { margin: 0.4em 0; padding-left: 1.4em; }
+.prose li { margin: 0.15em 0; }
+.prose h1, .prose h2, .prose h3 { margin: 0.5em 0 0.25em; font-weight: 600; }
+.prose h1 { font-size: 1.15em; }
+.prose h2 { font-size: 1.05em; }
+.prose h3 { font-size: 1em; }
+.prose blockquote {
+  border-left: 3px solid var(--color-border-primary);
+  padding-left: 0.75em;
+  margin: 0.4em 0;
+  color: var(--color-text-secondary);
+}
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--color-border-secondary);
+  margin: 0.6em 0;
+}
+.prose table {
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.4em 0;
+}
+.prose th, .prose td {
+  border: 1px solid var(--color-border-primary);
+  padding: 0.3em 0.6em;
 }

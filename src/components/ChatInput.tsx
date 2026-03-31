@@ -33,14 +33,14 @@ export function ChatInput() {
   };
 
   const placeholder = connectionStatus !== 'connected'
-    ? '连接断开，无法发送...'
+    ? '请先在设置中配置 OpenClaw CLI'
     : isSending
       ? '等待回复中...'
-      : '给 Agent 发送消息...';
+      : '输入消息，Enter 发送...';
 
   return (
     <div
-      className="flex items-end gap-2 px-3 py-2 shrink-0"
+      className="flex items-end gap-2 px-3 py-2.5 shrink-0"
       style={{
         borderTop: '1px solid var(--color-border-secondary)',
         backgroundColor: 'var(--color-bg-primary)',

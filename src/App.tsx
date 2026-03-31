@@ -21,7 +21,7 @@ export default function App() {
   }, [resolvedTheme]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden" style={{ borderRadius: '12px' }}>
       <TitleBar />
       <div className="flex-1 min-h-0 relative">
         {view === 'settings' ? <SettingsPanel /> : <ChatPanel />}
