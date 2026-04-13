@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function ChatWebView() {
@@ -10,8 +10,23 @@ export function ChatWebView() {
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  if (!gatewayUrl) {
-    return <WelcomeState onOpenSettings={() => setView('settings')} />;
+  // Block iframe when auth is required but credentials missing
+  const authIncomplete = (authMode === 'token' && !authToken) || (authMode === 'password' && !authPassword);
+
+  // Timeout fallback: if iframe hasn't loaded after 10s, show error
+  useEffect(() => {
+    if (!loading || !gatewayUrl || authIncomplete) return;
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setLoadError(true);
+      }
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loading, gatewayUrl, authIncomplete]);
+
+  if (!gatewayUrl || authIncomplete) {
+    return <WelcomeState onOpenSettings={() => setView('settings')} needsAuth={authIncomplete} />;
   }
 
   // Build the URL — OpenClaw Control UI serves at the root
@@ -125,7 +140,7 @@ export function ChatWebView() {
   );
 }
 
-function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
+function WelcomeState({ onOpenSettings, needsAuth }: { onOpenSettings: () => void; needsAuth?: boolean }) {
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -150,7 +165,7 @@ function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
           letterSpacing: '-0.28px', lineHeight: 1.19,
           marginBottom: '8px',
         }}>
-          欢迎使用 ClawBar
+          {needsAuth ? '需要配置认证' : '欢迎使用 ClawBar'}
         </p>
         <p style={{
           fontSize: '14px',
@@ -158,7 +173,10 @@ function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
           lineHeight: 1.47, letterSpacing: '-0.16px',
           maxWidth: '260px',
         }}>
-          请在设置中配置 Gateway 地址以连接到 OpenClaw 实例
+          {needsAuth
+            ? '请在设置中填写 Gateway Token 或密码\n以连接到 OpenClaw 实例'
+            : '请在设置中配置 Gateway 地址\n以连接到 OpenClaw 实例'
+          }
         </p>
       </div>
       <button

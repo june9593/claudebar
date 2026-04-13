@@ -126,6 +126,14 @@ html, body, #root {
   -webkit-app-region: no-drag;
 }
 
+/* Accessibility: focus-visible */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--color-border-focus);
+  outline-offset: 2px;
+}
+
 /* Message content user-select */
 .message-content {
   user-select: text;
