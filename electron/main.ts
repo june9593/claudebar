@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain } from 'electron';
+import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { setupSettingsIPC } from './ipc/settings';
 
 let mainWindow: BrowserWindow | null = null;
@@ -7,10 +8,37 @@ let tray: Tray | null = null;
 let isPinned = false;
 let lastHideTime = 0; // Track when window was last hidden (for tray click debounce)
 
+function getWindowBoundsPath(): string {
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  return path.join(homeDir, '.clawbar', 'window-bounds.json');
+}
+
+function saveWindowBounds() {
+  if (!mainWindow) return;
+  try {
+    const bounds = mainWindow.getBounds();
+    const boundsPath = getWindowBoundsPath();
+    const dir = path.dirname(boundsPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(boundsPath, JSON.stringify(bounds), 'utf-8');
+  } catch { /* ignore */ }
+}
+
+function loadWindowBounds(): Electron.Rectangle | null {
+  try {
+    const boundsPath = getWindowBoundsPath();
+    if (fs.existsSync(boundsPath)) {
+      return JSON.parse(fs.readFileSync(boundsPath, 'utf-8'));
+    }
+  } catch { /* ignore */ }
+  return null;
+}
+
 function createWindow() {
+  const savedBounds = loadWindowBounds();
   mainWindow = new BrowserWindow({
-    width: 380,
-    height: 560,
+    width: savedBounds?.width ?? 380,
+    height: savedBounds?.height ?? 560,
     minWidth: 320,
     minHeight: 400,
     maxWidth: 800,
@@ -75,6 +103,9 @@ function createWindow() {
     e.preventDefault();
     mainWindow?.hide();
   });
+
+  mainWindow.on('moved', saveWindowBounds);
+  mainWindow.on('resized', saveWindowBounds);
 }
 
 function createTray() {
@@ -104,13 +135,31 @@ function createTray() {
       // don't immediately re-show it. 300ms threshold.
       if (Date.now() - lastHideTime < 300) return;
 
-      // Position window near tray icon
-      const trayBounds = tray!.getBounds();
-      const windowBounds = mainWindow.getBounds();
-      const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
-      const y = trayBounds.y + trayBounds.height + 4;
-
-      mainWindow.setPosition(x, y);
+      // Restore saved position or center below tray
+      const saved = loadWindowBounds();
+      if (saved) {
+        const displays = screen.getAllDisplays();
+        const isOnScreen = displays.some(d => {
+          const db = d.bounds;
+          return saved.x >= db.x && saved.x < db.x + db.width &&
+                 saved.y >= db.y && saved.y < db.y + db.height;
+        });
+        if (isOnScreen) {
+          mainWindow.setBounds(saved);
+        } else {
+          const trayBounds = tray!.getBounds();
+          const windowBounds = mainWindow.getBounds();
+          const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
+          const y = trayBounds.y + trayBounds.height + 4;
+          mainWindow.setPosition(x, y);
+        }
+      } else {
+        const trayBounds = tray!.getBounds();
+        const windowBounds = mainWindow.getBounds();
+        const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
+        const y = trayBounds.y + trayBounds.height + 4;
+        mainWindow.setPosition(x, y);
+      }
       mainWindow.show();
       mainWindow.focus();
     }
