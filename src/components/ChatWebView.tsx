@@ -95,27 +95,66 @@ export function ChatWebView() {
 function WelcomeState({ onOpenSettings }: { onOpenSettings: () => void }) {
   return (
     <div
-      className="flex flex-col items-center justify-center h-full gap-4 px-8"
-      style={{ backgroundColor: 'var(--color-bg-chat)' }}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '20px',
+        padding: '40px 32px',
+        background: 'var(--color-bg-primary)',
+      }}
     >
-      <div
-        className="w-16 h-16 rounded-2xl flex items-center justify-center"
-        style={{ backgroundColor: 'var(--color-bg-secondary)' }}
-      >
-        <span className="text-3xl">🦞</span>
+      <div style={{
+        width: '72px',
+        height: '72px',
+        borderRadius: '20px',
+        background: 'var(--color-bg-secondary)',
+        border: '1px solid var(--color-border-secondary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '36px',
+      }}>
+        🦞
       </div>
-      <div className="text-center space-y-1.5">
-        <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+      <div style={{ textAlign: 'center' }}>
+        <p style={{
+          fontSize: '18px',
+          fontWeight: 600,
+          color: 'var(--color-text-primary)',
+          letterSpacing: '-0.02em',
+          marginBottom: '8px',
+        }}>
           欢迎使用 ClawBar
         </p>
-        <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-          请在设置中配置 OpenClaw Gateway 地址
+        <p style={{
+          fontSize: '13px',
+          color: 'var(--color-text-secondary)',
+          lineHeight: 1.6,
+          maxWidth: '260px',
+        }}>
+          请在设置中配置 Gateway 地址以连接到 OpenClaw 实例
         </p>
       </div>
       <button
         onClick={onOpenSettings}
-        className="px-4 py-1.5 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
-        style={{ backgroundColor: 'var(--color-surface-user-bubble)', color: '#fff' }}
+        style={{
+          marginTop: '4px',
+          padding: '9px 24px',
+          borderRadius: '8px',
+          border: 'none',
+          background: 'var(--color-text-link)',
+          color: '#FFFFFF',
+          fontSize: '14px',
+          fontWeight: 500,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.filter = 'brightness(1.1)')}
+        onMouseLeave={(e) => (e.currentTarget.style.filter = 'none')}
       >
         打开设置
       </button>

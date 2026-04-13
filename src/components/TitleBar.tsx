@@ -1,70 +1,110 @@
+import { useState } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function TitleBar() {
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
+  const [pinned, setPinned] = useState(false);
 
   const handleTogglePin = async () => {
-    try { await window.electronAPI?.window?.togglePin(); } catch { /* browser mode */ }
+    try {
+      const newState = await window.electronAPI?.window?.togglePin();
+      setPinned(!!newState);
+    } catch {
+      setPinned(!pinned);
+    }
   };
 
   const hasGateway = !!gatewayUrl;
 
   return (
     <div
-      className="titlebar-drag flex items-center justify-between px-3 shrink-0"
+      className="titlebar-drag"
       style={{
-        height: 'var(--title-bar-height)',
+        height: '40px',
+        minHeight: '40px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 12px',
         backgroundColor: 'var(--color-surface-title-bar)',
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         borderBottom: '1px solid var(--color-border-secondary)',
+        userSelect: 'none',
+        flexShrink: 0,
       }}
     >
-      {/* Left: App identity */}
-      <div className="titlebar-no-drag flex items-center gap-2">
-        <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium"
-          style={{ color: 'var(--color-text-primary)' }}
-        >
-          <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)' }}
-          />
-          <span style={{ fontSize: '14px' }}>🦞</span>
-          <span className="font-semibold">ClawBar</span>
-        </div>
+      {/* Left: status dot + icon + name */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+        <span
+          style={{
+            width: '8px',
+            height: '8px',
+            borderRadius: '50%',
+            backgroundColor: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ fontSize: '15px', lineHeight: 1 }}>🦞</span>
+        <span style={{
+          fontSize: '13px',
+          fontWeight: 600,
+          color: 'var(--color-text-primary)',
+          letterSpacing: '-0.01em',
+        }}>
+          ClawBar
+        </span>
       </div>
 
       {/* Right: Pin + Settings */}
-      <div className="titlebar-no-drag flex items-center gap-0.5">
+      <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
         <button
           onClick={handleTogglePin}
-          className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
-          style={{ color: 'var(--color-text-tertiary)', fontSize: '12px' }}
-          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)')}
-          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-          title="Pin window"
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            color: pinned ? 'var(--color-text-link)' : 'var(--color-text-secondary)',
+            transition: 'background 0.12s, color 0.12s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-hover)')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          title={pinned ? '取消置顶' : '置顶窗口'}
         >
           📌
         </button>
         <button
           onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
-          className="w-7 h-7 flex items-center justify-center rounded-md transition-colors"
           style={{
-            color: 'var(--color-text-tertiary)',
-            fontSize: '12px',
-            backgroundColor: view === 'settings' ? 'var(--color-surface-active)' : 'transparent',
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            border: 'none',
+            background: view === 'settings' ? 'var(--color-surface-active)' : 'transparent',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '14px',
+            color: 'var(--color-text-secondary)',
+            transition: 'background 0.12s, color 0.12s',
           }}
           onMouseEnter={(e) => {
-            if (view !== 'settings')
-              e.currentTarget.style.backgroundColor = 'var(--color-surface-hover)';
+            if (view !== 'settings') e.currentTarget.style.background = 'var(--color-surface-hover)';
           }}
           onMouseLeave={(e) => {
-            if (view !== 'settings')
-              e.currentTarget.style.backgroundColor = 'transparent';
+            if (view !== 'settings') e.currentTarget.style.background = 'transparent';
           }}
-          title="Settings"
+          title="设置"
         >
           ⚙️
         </button>
