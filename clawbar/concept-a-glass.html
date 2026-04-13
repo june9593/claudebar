@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>clawbar — Concept A (Glass Popover)</title>
+  <style>
+    :root{
+      --bg:#0b0d12;
+      --glass: rgba(15, 18, 28, .52);
+      --glass2: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: #eaf0ff;
+      --muted: rgba(234,240,255,.70);
+      --a:#7c5cff; --b:#20d3ff; --ok:#3ef0a8; --err:#ff5c7a; --warn:#ffcc66;
+      --shadow: 0 16px 70px rgba(0,0,0,.60);
+      --r: 18px;
+      color-scheme: dark;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    @media (prefers-color-scheme: light){
+      :root{--bg:#f7f8fc; --glass: rgba(255,255,255,.72); --glass2: rgba(14,20,40,.05);
+        --stroke: rgba(14,20,40,.14); --text:#0b1030; --muted: rgba(11,16,48,.70);
+        --shadow: 0 16px 70px rgba(15,18,40,.18); color-scheme: light;}
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background:
+        radial-gradient(1000px 650px at 18% 15%, rgba(124,92,255,.33), transparent 58%),
+        radial-gradient(900px 650px at 84% 18%, rgba(32,211,255,.26), transparent 60%),
+        radial-gradient(900px 700px at 65% 95%, rgba(62,240,168,.16), transparent 55%),
+        linear-gradient(160deg, #070910, var(--bg));
+      display:grid;
+      place-items:center;
+      padding:28px;
+    }
+
+    .shell{display:flex; gap:18px; align-items:flex-start;}
+
+    /* Mock macOS menu bar */
+    .menubar{
+      width:min(980px, 94vw);
+      height:34px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+      box-shadow: 0 14px 40px rgba(0,0,0,.35);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 12px;
+      margin-bottom:14px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .left,.right{display:flex; align-items:center; gap:10px; color:rgba(255,255,255,.85)}
+    @media (prefers-color-scheme: light){ .left,.right{color:rgba(11,16,48,.85);} }
+
+    .appdot{width:12px;height:12px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b)); box-shadow:0 0 0 6px rgba(124,92,255,.12)}
+    .menutext{font-size:12px; letter-spacing:.2px; opacity:.95}
+    .ic{width:16px;height:16px; opacity:.88}
+
+    /* Popover */
+    .popover{
+      width: 420px;
+      max-width: 94vw;
+      border-radius: 22px;
+      background: linear-gradient(180deg, var(--glass), rgba(0,0,0,.16));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      overflow:hidden;
+      position:relative;
+    }
+    .popover::before{
+      content:""; position:absolute; inset:-1px;
+      background:
+        radial-gradient(300px 180px at 18% 0%, rgba(124,92,255,.22), transparent 62%),
+        radial-gradient(320px 220px at 92% 12%, rgba(32,211,255,.18), transparent 60%);
+      pointer-events:none;
+    }
+
+    .top{
+      position:relative;
+      padding:12px 14px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+    }
+    .brand{display:flex; align-items:center; gap:10px;}
+    .logo{
+      width:30px; height:30px; border-radius:12px;
+      background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(32,211,255,.80));
+      box-shadow: 0 12px 22px rgba(124,92,255,.18);
+      display:grid; place-items:center;
+    }
+    .logo svg{width:18px;height:18px; fill:white; opacity:.95}
+    .titles{line-height:1.1}
+    .titles b{display:block; font-size:13px; letter-spacing:.2px}
+    .titles span{font-size:11.5px; color:var(--muted)}
+
+    .chiprow{display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+    .chip{
+      font-size:11px;
+      padding:6px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+    }
+    .chip.ok{color:rgba(62,240,168,.92); border-color: rgba(62,240,168,.22); background: rgba(62,240,168,.08)}
+
+    .tabs{
+      position:relative;
+      padding:10px 12px;
+      display:flex; gap:8px;
+    }
+    .tab{
+      flex:1;
+      font-size:12px;
+      padding:9px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: rgba(234,240,255,.86);
+      display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .tab.active{
+      background: linear-gradient(135deg, rgba(124,92,255,.28), rgba(32,211,255,.16));
+      border-color: rgba(124,92,255,.26);
+      color: var(--text);
+    }
+
+    .content{position:relative; padding: 0 12px 12px;}
+
+    .chat{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      border-radius: 18px;
+      overflow:hidden;
+    }
+    .msgs{padding:12px; display:flex; flex-direction:column; gap:10px; min-height: 210px;}
+    .msg{max-width: 86%; padding:10px 11px; border-radius: 16px; font-size:12.5px; line-height:1.38; border:1px solid rgba(255,255,255,.10)}
+    .msg.user{align-self:flex-end; background: linear-gradient(135deg, rgba(124,92,255,.24), rgba(32,211,255,.12)); border-color: rgba(124,92,255,.22)}
+    .msg.bot{align-self:flex-start; background: rgba(0,0,0,.18)}
+    .meta{font-size:11px; color:var(--muted); margin-top:6px; display:flex; gap:10px;}
+    .meta .k{display:flex; align-items:center; gap:6px;}
+    .pill{width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.35)}
+
+    .composer{
+      border-top:1px solid rgba(255,255,255,.10);
+      padding:10px;
+      display:flex; gap:10px; align-items:flex-end;
+      background: rgba(255,255,255,.02);
+    }
+    .input{
+      flex:1;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      border-radius: 16px;
+      padding:10px 10px;
+      min-height:40px;
+      color: var(--text);
+      font-size:12.5px;
+    }
+    .actions{display:flex; flex-direction:column; gap:8px;}
+    .btn{
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.07);
+      color: rgba(234,240,255,.90);
+      padding:9px 10px;
+      border-radius: 14px;
+      font-size:12px;
+    }
+    .btn.primary{background: linear-gradient(135deg, rgba(124,92,255,.65), rgba(32,211,255,.26)); border-color: rgba(124,92,255,.38)}
+
+    .quick{
+      margin-top:10px;
+      display:flex; gap:8px; flex-wrap:wrap;
+    }
+    .q{
+      font-size:11.5px;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: rgba(234,240,255,.86);
+    }
+
+    .hint{
+      margin-top:10px;
+      color: var(--muted);
+      font-size:11.5px;
+      display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    }
+    a{color:inherit}
+  </style>
+</head>
+<body>
+  <div style="width:min(980px,94vw)">
+    <div class="menubar">
+      <div class="left">
+        <div class="appdot" title="OpenClaw"></div>
+        <div class="menutext">clawbar</div>
+        <div class="menutext" style="opacity:.7">File</div>
+        <div class="menutext" style="opacity:.7">Edit</div>
+        <div class="menutext" style="opacity:.7">View</div>
+      </div>
+      <div class="right">
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".7"/><path d="M9 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".7"/></svg>
+        <svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M12 22a2.5 2.5 0 0 0 2.4-2H9.6A2.5 2.5 0 0 0 12 22Z" fill="currentColor" opacity=".85"/><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <div class="menutext" style="opacity:.8">Tue 5:52 PM</div>
+      </div>
+    </div>
+
+    <div class="shell">
+      <div class="popover" role="application" aria-label="OpenClaw popover mockup">
+        <div class="top">
+          <div class="brand">
+            <div class="logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 2c3.7 0 6.8 2.6 7.6 6.1.2.9-.4 1.7-1.3 1.9l-2.2.4c-.8.1-1.5-.4-1.7-1.2-.5-2-2.3-3.6-4.4-3.6-2.2 0-4 1.6-4.4 3.6-.2.8-.9 1.3-1.7 1.2l-2.2-.4C.8 9.8.2 9 .4 8.1 1.2 4.6 4.3 2 8 2h4Z"/>
+              <path d="M6.2 12.4c.8-.3 1.7.2 1.9 1 0 .2.1.5.2.7.4 1.3 1.6 2.2 3 2.2s2.6-.9 3-2.2c.1-.2.1-.5.2-.7.2-.8 1.1-1.3 1.9-1 .8.3 1.2 1.1 1 1.9-.1.4-.2.8-.3 1.1-1 3-3.8 5-6.8 5s-5.8-2-6.8-5c-.1-.4-.2-.7-.3-1.1-.2-.8.2-1.6 1-1.9Z"/>
+              </svg>
+            </div>
+            <div class="titles">
+              <b>OpenClaw</b>
+              <span>Gateway: local • Model: gpt-5.2</span>
+            </div>
+          </div>
+          <div class="chiprow">
+            <div class="chip ok">● Online</div>
+            <div class="chip">⌘K Palette</div>
+            <div class="chip">Esc Close</div>
+          </div>
+        </div>
+
+        <div class="tabs" aria-hidden="true">
+          <div class="tab active">Chat</div>
+          <div class="tab">Status</div>
+          <div class="tab">Tasks</div>
+        </div>
+
+        <div class="content">
+          <div class="chat">
+            <div class="msgs">
+              <div class="msg bot">
+                I’m here. Want a quick chat, check cron jobs, or ping a node?
+                <div class="meta"><div class="k"><span class="pill"></span> Context: main</div><div class="k"><span class="pill"></span> Latency: 210ms</div></div>
+              </div>
+              <div class="msg user">Show me today’s reminders and scheduled jobs.</div>
+              <div class="msg bot">You have <b>2 cron jobs</b> due within 24h. No reminders set. Want me to open Tasks?</div>
+            </div>
+            <div class="composer">
+              <div class="input" contenteditable="true" role="textbox" aria-label="Message">Message OpenClaw…</div>
+              <div class="actions">
+                <button class="btn">Attach</button>
+                <button class="btn primary">Send</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick" aria-label="Quick actions">
+            <div class="q">Run healthcheck</div>
+            <div class="q">List sessions</div>
+            <div class="q">Cron jobs</div>
+            <div class="q">Restart gateway</div>
+          </div>
+
+          <div class="hint">
+            <div>Keyboard: <b>⌘K</b> commands • <b>⌘↩</b> send • <b>⌥↑</b> history</div>
+            <div><a href="index.html">← Back</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="max-width:480px; color:rgba(234,240,255,.78); font-size:12.5px; line-height:1.45; padding-top:10px">
+        <div style="font-weight:700; color:rgba(234,240,255,.92); margin-bottom:8px">Spec (suggested)</div>
+        <div style="border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); border-radius:16px; padding:12px">
+          <div><b>Primary flow</b>: menu bar icon → popover opens at cursor → focus input.</div>
+          <div style="margin-top:8px"><b>Top chips</b>: gateway online/offline, active model, current session, latency.</div>
+          <div style="margin-top:8px"><b>Cmd palette</b>: fuzzy actions (restart gateway, list cron, wake, nodes).</div>
+          <div style="margin-top:8px"><b>Accessibility</b>: true keyboard navigation + high contrast outlines.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

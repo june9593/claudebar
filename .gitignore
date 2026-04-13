@@ -30,3 +30,6 @@ out/
 
 # Coverage
 coverage/
+
+# Local agent settings (user-specific MCP permissions)
+.claude/settings.local.json

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc*)",
+      "Bash(npx vite*)",
+      "Bash(npm run*)",
+      "Bash(npm test*)",
+      "Bash(python3 scripts/*)",
+      "Bash(python3 /tmp/test_*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git log*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(lsof*)",
+      "Bash(ls*)",
+      "Bash(find*)",
+      "Bash(cat*)",
+      "Bash(head*)",
+      "Bash(tail*)",
+      "Bash(wc*)",
+      "Bash(mkdir*)",
+      "Bash(rm src/*)",
+      "Bash(rm electron/*)",
+      "Bash(rm scripts/*)",
+      "Bash(pip3 install playwright*)",
+      "Bash(python3 -m playwright*)"
+    ]
+  }
+}

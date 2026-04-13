@@ -1,0 +1,105 @@
+{
+  "project": "clawbar",
+  "sprint": 2,
+  "updated": "2026-04-14",
+  "features": [
+    {
+      "id": "F-01",
+      "name": "Menu bar tray icon + window toggle",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "Tray icon, click to show/hide, 300ms debounce fix"
+    },
+    {
+      "id": "F-02",
+      "name": "Frameless resizable window with drag/pin",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "frame:false, vibrancy:popover, alwaysOnTop toggle"
+    },
+    {
+      "id": "F-03",
+      "name": "Embed OpenClaw Control UI via iframe",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "CSP header stripping in Electron, loading/error states"
+    },
+    {
+      "id": "F-04",
+      "name": "Settings panel (Gateway URL + auth)",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "URL, token, password fields, theme selector, persistent to ~/.clawbar/settings.json"
+    },
+    {
+      "id": "F-05",
+      "name": "Light/dark theme with system follow",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "CSS variables, data-theme attribute, nativeTheme listener"
+    },
+    {
+      "id": "F-06",
+      "name": "Dock hidden (menu bar only)",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "app.dock.hide(), skipTaskbar:true"
+    },
+    {
+      "id": "F-07",
+      "name": "Visual test: Playwright screenshot verification",
+      "status": "done",
+      "owner": "tester-agent",
+      "notes": "9 interactive tests, light/dark/settings screenshots"
+    },
+    {
+      "id": "F-08",
+      "name": "End-to-end test with real OpenClaw instance",
+      "status": "todo",
+      "owner": "tester-agent",
+      "notes": "Need user's OpenClaw running. Verify iframe loads chat, send message, receive reply"
+    },
+    {
+      "id": "F-09",
+      "name": "Window position persistence",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "Remember drag position, restore on next show. Reset if off-screen."
+    },
+    {
+      "id": "F-10",
+      "name": "ESC key hides window (non-pin)",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "globalShortcut or webContents key listener"
+    },
+    {
+      "id": "F-11",
+      "name": "Right-click context menu on tray",
+      "status": "done",
+      "owner": "dev-agent",
+      "notes": "Show/Hide + Quit"
+    },
+    {
+      "id": "F-12",
+      "name": "Auto-launch on login",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "app.setLoginItemSettings, settings toggle"
+    },
+    {
+      "id": "F-13",
+      "name": "DMG packaging and distribution",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "electron-builder arm64 + x64"
+    },
+    {
+      "id": "F-14",
+      "name": "Remove unused dependencies (react-markdown, remark-gfm)",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "No longer needed after WebView refactor"
+    }
+  ]
+}
