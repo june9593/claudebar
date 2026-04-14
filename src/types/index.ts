@@ -28,6 +28,7 @@ export interface Settings {
   authToken: string;
   authPassword: string;
   theme: 'light' | 'dark' | 'system';
+  chatMode: 'compact' | 'classic';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
 }

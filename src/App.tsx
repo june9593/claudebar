@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { ChatWebView } from './components/ChatWebView';
+import { CompactChat } from './components/CompactChat';
 import { SettingsPanel } from './components/SettingsPanel';
 import { useSettingsStore } from './stores/settingsStore';
 
 export default function App() {
   const view = useSettingsStore((s) => s.view);
+  const chatMode = useSettingsStore((s) => s.chatMode);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
 
@@ -38,7 +40,7 @@ export default function App() {
           transition: 'opacity 0.2s ease',
           zIndex: view === 'chat' ? 2 : 1,
         }}>
-          <ChatWebView />
+          {chatMode === 'compact' ? <CompactChat /> : <ChatWebView />}
         </div>
       </div>
     </div>

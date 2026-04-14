@@ -1,7 +1,7 @@
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function SettingsPanel() {
-  const { gatewayUrl, authMode, authToken, authPassword, theme, hideOnClickOutside, updateSetting } = useSettingsStore();
+  const { gatewayUrl, authMode, authToken, authPassword, theme, chatMode, hideOnClickOutside, updateSetting } = useSettingsStore();
 
   return (
     <div style={{
@@ -93,6 +93,18 @@ export function SettingsPanel() {
       {/* Behavior */}
       <Section title="行为">
         <Card>
+          <Row>
+            <Label>聊天界面</Label>
+            <SegmentedControl
+              value={chatMode}
+              options={[
+                { value: 'compact', label: 'Compact' },
+                { value: 'classic', label: 'Classic' },
+              ]}
+              onChange={(v) => updateSetting('chatMode', v)}
+            />
+          </Row>
+          <RowSep />
           <Row>
             <Label>点击外部隐藏窗口</Label>
             <Toggle

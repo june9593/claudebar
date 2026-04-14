@@ -15,6 +15,7 @@ const defaults: Settings = {
   authToken: '',
   authPassword: '',
   theme: 'system',
+  chatMode: 'compact',
   hideOnClickOutside: false,
   autoLaunch: false,
 };
