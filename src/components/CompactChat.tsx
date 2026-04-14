@@ -12,17 +12,15 @@ export function CompactChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Auto-resize textarea
   const adjustTextarea = useCallback(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px'; // max ~4 lines
+    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
   }, []);
 
   const handleSend = useCallback(() => {
@@ -50,21 +48,28 @@ export function CompactChat() {
   };
 
   const isEmpty = messages.length === 0;
+  const hasInput = input.trim().length > 0;
 
   return (
     <div style={{
-      display: 'flex', flexDirection: 'column',
-      height: '100%', background: 'var(--color-bg-chat)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: 'var(--color-bg-chat)',
+      position: 'relative',
     }}>
-      {/* Connection status bar */}
+      {/* Error banner — subtle, non-blocking */}
       {error && (
         <div style={{
-          padding: '6px 12px',
+          padding: '5px 14px',
           fontSize: '11px',
+          fontFamily: 'var(--font-sans)',
           color: 'var(--color-status-disconnected)',
           background: 'var(--color-bg-secondary)',
           textAlign: 'center',
           letterSpacing: '-0.08px',
+          lineHeight: 1.33,
+          borderBottom: '0.5px solid var(--color-border-primary)',
         }}>
           {error}
         </div>
@@ -72,12 +77,13 @@ export function CompactChat() {
 
       {/* Messages area */}
       <div style={{
-        flex: 1, minHeight: 0,
+        flex: 1,
+        minHeight: 0,
         overflowY: 'auto',
-        padding: '12px 14px 8px',
+        padding: '14px 14px 8px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '6px',
+        gap: '8px',
       }}>
         {isEmpty ? (
           <EmptyState />
@@ -101,25 +107,26 @@ export function CompactChat() {
         alignItems: 'flex-end',
         gap: '8px',
       }}>
-        {/* Classic toggle pill */}
+        {/* Classic toggle pill — Apple 980px radius */}
         <button
           onClick={() => updateSetting('chatMode', 'classic')}
           style={{
-            padding: '4px 10px',
-            borderRadius: '12px',
+            padding: '3px 10px',
+            borderRadius: '980px',
             border: '1px solid var(--color-border-primary)',
             background: 'transparent',
             color: 'var(--color-text-tertiary)',
             fontSize: '11px',
-            fontFamily: 'inherit',
+            fontFamily: 'var(--font-sans)',
             letterSpacing: '-0.08px',
+            lineHeight: 1.33,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             flexShrink: 0,
-            marginBottom: '2px',
-            transition: 'color 0.15s',
+            marginBottom: '3px',
+            transition: 'color 0.15s, border-color 0.15s',
           }}
-          title="切换到经典界面"
+          title="Switch to classic view"
         >
           Classic ↗
         </button>
@@ -135,7 +142,7 @@ export function CompactChat() {
           style={{
             flex: 1,
             resize: 'none',
-            border: '1px solid var(--color-border-primary)',
+            border: 'none',
             borderRadius: '18px',
             padding: '8px 14px',
             fontSize: '14px',
@@ -143,42 +150,42 @@ export function CompactChat() {
             color: 'var(--color-text-primary)',
             background: 'var(--color-bg-input)',
             outline: 'none',
-            lineHeight: 1.4,
+            lineHeight: 1.47,
             letterSpacing: '-0.16px',
             overflow: 'hidden',
-            transition: 'border-color 0.15s',
+            transition: 'background 0.15s',
           }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-border-focus)')}
-          onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--color-border-primary)')}
         />
 
-        {/* Send button */}
+        {/* Send button — 32px circle */}
         <button
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!hasInput}
           style={{
             width: '32px',
             height: '32px',
             borderRadius: '50%',
             border: 'none',
-            background: input.trim() ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: input.trim() ? '#fff' : 'var(--color-text-tertiary)',
+            background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+            color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            cursor: input.trim() ? 'pointer' : 'default',
+            cursor: hasInput ? 'pointer' : 'default',
             flexShrink: 0,
-            marginBottom: '2px',
-            transition: 'background 0.15s, color 0.15s',
+            marginBottom: '3px',
+            transition: 'background 0.2s, color 0.2s, transform 0.1s',
             fontSize: '16px',
+            fontWeight: 600,
+            letterSpacing: '-0.16px',
           }}
-          title="发送"
+          title="Send"
         >
           ↑
         </button>
       </div>
 
-      {/* Status dot */}
+      {/* Connection status dot */}
       {!error && (
         <div style={{
           position: 'absolute',
@@ -203,27 +210,52 @@ function EmptyState() {
   return (
     <div style={{
       flex: 1,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      gap: '10px',
-      opacity: 0.7,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
     }}>
-      <span style={{ fontSize: '40px' }}>🦞</span>
+      {/* 🦞 in a 64px rounded container */}
+      <div style={{
+        width: '64px',
+        height: '64px',
+        borderRadius: '18px',
+        background: 'var(--color-bg-secondary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '32px',
+        marginBottom: '4px',
+      }}>
+        🦞
+      </div>
       <span style={{
         fontFamily: 'var(--font-display)',
-        fontSize: '16px',
+        fontSize: '17px',
         fontWeight: 600,
         color: 'var(--color-text-primary)',
-        letterSpacing: '-0.2px',
+        letterSpacing: '-0.374px',
+        lineHeight: 1.24,
       }}>
         Start a conversation
       </span>
       <span style={{
         fontSize: '13px',
-        color: 'var(--color-text-tertiary)',
+        color: 'var(--color-text-secondary)',
         letterSpacing: '-0.08px',
+        lineHeight: 1.33,
       }}>
         Send a message to your OpenClaw agent
+      </span>
+      <span style={{
+        fontSize: '11px',
+        color: 'var(--color-text-tertiary)',
+        letterSpacing: '-0.08px',
+        lineHeight: 1.33,
+        marginTop: '4px',
+      }}>
+        ⏎ send · ⇧⏎ newline
       </span>
     </div>
   );
@@ -248,28 +280,32 @@ function MessageBubble({ message, formatTime }: {
         maxWidth: '85%',
         flexDirection: isUser ? 'row-reverse' : 'row',
       }}>
-        {/* Avatar for assistant */}
+        {/* Assistant avatar — 🦞 in 28px circle */}
         {!isUser && (
-          <span style={{
-            fontSize: '18px',
-            lineHeight: 1,
-            flexShrink: 0,
-            width: '24px',
-            height: '24px',
+          <div style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            background: 'var(--color-bg-secondary)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            flexShrink: 0,
+            fontSize: '15px',
+            lineHeight: 1,
           }}>
             🦞
-          </span>
+          </div>
         )}
 
         {/* Bubble */}
         <div
-          className={isUser ? undefined : 'prose message-content'}
+          className={isUser ? 'message-content' : 'prose message-content'}
           style={{
-            padding: '8px 14px',
-            borderRadius: '18px',
+            padding: '10px 14px',
+            borderRadius: isUser
+              ? '18px 18px 4px 18px'
+              : '18px 18px 18px 4px',
             background: isUser
               ? 'var(--color-bubble-user)'
               : 'var(--color-bubble-assistant)',
@@ -277,8 +313,9 @@ function MessageBubble({ message, formatTime }: {
               ? 'var(--color-bubble-user-text)'
               : 'var(--color-bubble-assistant-text)',
             fontSize: '14px',
-            lineHeight: 1.45,
+            lineHeight: 1.47,
             letterSpacing: '-0.16px',
+            fontFamily: 'var(--font-sans)',
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
           }}
@@ -291,9 +328,11 @@ function MessageBubble({ message, formatTime }: {
       <span style={{
         fontSize: '11px',
         color: 'var(--color-text-tertiary)',
-        marginTop: '2px',
-        padding: isUser ? '0 4px 0 0' : '0 0 0 30px',
+        marginTop: '3px',
+        paddingLeft: isUser ? undefined : '34px',
+        paddingRight: isUser ? '4px' : undefined,
         letterSpacing: '-0.08px',
+        lineHeight: 1.33,
       }}>
         {formatTime(message.timestamp)}
       </span>
@@ -308,19 +347,28 @@ function TypingIndicator() {
       alignItems: 'flex-end',
       gap: '6px',
     }}>
-      <span style={{
-        fontSize: '18px', lineHeight: 1, flexShrink: 0,
-        width: '24px', height: '24px',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      {/* Avatar */}
+      <div style={{
+        width: '28px',
+        height: '28px',
+        borderRadius: '50%',
+        background: 'var(--color-bg-secondary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        fontSize: '15px',
+        lineHeight: 1,
       }}>
         🦞
-      </span>
+      </div>
+      {/* Typing bubble — assistant style */}
       <div style={{
         padding: '10px 16px',
-        borderRadius: '18px',
+        borderRadius: '18px 18px 18px 4px',
         background: 'var(--color-bubble-assistant)',
         display: 'flex',
-        gap: '4px',
+        gap: '5px',
         alignItems: 'center',
       }}>
         {[0, 1, 2].map((i) => (

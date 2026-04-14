@@ -9,6 +9,7 @@ export interface ElectronAPI {
     togglePin(): Promise<boolean>;
     hide(): void;
     isPinned(): Promise<boolean>;
+    setSize(width: number, height: number): Promise<void>;
   };
   theme: {
     getSystemTheme(): Promise<'light' | 'dark'>;

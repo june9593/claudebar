@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     togglePin: () => ipcRenderer.invoke('window:toggle-pin'),
     hide: () => ipcRenderer.send('window:hide'),
     isPinned: () => ipcRenderer.invoke('window:is-pinned'),
+    setSize: (w: number, h: number) => ipcRenderer.invoke('window:set-size', w, h),
   },
   theme: {
     getSystemTheme: () => ipcRenderer.invoke('theme:get-system'),

@@ -75,6 +75,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       if (window.electronAPI?.settings) {
         await window.electronAPI.settings.set(key, value);
       }
+      if (key === 'chatMode') {
+        if (value === 'classic') {
+          window.electronAPI?.window?.setSize(800, 700);
+        } else {
+          window.electronAPI?.window?.setSize(380, 560);
+        }
+      }
       set((s) => {
         const next = { ...s, [key]: value };
         if (key === 'theme') {
