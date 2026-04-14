@@ -68,7 +68,6 @@ function createWindow() {
   }
 
   // Strip frame-ancestors / X-Frame-Options from OpenClaw responses
-  // AND inject compact mode script into OpenClaw HTML responses
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     const headers = details.responseHeaders || {};
     delete headers['x-frame-options'];
@@ -85,68 +84,41 @@ function createWindow() {
     callback({ responseHeaders: headers });
   });
 
-  // Intercept OpenClaw HTML responses to inject compact-mode script
-  const { protocol } = require('electron');
-  mainWindow.webContents.session.protocol.interceptBufferProtocol('http', (request, callback) => {
-    const { net } = require('electron');
-    const req = net.request(request.url);
-    if (request.headers) {
-      for (const [key, value] of Object.entries(request.headers)) {
-        try { req.setHeader(key, value as string); } catch { /* skip */ }
+  // When any sub-frame finishes loading (i.e. the OpenClaw iframe),
+  // inject compact-mode CSS and set focus mode via executeJavaScript
+  mainWindow.webContents.on('did-frame-navigate', (_event, url, _httpResponseCode, _httpStatusText, isMainFrame) => {
+    if (isMainFrame) return; // Only inject into sub-frames (iframe)
+    if (!url.includes(':18789')) return; // Only inject into OpenClaw
+
+    // Use insertCSS on the main webContents — it applies to all frames
+    mainWindow!.webContents.insertCSS(`
+      /* ClawBar compact mode — hide OpenClaw topbar and nav for 380px popover */
+      .topbar { display: none !important; }
+      .sidebar { display: none !important; }
+      nav.nav-items, .nav-items { display: none !important; }
+      .chat-header { display: none !important; }
+      main { margin-left: 0 !important; padding-top: 0 !important; }
+      .layout { grid-template-columns: 0 1fr !important; }
+      .layout > aside { display: none !important; }
+    `).catch(() => {});
+
+    // Also try executeJavaScript on sub-frames to set focus mode
+    try {
+      for (const frame of mainWindow!.webContents.mainFrame.frames) {
+        frame.executeJavaScript(`
+          try {
+            var raw = localStorage.getItem('openclaw.control.settings.v1');
+            var s = raw ? JSON.parse(raw) : {};
+            if (!s.chatFocusMode) {
+              s.chatFocusMode = true;
+              s.navCollapsed = true;
+              localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
+              location.reload();
+            }
+          } catch(e) {}
+        `).catch(() => {});
       }
-    }
-
-    req.on('response', (response: Electron.IncomingMessage) => {
-      const chunks: Buffer[] = [];
-      response.on('data', (chunk: Buffer) => chunks.push(chunk));
-      response.on('end', () => {
-        let body = Buffer.concat(chunks);
-        const contentType = response.headers['content-type']?.toString() || '';
-
-        // Only inject into HTML responses from OpenClaw
-        if (contentType.includes('text/html') && request.url.includes(':18789')) {
-          let html = body.toString('utf-8');
-          const injectScript = `
-<script>
-// ClawBar compact mode: auto-enable focus mode for menu bar popover
-(function(){
-  try {
-    var raw = localStorage.getItem('openclaw.control.settings.v1');
-    var s = raw ? JSON.parse(raw) : {};
-    if (!s.chatFocusMode) {
-      s.chatFocusMode = true;
-      s.navCollapsed = true;
-      localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
-    }
-  } catch(e) {}
-  // Inject CSS to hide topbar and nav in case focus mode doesn't fully hide them
-  var style = document.createElement('style');
-  style.textContent = '.topbar { display: none !important; } .sidebar, nav.nav-items { display: none !important; } main { margin-left: 0 !important; }';
-  document.addEventListener('DOMContentLoaded', function() { document.head.appendChild(style); });
-})();
-</script>`;
-          html = html.replace('</head>', injectScript + '</head>');
-          body = Buffer.from(html, 'utf-8');
-        }
-
-        callback({
-          statusCode: response.statusCode,
-          headers: response.headers as Record<string, string[]>,
-          data: body,
-        });
-      });
-    });
-
-    req.on('error', () => {
-      callback({ statusCode: 502, data: Buffer.from('Gateway error') });
-    });
-
-    if (request.uploadData) {
-      for (const upload of request.uploadData) {
-        if (upload.bytes) req.write(upload.bytes);
-      }
-    }
-    req.end();
+    } catch { /* sandbox may block this — CSS injection above is the primary fix */ }
   });
 
   mainWindow.webContents.on('before-input-event', (_event, input) => {
