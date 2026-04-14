@@ -33,3 +33,6 @@ coverage/
 
 # Local agent settings (user-specific MCP permissions)
 .claude/settings.local.json
+
+# Playwright MCP artifacts
+.playwright-mcp/
