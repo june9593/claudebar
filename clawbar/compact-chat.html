@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawBar — Compact Chat UI Mockup</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   MOCKUP SHELL — page wrapper, tab controls
+   ═══════════════════════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #e8e8ed;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0 64px;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.dark-page {
+  background: #111113;
+}
+
+.mockup-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.mockup-header h1 {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: #1d1d1f;
+  margin-bottom: 6px;
+}
+
+body.dark-page .mockup-header h1 { color: #f5f5f7; }
+
+.mockup-header p {
+  font-size: 13px;
+  color: #6e6e73;
+  letter-spacing: -0.08px;
+}
+
+body.dark-page .mockup-header p { color: #98989d; }
+
+/* Tab strip */
+.tab-strip {
+  display: flex;
+  gap: 2px;
+  background: rgba(0,0,0,0.06);
+  border-radius: 8px;
+  padding: 2px;
+  margin-bottom: 24px;
+}
+
+body.dark-page .tab-strip {
+  background: rgba(255,255,255,0.08);
+}
+
+.tab-btn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.08px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #6e6e73;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+body.dark-page .tab-btn { color: #98989d; }
+
+.tab-btn.active {
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1), 0 0 0 0.5px rgba(0,0,0,0.04);
+}
+
+body.dark-page .tab-btn.active {
+  background: #3a3a3c;
+  color: #f5f5f7;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+.tab-btn:hover:not(.active) { color: #1d1d1f; }
+body.dark-page .tab-btn:hover:not(.active) { color: #f5f5f7; }
+
+.tab-separator {
+  width: 1px;
+  background: rgba(0,0,0,0.1);
+  margin: 4px 4px;
+}
+
+body.dark-page .tab-separator { background: rgba(255,255,255,0.1); }
+
+/* ═══════════════════════════════════════════════════════
+   PHONE FRAME — simulates the ClawBar popover
+   ═══════════════════════════════════════════════════════ */
+.device-frame {
+  width: 380px;
+  height: 560px;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+}
+
+body.dark-page .device-frame {
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CLAWBAR CSS CUSTOM PROPERTIES
+   (mirrors src/styles/globals.css exactly)
+   ═══════════════════════════════════════════════════════ */
+.clawbar {
+  /* Light theme */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f5f5f7;
+  --color-bg-tertiary: #e8e8ed;
+  --color-bg-chat: #f5f5f7;
+  --color-bg-input: #ffffff;
+
+  --color-surface-hover: rgba(0, 0, 0, 0.04);
+  --color-surface-active: rgba(0, 0, 0, 0.08);
+  --color-surface-title-bar: rgba(255, 255, 255, 0.72);
+  --color-surface-card: #f5f5f7;
+  --color-surface-user-bubble: #0071e3;
+  --color-surface-assistant-bubble: #f0f0f5;
+  --color-surface-code-block: #1d1d1f;
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: rgba(0, 0, 0, 0.56);
+  --color-text-tertiary: rgba(0, 0, 0, 0.36);
+  --color-text-on-user-bubble: #ffffff;
+  --color-text-on-assistant-bubble: #1d1d1f;
+  --color-text-link: #0071e3;
+  --color-text-code: #e83e8c;
+
+  --color-border-primary: rgba(0, 0, 0, 0.08);
+  --color-border-secondary: rgba(0, 0, 0, 0.04);
+  --color-border-focus: #0071e3;
+
+  --color-accent: #0071e3;
+  --color-status-connected: #34c759;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+
+  --shadow-window: 0 24px 80px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.06);
+
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-chat);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.47;
+  letter-spacing: -0.08px;
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Dark theme */
+.clawbar.dark {
+  --color-bg-primary: #000000;
+  --color-bg-secondary: #1c1c1e;
+  --color-bg-tertiary: #2c2c2e;
+  --color-bg-chat: #000000;
+  --color-bg-input: #1c1c1e;
+
+  --color-surface-hover: rgba(255, 255, 255, 0.06);
+  --color-surface-active: rgba(255, 255, 255, 0.1);
+  --color-surface-title-bar: rgba(22, 22, 24, 0.72);
+  --color-surface-card: #1c1c1e;
+  --color-surface-user-bubble: #0a84ff;
+  --color-surface-assistant-bubble: #1c1c1e;
+  --color-surface-code-block: #000000;
+
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: rgba(255, 255, 255, 0.56);
+  --color-text-tertiary: rgba(255, 255, 255, 0.36);
+  --color-text-on-user-bubble: #ffffff;
+  --color-text-on-assistant-bubble: #f5f5f7;
+  --color-text-link: #2997ff;
+  --color-text-code: #ff6b9d;
+
+  --color-border-primary: rgba(255, 255, 255, 0.08);
+  --color-border-secondary: rgba(255, 255, 255, 0.04);
+  --color-border-focus: #2997ff;
+
+  --color-accent: #2997ff;
+  --color-status-connected: #30d158;
+
+  --shadow-window: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.06);
+}
+
+/* ═══════════════════════════════════════════════════════
+   TITLE BAR — 44px, draggable, frosted glass
+   ═══════════════════════════════════════════════════════ */
+.title-bar {
+  height: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--color-surface-title-bar);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 0.5px solid var(--color-border-primary);
+  position: relative;
+  z-index: 10;
+  gap: 8px;
+}
+
+.title-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-status-connected);
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.4);
+}
+
+.title-bar-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.title-bar-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: var(--color-text-primary);
+}
+
+.title-bar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.title-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+  color: var(--color-text-secondary);
+}
+
+.title-btn:hover {
+  background: var(--color-surface-hover);
+}
+
+.title-btn.pinned {
+  color: var(--color-accent);
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHAT MESSAGES AREA
+   ═══════════════════════════════════════════════════════ */
+.chat-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scroll-behavior: smooth;
+  position: relative;
+}
+
+/* Scrollbar */
+.chat-area::-webkit-scrollbar { width: 5px; }
+.chat-area::-webkit-scrollbar-track { background: transparent; }
+.chat-area::-webkit-scrollbar-thumb {
+  background: var(--color-text-tertiary);
+  border-radius: 3px;
+}
+.chat-area::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
+/* Message groups */
+.msg-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.msg-group + .msg-group-user,
+.msg-group + .msg-group-assistant { margin-top: 12px; }
+
+/* .msg-group-user + .msg-group-assistant,
+.msg-group-assistant + .msg-group-user { margin-top: 12px; } */
+
+.msg-group-user {
+  align-items: flex-end;
+}
+
+.msg-group-assistant {
+  align-items: flex-start;
+}
+
+/* Assistant avatar row */
+.assistant-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.clawbar.dark .avatar {
+  background: var(--color-bg-tertiary);
+}
+
+.avatar-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.08px;
+}
+
+/* Bubbles */
+.bubble {
+  max-width: 88%;
+  padding: 9px 14px;
+  font-size: 13px;
+  line-height: 1.47;
+  letter-spacing: -0.08px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.bubble-user {
+  background: var(--color-surface-user-bubble);
+  color: var(--color-text-on-user-bubble);
+  border-radius: 18px 18px 4px 18px;
+}
+
+.bubble-assistant {
+  background: var(--color-surface-assistant-bubble);
+  color: var(--color-text-on-assistant-bubble);
+  border-radius: 18px 18px 18px 4px;
+  margin-left: 34px; /* indent past avatar */
+}
+
+/* Consecutive bubbles from same sender */
+.bubble-user + .bubble-user { margin-top: 3px; border-radius: 18px 4px 4px 18px; }
+.bubble-assistant + .bubble-assistant { margin-top: 3px; border-radius: 4px 18px 18px 4px; }
+
+/* Timestamps */
+.timestamp {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+  margin-top: 4px;
+  letter-spacing: 0;
+}
+
+.msg-group-user .timestamp {
+  padding-right: 4px;
+}
+
+.msg-group-assistant .timestamp {
+  padding-left: 38px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MARKDOWN INSIDE BUBBLES
+   ═══════════════════════════════════════════════════════ */
+.bubble p { margin-bottom: 6px; }
+.bubble p:last-child { margin-bottom: 0; }
+
+.bubble strong {
+  font-weight: 600;
+}
+
+.bubble em {
+  font-style: italic;
+}
+
+.bubble a {
+  color: var(--color-text-link);
+  text-decoration: none;
+}
+
+.bubble-user a {
+  color: rgba(255,255,255,0.85);
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,0.4);
+}
+
+.bubble code:not(.code-block code) {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.06);
+  color: var(--color-text-code);
+}
+
+.bubble-user code:not(.code-block code) {
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+}
+
+.clawbar.dark .bubble code:not(.code-block code) {
+  background: rgba(255,255,255,0.1);
+}
+
+/* Code blocks */
+.code-block-wrapper {
+  margin: 8px 0 4px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--color-surface-code-block);
+  position: relative;
+}
+
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 0.5px solid rgba(255,255,255,0.08);
+}
+
+.code-lang {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+}
+
+.copy-btn {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  letter-spacing: -0.08px;
+}
+
+.copy-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.8);
+}
+
+.code-block {
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5e5ea;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.code-block::-webkit-scrollbar { height: 4px; }
+.code-block::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* Syntax highlighting tokens */
+.tok-kw { color: #ff7eb6; }
+.tok-fn { color: #82cfff; }
+.tok-str { color: #42be65; }
+.tok-cm { color: rgba(255,255,255,0.35); font-style: italic; }
+.tok-num { color: #be95ff; }
+.tok-op { color: #78a9ff; }
+.tok-var { color: #e5e5ea; }
+.tok-type { color: #08bdba; }
+
+/* ═══════════════════════════════════════════════════════
+   TYPING INDICATOR
+   ═══════════════════════════════════════════════════════ */
+.typing-indicator {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-left: 34px;
+  margin-top: 4px;
+}
+
+.typing-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: var(--color-surface-assistant-bubble);
+  border-radius: 18px 18px 18px 4px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-tertiary);
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL-TO-BOTTOM BUTTON
+   ═══════════════════════════════════════════════════════ */
+.scroll-bottom-btn {
+  position: absolute;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-bg-primary);
+  color: var(--color-text-secondary);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.1), 0 0 0 0.5px var(--color-border-primary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: all 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scroll-bottom-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-bottom-btn:hover {
+  background: var(--color-surface-hover);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14), 0 0 0 0.5px var(--color-border-primary);
+}
+
+/* ═══════════════════════════════════════════════════════
+   INPUT AREA
+   ═══════════════════════════════════════════════════════ */
+.input-area {
+  min-height: 52px;
+  padding: 8px 12px 10px;
+  background: var(--color-bg-primary);
+  border-top: 0.5px solid var(--color-border-primary);
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  position: relative;
+}
+
+.input-left {
+  position: absolute;
+  bottom: 10px;
+  left: 12px;
+}
+
+.mode-pill {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: var(--color-text-tertiary);
+  background: var(--color-surface-hover);
+  border: none;
+  padding: 3px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.mode-pill:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text-secondary);
+}
+
+.input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  background: var(--color-bg-input);
+  border: none;
+  min-height: 36px;
+  padding-left: 68px;
+}
+
+.input-textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.47;
+  letter-spacing: -0.08px;
+  color: var(--color-text-primary);
+  padding: 8px 0;
+  max-height: 80px;
+  outline: none;
+}
+
+.input-textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.send-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 3px;
+  transition: all 0.2s ease;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.send-btn.inactive {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+.send-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+.send-btn:active {
+  transform: scale(0.95);
+}
+
+.send-arrow {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   EMPTY STATE
+   ═══════════════════════════════════════════════════════ */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 32px;
+  gap: 8px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+  filter: grayscale(20%);
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--color-text-primary);
+}
+
+.empty-subtitle {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  max-width: 240px;
+}
+
+.empty-shortcut {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  background: var(--color-surface-hover);
+  border: 0.5px solid var(--color-border-primary);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  min-width: 22px;
+}
+
+/* Hidden states */
+.state { display: none; }
+.state.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+/* ═══════════════════════════════════════════════════════
+   ANNOTATIONS (designer notes in mockup)
+   ═══════════════════════════════════════════════════════ */
+.annotation {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(0, 113, 227, 0.06);
+  border-left: 3px solid #0071e3;
+  border-radius: 0 8px 8px 0;
+  font-size: 12px;
+  color: #6e6e73;
+  max-width: 380px;
+  line-height: 1.5;
+}
+
+body.dark-page .annotation {
+  background: rgba(41, 151, 255, 0.08);
+  border-left-color: #2997ff;
+  color: #98989d;
+}
+
+.annotation strong { color: #1d1d1f; }
+body.dark-page .annotation strong { color: #f5f5f7; }
+
+/* ═══════════════════════════════════════════════════════
+   LIST rendering in assistant bubbles
+   ═══════════════════════════════════════════════════════ */
+.bubble ul, .bubble ol {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+.bubble li {
+  margin-bottom: 2px;
+}
+.bubble li::marker {
+  color: var(--color-text-secondary);
+}
+</style>
+</head>
+<body>
+
+<div class="mockup-header">
+  <h1>ClawBar — Compact Chat UI</h1>
+  <p>380 × 560px · macOS menu bar popover · F-15 design spec</p>
+</div>
+
+<!-- State & Theme Controls -->
+<div class="tab-strip" id="tabs">
+  <button class="tab-btn active" data-state="chat" onclick="switchState('chat')">💬 Chat</button>
+  <button class="tab-btn" data-state="empty" onclick="switchState('empty')">📭 Empty</button>
+  <span class="tab-separator"></span>
+  <button class="tab-btn" data-theme="light" onclick="switchTheme('light')" id="theme-light">☀️ Light</button>
+  <button class="tab-btn active" data-theme="dark" onclick="switchTheme('dark')" id="theme-dark" style="display:none">🌙 Dark</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     DEVICE FRAME
+     ═══════════════════════════════════════════════════════ -->
+<div class="device-frame">
+<div class="clawbar" id="clawbar">
+
+  <!-- TITLE BAR -->
+  <div class="title-bar">
+    <div class="title-bar-left">
+      <span class="status-dot"></span>
+      <span class="title-bar-icon">🦞</span>
+      <span class="title-bar-title">ClawBar</span>
+    </div>
+    <div class="title-bar-right">
+      <button class="title-btn pinned" title="Unpin">📌</button>
+      <button class="title-btn" title="Settings">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M7.5 9.5a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M12.14 9.35l.82.47a.5.5 0 01.18.68l-1 1.73a.5.5 0 01-.68.18l-.82-.47a4.5 4.5 0 01-1.14.66v.9a.5.5 0 01-.5.5h-2a.5.5 0 01-.5-.5v-.9a4.5 4.5 0 01-1.14-.66l-.82.47a.5.5 0 01-.68-.18l-1-1.73a.5.5 0 01.18-.68l.82-.47a4.5 4.5 0 010-1.2l-.82-.47a.5.5 0 01-.18-.68l1-1.73a.5.5 0 01.68-.18l.82.47a4.5 4.5 0 011.14-.66V4a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v.9a4.5 4.5 0 011.14.66l.82-.47a.5.5 0 01.68.18l1 1.73a.5.5 0 01-.18.68l-.82.47a4.5 4.5 0 010 1.2z" stroke="currentColor" stroke-width="1.1"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ STATE: CHAT ═══════════ -->
+  <div class="state active" id="state-chat" style="position:relative;">
+    <div class="chat-area" id="chatArea">
+
+      <!-- User message group -->
+      <div class="msg-group msg-group-user" style="margin-top:8px;">
+        <div class="bubble bubble-user">
+          Hey! Can you help me write a Python function to parse JSON config files?
+        </div>
+        <div class="timestamp">2:31 PM</div>
+      </div>
+
+      <!-- Assistant message group -->
+      <div class="msg-group msg-group-assistant">
+        <div class="assistant-header">
+          <div class="avatar">🦞</div>
+          <span class="avatar-name">ClawBar</span>
+        </div>
+        <div class="bubble bubble-assistant">
+          <p>Sure! Here's a robust config loader with <strong>type validation</strong> and <code>default values</code>:</p>
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span class="code-lang">python</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <div class="code-block"><span class="tok-kw">import</span> json
+<span class="tok-kw">from</span> pathlib <span class="tok-kw">import</span> Path
+<span class="tok-kw">from</span> typing <span class="tok-kw">import</span> <span class="tok-type">Any</span>, <span class="tok-type">Dict</span>
+
+<span class="tok-kw">def</span> <span class="tok-fn">load_config</span>(
+    path: <span class="tok-type">str</span>,
+    defaults: <span class="tok-type">Dict</span>[<span class="tok-type">str</span>, <span class="tok-type">Any</span>] = <span class="tok-kw">None</span>
+) -> <span class="tok-type">Dict</span>[<span class="tok-type">str</span>, <span class="tok-type">Any</span>]:
+    <span class="tok-str">"""Load JSON config with defaults."""</span>
+    config = dict(defaults <span class="tok-kw">or</span> {})
+    fp = Path(path)
+    <span class="tok-kw">if</span> fp.exists():
+        <span class="tok-kw">with</span> fp.open() <span class="tok-kw">as</span> f:
+            config.update(json.load(f))
+    <span class="tok-kw">return</span> config</div>
+          </div>
+          <p>This handles missing files gracefully and merges with your defaults. You can use it like:</p>
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span class="code-lang">python</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <div class="code-block">cfg = <span class="tok-fn">load_config</span>(
+    <span class="tok-str">"~/.clawbar/settings.json"</span>,
+    defaults={<span class="tok-str">"theme"</span>: <span class="tok-str">"system"</span>, <span class="tok-str">"port"</span>: <span class="tok-num">18789</span>}
+)</div>
+          </div>
+        </div>
+        <div class="timestamp">2:31 PM</div>
+      </div>
+
+      <!-- User follow-up -->
+      <div class="msg-group msg-group-user">
+        <div class="bubble bubble-user">
+          Nice! Can it also watch for changes and reload?
+        </div>
+        <div class="timestamp">2:33 PM</div>
+      </div>
+
+      <!-- Assistant with typing indicator -->
+      <div class="msg-group msg-group-assistant">
+        <div class="assistant-header">
+          <div class="avatar">🦞</div>
+          <span class="avatar-name">ClawBar</span>
+        </div>
+        <div class="bubble bubble-assistant">
+          <p>Absolutely. Use <code>watchdog</code> for file monitoring:</p>
+          <ul>
+            <li>Install: <code>pip install watchdog</code></li>
+            <li>Watch the config directory</li>
+            <li>Debounce reload to avoid rapid re-reads</li>
+          </ul>
+          <p>Here's the watcher pattern:</p>
+          <div class="code-block-wrapper">
+            <div class="code-block-header">
+              <span class="code-lang">python</span>
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            </div>
+            <div class="code-block"><span class="tok-kw">from</span> watchdog.observers <span class="tok-kw">import</span> Observer
+<span class="tok-kw">from</span> watchdog.events <span class="tok-kw">import</span> FileSystemEventHandler
+
+<span class="tok-kw">class</span> <span class="tok-type">ConfigReloader</span>(FileSystemEventHandler):
+    <span class="tok-kw">def</span> <span class="tok-fn">on_modified</span>(self, event):
+        <span class="tok-kw">if</span> event.src_path.endswith(<span class="tok-str">".json"</span>):
+            self.config = <span class="tok-fn">load_config</span>(event.src_path)</div>
+          </div>
+        </div>
+        <div class="timestamp">2:33 PM</div>
+      </div>
+
+      <!-- Typing indicator (shown as last item) -->
+      <div class="msg-group msg-group-assistant" id="typingGroup" style="display:none;">
+        <div class="typing-indicator">
+          <div class="typing-dots">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Scroll to bottom -->
+    <button class="scroll-bottom-btn" id="scrollBtn" onclick="scrollToBottom()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 2v10M3 8l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <!-- Input area -->
+    <div class="input-area">
+      <div class="input-left">
+        <button class="mode-pill" title="Switch to Classic (iframe) mode">Classic ↗</button>
+      </div>
+      <div class="input-wrapper">
+        <textarea class="input-textarea" id="chatInput" rows="1" placeholder="Message..." oninput="handleInput(this)"></textarea>
+      </div>
+      <button class="send-btn inactive" id="sendBtn" onclick="simulateSend()">
+        <svg class="send-arrow" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13V3M4 7l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════ STATE: EMPTY ═══════════ -->
+  <div class="state" id="state-empty">
+    <div class="empty-state">
+      <div class="empty-icon">🦞</div>
+      <div class="empty-title">Start a conversation</div>
+      <div class="empty-subtitle">Send a message to your OpenClaw agent — code, questions, anything.</div>
+      <div class="empty-shortcut">
+        <span class="kbd">⏎</span>
+        <span>to send</span>
+        <span style="margin:0 4px;color:var(--color-border-primary)">·</span>
+        <span class="kbd">⇧ ⏎</span>
+        <span>new line</span>
+      </div>
+    </div>
+
+    <!-- Input area (empty state) -->
+    <div class="input-area">
+      <div class="input-left">
+        <button class="mode-pill">Classic ↗</button>
+      </div>
+      <div class="input-wrapper">
+        <textarea class="input-textarea" rows="1" placeholder="Message..." readonly></textarea>
+      </div>
+      <button class="send-btn inactive">
+        <svg class="send-arrow" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13V3M4 7l4-4 4 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- Annotations -->
+<div class="annotation" style="margin-top: 20px;">
+  <strong>Design Notes:</strong> 380×560 popover. TitleBar 44px with frosted glass. Messages area scrollable with momentum. User bubbles #0071e3, assistant bubbles #f0f0f5 (light) / #1c1c1e (dark). Code blocks use SF Mono with syntax highlighting and Copy button. Typing indicator with bouncing dots. Mode pill "Classic ↗" for iframe fallback.
+</div>
+<div class="annotation">
+  <strong>Keyboard:</strong> Enter = send · Shift+Enter = newline · ESC = hide window (non-pinned). Textarea auto-grows to 4 lines max. Send button animates in when text is entered.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     INTERACTIVITY
+     ═══════════════════════════════════════════════════════ -->
+<script>
+const clawbar = document.getElementById('clawbar');
+const chatArea = document.getElementById('chatArea');
+const scrollBtn = document.getElementById('scrollBtn');
+const chatInput = document.getElementById('chatInput');
+const sendBtn = document.getElementById('sendBtn');
+
+let currentState = 'chat';
+let currentTheme = 'light';
+
+// ── State switching ──
+function switchState(state) {
+  currentState = state;
+  document.querySelectorAll('.tab-btn[data-state]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[data-state="${state}"]`).classList.add('active');
+  document.querySelectorAll('.state').forEach(s => s.classList.remove('active'));
+  document.getElementById(`state-${state}`).classList.add('active');
+}
+
+// ── Theme switching ──
+function switchTheme(theme) {
+  currentTheme = theme === 'light' ? 'dark' : 'light';
+  const lightBtn = document.getElementById('theme-light');
+  const darkBtn = document.getElementById('theme-dark');
+
+  if (currentTheme === 'dark') {
+    clawbar.classList.add('dark');
+    document.body.classList.add('dark-page');
+    lightBtn.style.display = 'none';
+    darkBtn.style.display = '';
+  } else {
+    clawbar.classList.remove('dark');
+    document.body.classList.remove('dark-page');
+    lightBtn.style.display = '';
+    darkBtn.style.display = 'none';
+  }
+}
+
+// ── Input handling ──
+function handleInput(el) {
+  // Auto-resize
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+  // Toggle send button
+  const hasText = el.value.trim().length > 0;
+  sendBtn.classList.toggle('inactive', !hasText);
+}
+
+// ── Send simulation ──
+function simulateSend() {
+  const text = chatInput.value.trim();
+  if (!text) return;
+
+  // Create user bubble
+  const group = document.createElement('div');
+  group.className = 'msg-group msg-group-user';
+  group.innerHTML = `
+    <div class="bubble bubble-user">${escapeHtml(text)}</div>
+    <div class="timestamp">${formatTime()}</div>
+  `;
+  chatArea.appendChild(group);
+
+  // Clear input
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  sendBtn.classList.add('inactive');
+
+  // Show typing
+  const typing = document.getElementById('typingGroup');
+  typing.style.display = '';
+  chatArea.appendChild(typing);
+  scrollToBottom();
+
+  // Simulate response after 1.5s
+  setTimeout(() => {
+    typing.style.display = 'none';
+    const resp = document.createElement('div');
+    resp.className = 'msg-group msg-group-assistant';
+    resp.innerHTML = `
+      <div class="assistant-header">
+        <div class="avatar">🦞</div>
+        <span class="avatar-name">ClawBar</span>
+      </div>
+      <div class="bubble bubble-assistant">
+        <p>Got it! I'll work on that for you. 🦞</p>
+      </div>
+      <div class="timestamp">${formatTime()}</div>
+    `;
+    chatArea.appendChild(resp);
+    scrollToBottom();
+  }, 1800);
+}
+
+// ── Scroll detection ──
+chatArea?.addEventListener('scroll', () => {
+  const atBottom = chatArea.scrollHeight - chatArea.scrollTop - chatArea.clientHeight < 60;
+  scrollBtn.classList.toggle('visible', !atBottom);
+});
+
+function scrollToBottom() {
+  chatArea.scrollTo({ top: chatArea.scrollHeight, behavior: 'smooth' });
+}
+
+// ── Keyboard ──
+chatInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    simulateSend();
+  }
+});
+
+// ── Copy button ──
+function copyCode(btn) {
+  const code = btn.closest('.code-block-wrapper').querySelector('.code-block').textContent;
+  navigator.clipboard?.writeText(code);
+  btn.textContent = 'Copied!';
+  setTimeout(() => btn.textContent = 'Copy', 1500);
+}
+
+// ── Helpers ──
+function formatTime() {
+  return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+
+// Initial scroll
+scrollToBottom();
+</script>
+
+</body>
+</html>
