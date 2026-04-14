@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
+import { ChatHistory } from './ChatHistory';
 
 export function CompactChat() {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const authToken = useSettingsStore((s) => s.authToken);
   const updateSetting = useSettingsStore((s) => s.updateSetting);
-  const { messages, isConnected, isTyping, sendMessage, error } = useClawChat(gatewayUrl, authToken);
+  const { messages, isConnected, isTyping, sendMessage, clearMessages, error } = useClawChat(gatewayUrl, authToken);
 
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,13 +68,15 @@ export function CompactChat() {
           color: 'var(--color-status-disconnected)',
           background: 'var(--color-bg-secondary)',
           textAlign: 'center',
-          letterSpacing: '-0.08px',
           lineHeight: 1.33,
           borderBottom: '0.5px solid var(--color-border-primary)',
         }}>
           {error}
         </div>
       )}
+
+      {/* Session header */}
+      <ChatHistory onNewChat={clearMessages} />
 
       {/* Messages area */}
       <div style={{
@@ -118,7 +121,6 @@ export function CompactChat() {
             color: 'var(--color-text-tertiary)',
             fontSize: '11px',
             fontFamily: 'var(--font-sans)',
-            letterSpacing: '-0.08px',
             lineHeight: 1.33,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
@@ -151,7 +153,6 @@ export function CompactChat() {
             background: 'var(--color-bg-input)',
             outline: 'none',
             lineHeight: 1.47,
-            letterSpacing: '-0.16px',
             overflow: 'hidden',
             transition: 'background 0.15s',
           }}
@@ -177,7 +178,6 @@ export function CompactChat() {
             transition: 'background 0.2s, color 0.2s, transform 0.1s',
             fontSize: '16px',
             fontWeight: 600,
-            letterSpacing: '-0.16px',
           }}
           title="Send"
         >
@@ -233,17 +233,15 @@ function EmptyState() {
       <span style={{
         fontFamily: 'var(--font-display)',
         fontSize: '17px',
-        fontWeight: 600,
+        fontWeight: 500,
         color: 'var(--color-text-primary)',
-        letterSpacing: '-0.374px',
-        lineHeight: 1.24,
+        lineHeight: 1.20,
       }}>
         Start a conversation
       </span>
       <span style={{
         fontSize: '13px',
         color: 'var(--color-text-secondary)',
-        letterSpacing: '-0.08px',
         lineHeight: 1.33,
       }}>
         Send a message to your OpenClaw agent
@@ -251,7 +249,6 @@ function EmptyState() {
       <span style={{
         fontSize: '11px',
         color: 'var(--color-text-tertiary)',
-        letterSpacing: '-0.08px',
         lineHeight: 1.33,
         marginTop: '4px',
       }}>
@@ -314,7 +311,6 @@ function MessageBubble({ message, formatTime }: {
               : 'var(--color-bubble-assistant-text)',
             fontSize: '14px',
             lineHeight: 1.47,
-            letterSpacing: '-0.16px',
             fontFamily: 'var(--font-sans)',
             wordBreak: 'break-word',
             whiteSpace: 'pre-wrap',
@@ -331,7 +327,6 @@ function MessageBubble({ message, formatTime }: {
         marginTop: '3px',
         paddingLeft: isUser ? undefined : '34px',
         paddingRight: isUser ? '4px' : undefined,
-        letterSpacing: '-0.08px',
         lineHeight: 1.33,
       }}>
         {formatTime(message.timestamp)}

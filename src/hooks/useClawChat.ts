@@ -12,8 +12,12 @@ export interface UseClawChat {
   isConnected: boolean;
   isTyping: boolean;
   sendMessage: (text: string) => void;
+  clearMessages: () => void;
   error: string | null;
 }
+
+let rpcIdCounter = 1;
+function nextId() { return rpcIdCounter++; }
 
 export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -24,6 +28,9 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
   const retriesRef = useRef(0);
   const maxRetries = 3;
   const pendingAssistantRef = useRef<string>('');
+  const authenticatedRef = useRef(false);
+  const historyIdRef = useRef<number>(0);
+  const openTimeRef = useRef<number>(0);
 
   const connect = useCallback(() => {
     if (!gatewayUrl) return;
@@ -34,35 +41,65 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
       .replace(/^http:\/\//, 'ws://')
       .replace(/\/+$/, '');
 
+    authenticatedRef.current = false;
+
     try {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setIsConnected(true);
+        openTimeRef.current = Date.now();
         setError(null);
         retriesRef.current = 0;
 
-        // Authenticate
-        ws.send(JSON.stringify({
+        // Wait for server welcome message before authenticating.
+        // OpenClaw Gateway may send a welcome/handshake first.
+        // If no message arrives within 2s, send auth proactively.
+        const authTimeout = setTimeout(() => {
+          if (!authenticatedRef.current && ws.readyState === WebSocket.OPEN) {
+            sendAuth(ws);
+          }
+        }, 2000);
+        (ws as unknown as Record<string, unknown>).__authTimeout = authTimeout;
+      };
+
+      const sendAuth = (sock: WebSocket) => {
+        if (authenticatedRef.current) return;
+        authenticatedRef.current = true;
+
+        // JSON-RPC 2.0 auth handshake
+        sock.send(JSON.stringify({
+          jsonrpc: '2.0',
           method: 'connect',
+          id: nextId(),
           params: { auth: { token: authToken } },
         }));
 
-        // Request history
-        ws.send(JSON.stringify({
-          id: 'hist-1',
+        // Request chat history
+        historyIdRef.current = nextId();
+        sock.send(JSON.stringify({
+          jsonrpc: '2.0',
           method: 'chat.history',
-          params: { sessionKey: 'main' },
+          id: historyIdRef.current,
+          params: {},
         }));
+
+        setIsConnected(true);
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
 
+          // If we get any server message before auth, treat it as welcome and send auth
+          if (!authenticatedRef.current && ws.readyState === WebSocket.OPEN) {
+            const timer = (ws as unknown as Record<string, unknown>).__authTimeout;
+            if (timer) clearTimeout(timer as ReturnType<typeof setTimeout>);
+            sendAuth(ws);
+          }
+
           // History response
-          if (data.id === 'hist-1' && data.result?.messages) {
+          if (data.id === historyIdRef.current && data.result?.messages) {
             const history: ChatMessage[] = data.result.messages
               .filter((m: { role: string }) => m.role === 'user' || m.role === 'assistant')
               .map((m: { role: string; content: string; timestamp?: string }, i: number) => ({
@@ -100,6 +137,11 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
             }
           }
 
+          // JSON-RPC error response
+          if (data.error) {
+            setError(`Gateway: ${data.error.message || JSON.stringify(data.error)}`);
+          }
+
           // Non-streaming response (result with assistant content)
           if (data.result?.role === 'assistant' && data.result?.content) {
             setMessages((prev) => [
@@ -118,9 +160,20 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
         }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsConnected(false);
         wsRef.current = null;
+
+        const timer = (ws as unknown as Record<string, unknown>).__authTimeout;
+        if (timer) clearTimeout(timer as ReturnType<typeof setTimeout>);
+
+        // Detect immediate close (within 1s of open) — likely auth or protocol issue
+        const livedMs = Date.now() - (openTimeRef.current || 0);
+        if (livedMs < 1000 && retriesRef.current === 0) {
+          setError(`连接被立即关闭 (code ${event.code})，请检查 Gateway 地址和认证`);
+          retriesRef.current = maxRetries; // don't retry on immediate close
+          return;
+        }
 
         if (retriesRef.current < maxRetries) {
           retriesRef.current++;
@@ -159,11 +212,18 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
     setIsTyping(true);
 
     wsRef.current.send(JSON.stringify({
-      id: `msg-${Date.now()}`,
+      jsonrpc: '2.0',
+      id: nextId(),
       method: 'chat.send',
       params: { text, sessionKey: 'main' },
     }));
   }, []);
 
-  return { messages, isConnected, isTyping, sendMessage, error };
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setIsTyping(false);
+    pendingAssistantRef.current = '';
+  }, []);
+
+  return { messages, isConnected, isTyping, sendMessage, clearMessages, error };
 }

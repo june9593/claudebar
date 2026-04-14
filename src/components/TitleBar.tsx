@@ -44,17 +44,13 @@ export function TitleBar() {
           borderRadius: '50%',
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
-          boxShadow: hasGateway
-            ? '0 0 6px rgba(52, 199, 89, 0.4)'
-            : '0 0 6px rgba(255, 59, 48, 0.4)',
         }} />
         <span style={{ fontSize: '16px', lineHeight: 1 }}>🦞</span>
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',
-          fontWeight: 600,
+          fontWeight: 500,
           color: 'var(--color-text-primary)',
-          letterSpacing: '-0.16px',
         }}>
           ClawBar
         </span>

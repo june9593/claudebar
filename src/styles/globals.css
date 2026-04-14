@@ -3,84 +3,84 @@
 @tailwind utilities;
 
 :root {
-  /* Apple Design System — Light */
-  --color-bg-primary: #ffffff;
-  --color-bg-secondary: #f5f5f7;
-  --color-bg-tertiary: #e8e8ed;
-  --color-bg-chat: #f5f5f7;
+  /* Claude Design System — Light */
+  --color-bg-primary: #f5f4ed;
+  --color-bg-secondary: #faf9f5;
+  --color-bg-tertiary: #e8e6dc;
+  --color-bg-chat: #f5f4ed;
   --color-bg-input: #ffffff;
 
   --color-surface-hover: rgba(0, 0, 0, 0.04);
   --color-surface-active: rgba(0, 0, 0, 0.08);
-  --color-surface-title-bar: rgba(255, 255, 255, 0.72);
-  --color-surface-card: #f5f5f7;
+  --color-surface-title-bar: rgba(245, 244, 237, 0.85);
+  --color-surface-card: #faf9f5;
 
-  --color-text-primary: #1d1d1f;
-  --color-text-secondary: rgba(0, 0, 0, 0.56);
-  --color-text-tertiary: rgba(0, 0, 0, 0.46);
-  --color-text-link: #0071e3;
-  --color-text-link-hover: #0077ed;
+  --color-text-primary: #141413;
+  --color-text-secondary: #5e5d59;
+  --color-text-tertiary: #87867f;
+  --color-text-link: #c96442;
+  --color-text-link-hover: #d97757;
 
-  --color-border-primary: rgba(0, 0, 0, 0.08);
-  --color-border-secondary: rgba(0, 0, 0, 0.04);
-  --color-border-focus: #0071e3;
+  --color-border-primary: #e8e6dc;
+  --color-border-secondary: #f0eee6;
+  --color-border-focus: #3898ec;
 
-  --color-accent: #0071e3;
+  --color-accent: #c96442;
 
-  --color-status-connected: #34c759;
-  --color-status-disconnected: #ff3b30;
-  --color-status-connecting: #ff9500;
+  --color-status-connected: #5a9a68;
+  --color-status-disconnected: #b53333;
+  --color-status-connecting: #c96442;
 
-  --color-bubble-user: #0071e3;
-  --color-bubble-user-text: #ffffff;
-  --color-bubble-assistant: #f0f0f5;
-  --color-bubble-assistant-text: #1d1d1f;
+  --color-bubble-user: #c96442;
+  --color-bubble-user-text: #faf9f5;
+  --color-bubble-assistant: #faf9f5;
+  --color-bubble-assistant-text: #141413;
 
-  --shadow-window: 0 24px 80px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
-  --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.06);
+  --shadow-window: 0 24px 80px rgba(20, 20, 19, 0.12);
+  --shadow-card: 0 2px 12px rgba(20, 20, 19, 0.06);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
-  --font-mono: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  --font-sans: 'Anthropic Sans', -apple-system, system-ui, sans-serif;
+  --font-display: 'Anthropic Serif', Georgia, serif;
+  --font-mono: 'Anthropic Mono', 'SF Mono', monospace;
 
   --title-bar-height: 44px;
   --radius-window: 12px;
 }
 
 [data-theme="dark"] {
-  --color-bg-primary: #000000;
-  --color-bg-secondary: #1c1c1e;
-  --color-bg-tertiary: #2c2c2e;
-  --color-bg-chat: #000000;
-  --color-bg-input: #1c1c1e;
+  --color-bg-primary: #141413;
+  --color-bg-secondary: #30302e;
+  --color-bg-tertiary: #3d3d3a;
+  --color-bg-chat: #141413;
+  --color-bg-input: #30302e;
 
   --color-surface-hover: rgba(255, 255, 255, 0.06);
   --color-surface-active: rgba(255, 255, 255, 0.1);
-  --color-surface-title-bar: rgba(22, 22, 24, 0.72);
-  --color-surface-card: #1c1c1e;
+  --color-surface-title-bar: rgba(20, 20, 19, 0.85);
+  --color-surface-card: #30302e;
 
-  --color-text-primary: #f5f5f7;
-  --color-text-secondary: rgba(255, 255, 255, 0.56);
-  --color-text-tertiary: rgba(255, 255, 255, 0.50);
-  --color-text-link: #2997ff;
-  --color-text-link-hover: #40a9ff;
+  --color-text-primary: #faf9f5;
+  --color-text-secondary: #b0aea5;
+  --color-text-tertiary: #87867f;
+  --color-text-link: #d97757;
+  --color-text-link-hover: #e08868;
 
-  --color-border-primary: rgba(255, 255, 255, 0.08);
-  --color-border-secondary: rgba(255, 255, 255, 0.04);
-  --color-border-focus: #2997ff;
+  --color-border-primary: #30302e;
+  --color-border-secondary: #3d3d3a;
+  --color-border-focus: #3898ec;
 
-  --color-accent: #2997ff;
+  --color-accent: #d97757;
 
-  --color-status-connected: #30d158;
-  --color-status-disconnected: #ff453a;
-  --color-status-connecting: #ff9f0a;
+  --color-status-connected: #5a9a68;
+  --color-status-disconnected: #b53333;
+  --color-status-connecting: #d97757;
 
-  --color-bubble-user: #0071e3;
-  --color-bubble-user-text: #ffffff;
-  --color-bubble-assistant: #1c1c1e;
-  --color-bubble-assistant-text: #f5f5f7;
+  --color-bubble-user: #c96442;
+  --color-bubble-user-text: #faf9f5;
+  --color-bubble-assistant: #30302e;
+  --color-bubble-assistant-text: #faf9f5;
 
-  --shadow-window: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-window: 0 24px 80px rgba(0, 0, 0, 0.5);
   --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -96,7 +96,6 @@ html, body, #root {
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.47;
-  letter-spacing: -0.08px;
   color: var(--color-text-primary);
   background-color: var(--color-bg-primary);
   -webkit-font-smoothing: antialiased;
