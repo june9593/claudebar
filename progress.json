@@ -1,6 +1,6 @@
 {
   "project": "clawbar",
-  "sprint": 5,
+  "sprint": 6,
   "updated": "2026-04-14",
   "features": [
     {
@@ -104,14 +104,14 @@
     {
       "id": "F-15",
       "name": "Compact chat UI via WebSocket (replaces iframe for small window)",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
       "notes": "Custom lightweight chat UI using OpenClaw WS API (chat.send, chat.history, chat events). Optimized for 380px. Toggle classic/compact mode. WS: ws://gateway:18789, auth via connect.params.auth.token"
     },
     {
       "id": "F-16",
       "name": "Classic/Compact mode toggle in TitleBar",
-      "status": "todo",
+      "status": "done",
       "owner": "dev-agent",
       "notes": "Button in TitleBar to switch between compact (custom WS chat) and classic (OpenClaw iframe). Setting persisted."
     }
