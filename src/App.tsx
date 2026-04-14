@@ -21,7 +21,25 @@ export default function App() {
     <div className="flex flex-col h-full overflow-hidden" style={{ borderRadius: '12px' }}>
       <TitleBar />
       <div className="flex-1 min-h-0 relative">
-        {view === 'settings' ? <SettingsPanel /> : <ChatWebView />}
+        <div style={{
+          position: 'absolute', inset: 0,
+          opacity: view === 'settings' ? 1 : 0,
+          pointerEvents: view === 'settings' ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease, transform 0.2s ease',
+          transform: view === 'settings' ? 'translateY(0)' : 'translateY(8px)',
+          zIndex: view === 'settings' ? 2 : 1,
+        }}>
+          <SettingsPanel />
+        </div>
+        <div style={{
+          position: 'absolute', inset: 0,
+          opacity: view === 'chat' ? 1 : 0,
+          pointerEvents: view === 'chat' ? 'auto' : 'none',
+          transition: 'opacity 0.2s ease',
+          zIndex: view === 'chat' ? 2 : 1,
+        }}>
+          <ChatWebView />
+        </div>
       </div>
     </div>
   );

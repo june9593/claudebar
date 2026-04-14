@@ -120,9 +120,22 @@ export function ChatWebView() {
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center"
           style={{ background: 'var(--color-bg-primary)' }}>
-          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '28px' }}>🦞</span>
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '28px', animation: 'pulse 1.8s ease-in-out infinite' }}>🦞</span>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              {[0, 1, 2].map(i => (
+                <span key={i} style={{
+                  width: '4px', height: '4px', borderRadius: '50%',
+                  background: 'var(--color-text-tertiary)',
+                  animation: `bounce 1.4s infinite ${i * 0.2}s`,
+                }} />
+              ))}
+            </div>
             <p style={{ fontSize: '12px', color: 'var(--color-text-tertiary)', letterSpacing: '-0.08px' }}>连接中...</p>
+            <style>{`
+              @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.95); } }
+              @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+            `}</style>
           </div>
         </div>
       )}

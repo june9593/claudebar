@@ -97,10 +97,11 @@ function TitleButton({ children, onClick, active, title }: {
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       style={{
-        width: '30px',
-        height: '30px',
-        borderRadius: '7px',
+        width: '36px',
+        height: '36px',
+        borderRadius: '8px',
         border: 'none',
         background: active ? 'var(--color-surface-active)' : 'transparent',
         cursor: 'pointer',

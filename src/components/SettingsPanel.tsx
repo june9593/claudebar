@@ -16,13 +16,13 @@ export function SettingsPanel() {
         <Card>
           <Row>
             <Label>Gateway URL</Label>
-          </Row>
-          <Row>
-            <Input
-              value={gatewayUrl}
-              onChange={(v) => updateSetting('gatewayUrl', v)}
-              placeholder="http://localhost:18789"
-            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Input
+                value={gatewayUrl}
+                onChange={(v) => updateSetting('gatewayUrl', v)}
+                placeholder="http://localhost:18789"
+              />
+            </div>
           </Row>
           <RowSep />
           <Row>
@@ -42,14 +42,14 @@ export function SettingsPanel() {
               <RowSep />
               <Row>
                 <Label>Token</Label>
-              </Row>
-              <Row>
-                <Input
-                  type="password"
-                  value={authToken}
-                  onChange={(v) => updateSetting('authToken', v)}
-                  placeholder="粘贴 gateway token..."
-                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Input
+                    type="password"
+                    value={authToken}
+                    onChange={(v) => updateSetting('authToken', v)}
+                    placeholder="粘贴 token..."
+                  />
+                </div>
               </Row>
             </>
           )}
@@ -58,14 +58,14 @@ export function SettingsPanel() {
               <RowSep />
               <Row>
                 <Label>密码</Label>
-              </Row>
-              <Row>
-                <Input
-                  type="password"
-                  value={authPassword}
-                  onChange={(v) => updateSetting('authPassword', v)}
-                  placeholder="输入 gateway 密码..."
-                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Input
+                    type="password"
+                    value={authPassword}
+                    onChange={(v) => updateSetting('authPassword', v)}
+                    placeholder="输入密码..."
+                  />
+                </div>
               </Row>
             </>
           )}
@@ -236,7 +236,7 @@ function Select({ value, onChange, options }: {
       value={value}
       onChange={(e) => onChange(e.target.value)}
       style={{
-        padding: '6px 24px 6px 10px',
+        padding: '6px 28px 6px 10px',
         borderRadius: '8px',
         border: 'none',
         background: 'var(--color-surface-hover)',
@@ -248,6 +248,9 @@ function Select({ value, onChange, options }: {
         cursor: 'pointer',
         appearance: 'none',
         WebkitAppearance: 'none',
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236E6E73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'right 8px center',
       }}
     >
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
