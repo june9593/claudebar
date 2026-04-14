@@ -19,6 +19,19 @@ const defaults: Settings = {
   autoLaunch: false,
 };
 
+const LS_KEY = 'clawbar-settings';
+
+function loadFromLocalStorage(): Partial<Settings> {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+function saveToLocalStorage(settings: Settings) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
+}
+
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...defaults,
   resolvedTheme: 'light',
@@ -28,7 +41,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: async () => {
     if (!window.electronAPI?.settings) {
-      set({ ...defaults, resolvedTheme: 'light' });
+      // Browser mode: use localStorage as fallback
+      const saved = loadFromLocalStorage();
+      const merged = { ...defaults, ...saved };
+      set({ ...merged, resolvedTheme: merged.theme === 'dark' ? 'dark' : 'light' });
       return;
     }
     try {
@@ -65,6 +81,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             next.resolvedTheme = value as 'light' | 'dark';
           }
         }
+        // Persist to localStorage (browser fallback)
+        const { resolvedTheme: _r, view: _v, setView: _sv, loadSettings: _ls, updateSetting: _us, ...settingsOnly } = next;
+        saveToLocalStorage(settingsOnly as Settings);
         return next;
       });
     } catch { /* ignore */ }
