@@ -84,48 +84,6 @@ function createWindow() {
     callback({ responseHeaders: headers });
   });
 
-  // Inject compact CSS into OpenClaw iframe after it loads
-  // This hides sidebar, topbar, and chat header for 380px menu bar popover
-  mainWindow.webContents.on('did-frame-finish-load', (_event, isMainFrame) => {
-    if (isMainFrame) return; // Only target sub-frames (iframe)
-    try {
-      const frames = mainWindow!.webContents.mainFrame.frames;
-      for (const frame of frames) {
-        // Inject CSS to hide OpenClaw sidebar, topbar, and chat header
-        frame.executeJavaScript(`
-          (function() {
-            if (document.getElementById('clawbar-compact-css')) return;
-            // Force focus mode in OpenClaw settings
-            try {
-              var raw = localStorage.getItem('openclaw.control.settings.v1');
-              var s = raw ? JSON.parse(raw) : {};
-              if (!s.chatFocusMode) {
-                s.chatFocusMode = true;
-                s.navCollapsed = true;
-                localStorage.setItem('openclaw.control.settings.v1', JSON.stringify(s));
-                location.reload();
-                return;
-              }
-            } catch(e) {}
-            // Inject compact CSS
-            var style = document.createElement('style');
-            style.id = 'clawbar-compact-css';
-            style.textContent = [
-              '.topbar { display: none !important; }',
-              'nav.nav-items, .nav-items, [role="complementary"] { display: none !important; }',
-              'aside, .sidebar { display: none !important; }',
-              '.chat-header { padding: 8px 12px !important; }',
-              '.chat-header .chat-header__title { display: none !important; }',
-              '.chat-header .chat-header__subtitle { display: none !important; }',
-              'main { margin-left: 0 !important; }',
-            ].join('\\n');
-            document.head.appendChild(style);
-          })();
-        `).catch(() => {});
-      }
-    } catch { /* sandbox may block — CSS is best-effort */ }
-  });
-
   mainWindow.webContents.on('before-input-event', (_event, input) => {
     if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
       mainWindow.hide();
