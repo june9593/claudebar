@@ -1,7 +1,7 @@
 {
   "project": "clawbar",
-  "sprint": 6,
-  "updated": "2026-04-14",
+  "sprint": 7,
+  "updated": "2026-04-15",
   "features": [
     {
       "id": "F-01",
@@ -57,7 +57,7 @@
       "name": "End-to-end test with real OpenClaw instance",
       "status": "done",
       "owner": "tester-agent",
-      "notes": "Token auth verified via Playwright MCP. Direct access: OpenClaw chat loads, message sent and AI replied. ClawBar iframe URL correctly appends #token=. CSP blocks iframe in browser (expected, Electron strips it)."
+      "notes": "Token auth verified. Direct WS connection works. Chat send/receive via OpenClaw custom protocol."
     },
     {
       "id": "F-09",
@@ -96,24 +96,59 @@
     },
     {
       "id": "F-14",
-      "name": "Remove unused dependencies (react-markdown, remark-gfm)",
+      "name": "Remove unused dependencies",
       "status": "done",
       "owner": "dev-agent",
       "notes": "No longer needed after WebView refactor"
     },
     {
       "id": "F-15",
-      "name": "Compact chat UI via WebSocket (replaces iframe for small window)",
+      "name": "Compact chat UI via WebSocket",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "Custom lightweight chat UI using OpenClaw WS API (chat.send, chat.history, chat events). Optimized for 380px. Toggle classic/compact mode. WS: ws://gateway:18789, auth via connect.params.auth.token"
+      "notes": "Custom chat UI using OpenClaw WS protocol. Ed25519 device identity, SHA-256(pubkey) deviceId, challenge-response auth. chat.send with message+idempotencyKey, streaming via event='chat' payload.state delta/final."
     },
     {
       "id": "F-16",
-      "name": "Classic/Compact mode toggle in TitleBar",
+      "name": "Classic/Compact mode toggle",
       "status": "done",
       "owner": "dev-agent",
-      "notes": "Button in TitleBar to switch between compact (custom WS chat) and classic (OpenClaw iframe). Setting persisted."
+      "notes": "Button in TitleBar and input area. Window resize on mode switch."
+    },
+    {
+      "id": "F-17",
+      "name": "Session management (list, switch, create, delete)",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "API: sessions.list, sessions.delete, sessions.patch. Show session sidebar/dropdown, switch sessionKey, create new session."
+    },
+    {
+      "id": "F-18",
+      "name": "Approval notifications (exec.approval.requested)",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "API: exec.approval.requested event, exec.approval.resolve. Show inline approval card with Allow/Deny buttons. Badge on tray icon."
+    },
+    {
+      "id": "F-19",
+      "name": "Skills management panel",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "API: skills.status, skills.install, skills.update. List installed skills with enable/disable toggle."
+    },
+    {
+      "id": "F-20",
+      "name": "Usage statistics view",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "API: usage.cost, sessions.usage. Show token counts, cost breakdown, daily usage chart."
+    },
+    {
+      "id": "F-21",
+      "name": "Bottom tab navigation (Chat, Sessions, Skills, Usage)",
+      "status": "todo",
+      "owner": "dev-agent",
+      "notes": "Tab bar at bottom of compact mode. Replaces Classic toggle button."
     }
   ]
 }
