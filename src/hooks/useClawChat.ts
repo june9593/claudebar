@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import * as ed from '@noble/ed25519';
 
 export interface ChatMessage {
   id: string;
@@ -17,13 +18,13 @@ export interface UseClawChat {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Device Identity — Ed25519 keypair stored in localStorage           */
+/*  Device Identity — Ed25519 keypair via @noble/ed25519 (pure JS)     */
 /* ------------------------------------------------------------------ */
 
 interface DeviceIdentity {
   deviceId: string;
   publicKeyB64: string;       // base64url raw 32-byte Ed25519 public key
-  privateKeyJwk: JsonWebKey;  // JWK for re-import & signing
+  privateKeyHex: string;      // hex-encoded 32-byte private key seed
 }
 
 const DEVICE_KEY = 'clawbar-device-identity';
@@ -38,18 +39,31 @@ function toBase64url(buf: Uint8Array): string {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+function toHex(buf: Uint8Array): string {
+  return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function fromHex(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
+  return bytes;
+}
+
 async function loadOrCreateIdentity(): Promise<DeviceIdentity> {
   const raw = localStorage.getItem(DEVICE_KEY);
   if (raw) {
     try { return JSON.parse(raw) as DeviceIdentity; } catch { /* regenerate */ }
   }
-  const kp = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
-  const pubRaw = new Uint8Array(await crypto.subtle.exportKey('raw', kp.publicKey));
-  const privJwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
-  const deviceId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-    .map(b => b.toString(16).padStart(2, '0')).join('');
+  // Generate Ed25519 keypair using @noble/ed25519
+  const privateKeyBytes = ed.etc.randomBytes(32);
+  const publicKeyBytes = await ed.getPublicKeyAsync(privateKeyBytes);
+  const deviceId = toHex(crypto.getRandomValues(new Uint8Array(16)));
 
-  const identity: DeviceIdentity = { deviceId, publicKeyB64: toBase64url(pubRaw), privateKeyJwk: privJwk };
+  const identity: DeviceIdentity = {
+    deviceId,
+    publicKeyB64: toBase64url(publicKeyBytes),
+    privateKeyHex: toHex(privateKeyBytes),
+  };
   localStorage.setItem(DEVICE_KEY, JSON.stringify(identity));
   return identity;
 }
@@ -60,8 +74,8 @@ async function signPayload(identity: DeviceIdentity, nonce: string, token: strin
     'v2', identity.deviceId, CLIENT_ID, CLIENT_MODE, ROLE,
     SCOPES.join(','), String(signedAt), token, nonce,
   ].join('|');
-  const key = await crypto.subtle.importKey('jwk', identity.privateKeyJwk, 'Ed25519', false, ['sign']);
-  const sig = new Uint8Array(await crypto.subtle.sign('Ed25519', key, new TextEncoder().encode(msg)));
+  const privateKeyBytes = fromHex(identity.privateKeyHex);
+  const sig = await ed.signAsync(new TextEncoder().encode(msg), privateKeyBytes);
   return { signature: toBase64url(sig), signedAt };
 }
 
