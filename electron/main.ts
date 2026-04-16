@@ -7,6 +7,8 @@ import { setupWsBridge } from './ws-bridge';
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
+// Track window visibility via events (not isVisible() which races on macOS)
+let windowVisible = false;
 
 function showWindow() {
   if (!mainWindow) return;
@@ -28,6 +30,7 @@ function showWindow() {
   }
   mainWindow.show();
   mainWindow.focus();
+  windowVisible = true;
 }
 
 function positionNearTray() {
@@ -41,6 +44,7 @@ function positionNearTray() {
 
 function hideWindow() {
   mainWindow?.hide();
+  windowVisible = false;
 }
 
 function getWindowBoundsPath(): string {
@@ -144,9 +148,15 @@ function createWindow() {
 }
 
 function createTray() {
-  // 🦞 emoji as tray icon — use setTitle for macOS menu bar text
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setTitle('🦞');
+  // 🦞 emoji rendered as black silhouette PNG (32x32), embedded as data URI.
+  // macOS template image: auto-inverts to white on dark menu bar.
+  // Generated from Apple Color Emoji via canvas + pixel conversion.
+  const lobsterDataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAD/klEQVR4AeyWR6hUVxjHT6oxvRcTQhIeQdIImISYhCRgNrEvVFQQGzasKC4Unw6WjeBGF5aNImJHEUXcWFaKYkER67Oi2EWfvfv7DdznnZk7Z0ZB3Dj8//f7Tr3fOV+582J4xr9qDPgUG8fBb+HjoAuTB8MoKhnwBqvnwRxsCt30PWQMvzHYGv4Op8LhsCwqGTCMlS3gFfgl7A6bwBj+YLAzvA3FRB7NYSZiBnzBioFQuNm/KD/Dt2AMHzDo3B+QojGP3jATMQN+YcVnUOiKv1HehHdhAttv574KryUdyJvwc9gMJtDwRC+QMQM+Ss30BbZP07cPfgj/gZ62Pnc0fI+u7xFhhw/ofEQe7+afGY+YAecy5p+k70fYDQ6CusjANNr7024PX4bXYRqX0o20HjPAk5xJT0Z/H/4FV8FG0AivRXaFe+FZ2AregmnsTjfSesyAY0ycDxPcRzkKTcuDSE/1EtL68AqyHm6Ey+BFmMAAXpA0imXMAOcu5HEPigc81sNTKC8gX4dCI5T5+jCzWVhHI33iHTNDvo/uUkQNyIWwnSWeGBF80WiUFrzd7PgfPY22q2tqGvXbFibT2RIKb21qvxDu2MhiJQNMOQNsOovNAKN+Arp5ndwAzTyatKyrc8zipUv20+u8tBvpKkTMgD+ZOhR2gJfhUrgZWh/GIPEEz0ewcI2keQEugrrCVOyD3gtmImaABcW0s6hYSr9hBwNzC9IrxRNoj6CLDFID0ZszXf9j2JtyH9RSxAwwzX5iiUXItDIFLSjn6fOUiAJ4I9YO/e4X1OppNnzMrO9gJmIG/MqKndBaYD03xz2NhllsGCqAN+ItaPCrjOi2d5DGwgFkJsoawHd0Biu8fmNhObqbH0Jugl4zogA3aOn3rUiN1R3GQkfarkWUoqwBQ0Lw49OGJaOgp9ENg7hnI30tfcWw4MwldccyMAJ+AjV0CrIHzERZA5jt1Q9AHoFGvh+hq9wzNgTjQMlQA66i1WOAMaDvr9E2CDcg6eaZgZgBu5hfB8U0HrYNRNRgGS42wKzRDYHf19DyuxIpXKssYcyA9GQ/NJ466duDchymsTuXy6XnHGbwBIyiWgNMpQeLQzAWwsq+fb2B+qKdL2KA12+3VdNsUY+yogE4zzkacLhTCH6YmraZNcvyWlO0s/W/dnHH5o1Z403oEgOxaFph080Le0pbzvFEppWjfpDaoVgTEA3wZeM7LdnUGgO8CVNW2TAhS3HzrP6GPjazrHqipM90TPQsaZm236ywMqqXZUUDMlZOos+/2iuQRvkc5Bpo1Pei5q5GrxpPYoCuqOUN/v9ri+wJ/W/g37LZpIcFia7q8CQGVLdzlbOeG/DUb6CSJx4CAAD//5XH/7MAAAAGSURBVAMA+CvOQZUKd+EAAAAASUVORK5CYII=';
+  let icon = nativeImage.createFromDataURL(lobsterDataUri);
+  icon = icon.resize({ width: 16, height: 16 });
+  icon.setTemplateImage(true);
+
+  tray = new Tray(icon);
   tray.setToolTip('ClawBar');
 
   // Toggle: track desired state to avoid async isVisible() race conditions
@@ -154,7 +164,8 @@ function createTray() {
 
   tray.on('click', () => {
     if (!mainWindow) return;
-    if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    // Use event-tracked flag, not isVisible() (which races with blur on macOS)
+    if (windowVisible) {
       hideWindow();
     } else {
       showWindow();
