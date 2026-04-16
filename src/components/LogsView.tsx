@@ -254,6 +254,9 @@ export function LogsView() {
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             lineHeight: 1.6,
+            userSelect: 'text' as const,
+            WebkitUserSelect: 'text' as const,
+            cursor: 'text',
           }}
         >
           {filteredLogs.length === 0 ? (
@@ -276,6 +279,9 @@ export function LogsView() {
                   borderRadius: '2px',
                   wordBreak: 'break-all',
                   whiteSpace: 'pre-wrap',
+                  userSelect: 'text' as const,
+                  WebkitUserSelect: 'text' as const,
+                  cursor: 'text',
                 }}
               >
                 <span style={{ opacity: 0.6 }}>

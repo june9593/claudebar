@@ -205,24 +205,34 @@ export function AgentsView() {
                     }}>
                       {agent.name || agent.id}
                     </span>
-                    <span style={{
-                      fontSize: '10px',
-                      fontFamily: 'var(--font-sans)',
-                      fontWeight: 500,
-                      padding: '2px 6px',
-                      borderRadius: '4px',
-                      background: agent.enabled ? 'var(--color-status-connected)' : 'var(--color-bg-tertiary)',
-                      color: agent.enabled ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
-                    }}>
-                      {agent.enabled ? 'enabled' : 'disabled'}
-                    </span>
+                    {agent.enabled ? (
+                      <span style={{
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-sans)',
+                        fontWeight: 500,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: 'var(--color-status-connected)',
+                        color: 'var(--color-bubble-user-text)',
+                      }}>
+                        heartbeat: {agent.every || '?'}
+                      </span>
+                    ) : (
+                      <span style={{
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-sans)',
+                        color: 'var(--color-text-tertiary)',
+                      }}>
+                        heartbeat: off
+                      </span>
+                    )}
                   </div>
                   <span style={{
                     fontSize: '11px',
                     fontFamily: 'var(--font-mono)',
                     color: 'var(--color-text-tertiary)',
                   }}>
-                    {agent.id}{agent.every ? ` · heartbeat: ${agent.every}` : ''}
+                    {agent.id} · heartbeat: {agent.every || 'off'}
                   </span>
                 </div>
               </div>

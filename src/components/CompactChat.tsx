@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, ChevronDown } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
 import { ChatHistory } from './ChatHistory';
@@ -33,12 +33,25 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
   const [input, setInput] = useState('');
   const [activeNav, setActiveNav] = useState<NavId>('chat');
   const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  const handleMessagesScroll = useCallback(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    setShowScrollBtn(!atBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   // Fetch agent identity for avatar
   useEffect(() => {
@@ -156,7 +169,11 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
-          }}>
+            position: 'relative',
+          }}
+            ref={messagesContainerRef}
+            onScroll={handleMessagesScroll}
+          >
             {isEmpty ? (
               <EmptyState />
             ) : (
@@ -246,20 +263,32 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
             </button>
           </div>
 
-          {/* Connection status dot */}
-          {!error && (
-            <div style={{
-              position: 'absolute',
-              bottom: '58px',
-              right: '58px',
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: isConnected
-                ? 'var(--color-status-connected)'
-                : 'var(--color-status-disconnected)',
-              transition: 'background 0.3s',
-            }} />
+          {/* Scroll to bottom button */}
+          {showScrollBtn && (
+            <button
+              onClick={scrollToBottom}
+              style={{
+                position: 'absolute',
+                bottom: '58px',
+                right: '16px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'var(--color-bg-secondary)',
+                color: 'var(--color-text-secondary)',
+                boxShadow: 'var(--shadow-card)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 10,
+                transition: 'background 0.15s',
+              }}
+              title="Scroll to bottom"
+            >
+              <ChevronDown size={18} strokeWidth={2} />
+            </button>
           )}
         </>
       ) : activeNav === 'overview' ? (

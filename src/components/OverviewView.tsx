@@ -197,7 +197,7 @@ export function OverviewView() {
             {/* Snapshot grid */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '6px',
             }}>
               <StatCard
@@ -207,10 +207,6 @@ export function OverviewView() {
                 sub={lastCheck ? `Checked ${formatRelative(lastCheck)}` : undefined}
               />
               <StatCard
-                label="Latency"
-                value={health?.durationMs != null ? `${health.durationMs}ms` : '—'}
-              />
-              <StatCard
                 label="Sessions"
                 value={sessionCount != null ? String(sessionCount) : '—'}
                 sub="Tracked session keys"
@@ -218,7 +214,7 @@ export function OverviewView() {
               <StatCard
                 label="Agents"
                 value={agents.length > 0 ? String(agents.length) : '—'}
-                sub={agents.length > 0 ? `${agents.filter(a => a.enabled).length} enabled` : undefined}
+                sub={agents.length > 0 ? `${agents.filter(a => a.enabled).length} with heartbeat` : undefined}
               />
               <StatCard
                 label="Channels"
