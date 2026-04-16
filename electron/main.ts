@@ -115,9 +115,25 @@ function createWindow() {
 }
 
 function createTray() {
-  // Use emoji as tray title — clearest and most reliable on macOS
-  tray = new Tray(nativeImage.createEmpty());
-  tray.setTitle('🦞');
+  // Load lobster template PNG icon (black on transparent)
+  // macOS auto-renders template images: black→white in dark menu bar
+  const icon2xPath = path.join(__dirname, '../resources/iconTemplate@2x.png');
+  const iconPath = path.join(__dirname, '../resources/iconTemplate.png');
+  let icon: Electron.NativeImage;
+
+  try {
+    if (fs.existsSync(icon2xPath)) {
+      icon = nativeImage.createFromPath(icon2xPath);
+    } else {
+      icon = nativeImage.createFromPath(iconPath);
+    }
+    icon = icon.resize({ width: 18, height: 18 });
+    icon.setTemplateImage(true);
+  } catch {
+    icon = nativeImage.createEmpty();
+  }
+
+  tray = new Tray(icon);
   tray.setToolTip('ClawBar');
 
   tray.on('click', () => {
