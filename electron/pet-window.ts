@@ -118,7 +118,9 @@ export function createPetWindow(
         label: 'Settings',
         click: () => {
           showMainWindow();
-          // Settings view is handled by the renderer
+          // Send IPC to main window to switch to settings view
+          const mainWin = BrowserWindow.getAllWindows().find(w => w !== petWindow);
+          mainWin?.webContents.send('navigate', 'settings');
         },
       },
       { type: 'separator' },

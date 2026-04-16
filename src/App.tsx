@@ -7,6 +7,7 @@ import { useSettingsStore } from './stores/settingsStore';
 
 export default function App() {
   const view = useSettingsStore((s) => s.view);
+  const setView = useSettingsStore((s) => s.setView);
   const chatMode = useSettingsStore((s) => s.chatMode);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
@@ -20,6 +21,15 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, [resolvedTheme]);
+
+  // Listen for navigate IPC from main process (tray/pet right-click → Settings)
+  useEffect(() => {
+    const unsub = window.electronAPI?.window?.onNavigate?.((v: string) => {
+      if (v === 'settings') setView('settings');
+      else if (v === 'chat') setView('chat');
+    });
+    return () => unsub?.();
+  }, [setView]);
 
   // Prevent phantom scroll on the root container
   // (overflow:hidden containers can still be scrolled by focus/autoscroll)

@@ -178,10 +178,10 @@ function createTray() {
     const { Menu } = require('electron');
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Show/Hide',
+        label: 'Settings',
         click: () => {
-          if (mainWindow?.isVisible()) hideWindow();
-          else showWindow();
+          showWindow();
+          mainWindow?.webContents.send('navigate', 'settings');
         },
       },
       { type: 'separator' },

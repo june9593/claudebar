@@ -10,6 +10,7 @@ export interface ElectronAPI {
     hide(): void;
     isPinned(): Promise<boolean>;
     setSize(width: number, height: number): Promise<void>;
+    onNavigate(cb: (view: string) => void): () => void;
   };
   theme: {
     getSystemTheme(): Promise<'light' | 'dark'>;

@@ -10,6 +10,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     hide: () => ipcRenderer.send('window:hide'),
     isPinned: () => ipcRenderer.invoke('window:is-pinned'),
     setSize: (w: number, h: number) => ipcRenderer.invoke('window:set-size', w, h),
+    onNavigate: (cb: (view: string) => void) => {
+      const handler = (_e: unknown, view: string) => cb(view);
+      ipcRenderer.on('navigate', handler);
+      return () => ipcRenderer.removeListener('navigate', handler);
+    },
   },
   theme: {
     getSystemTheme: () => ipcRenderer.invoke('theme:get-system'),
