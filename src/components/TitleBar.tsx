@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Menu, Pin, PinOff, Settings, Shell } from 'lucide-react';
+import { Menu, Pin, PinOff, Settings } from 'lucide-react';
+import { LobsterIcon } from './LobsterIcon';
 import { useSettingsStore } from '../stores/settingsStore';
 
 interface TitleBarProps {
@@ -61,7 +62,7 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
         }} />
-        <Shell size={18} strokeWidth={1.75} style={{ color: 'var(--color-accent)' }} />
+        <LobsterIcon size={18} />
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',

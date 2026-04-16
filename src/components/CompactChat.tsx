@@ -13,6 +13,7 @@ import { SkillsView } from './SkillsView';
 import { LogsView } from './LogsView';
 import { ApprovalsView } from './ApprovalsView';
 import { OverviewView } from './OverviewView';
+import { LobsterIcon } from './LobsterIcon';
 
 interface CompactChatProps {
   sidebarOpen: boolean;
@@ -31,7 +32,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
 
   const [input, setInput] = useState('');
   const [activeNav, setActiveNav] = useState<NavId>('chat');
-  const [agentAvatar, setAgentAvatar] = useState<{ url?: string; emoji?: string } | null>(null);
+  const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -49,8 +50,9 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
       if (resp.id !== reqId || !resp.ok) return;
       const p = resp.payload as { avatar?: string; emoji?: string } | undefined;
       if (p) {
-        const url = p.avatar?.startsWith('/') ? `${gatewayUrl}${p.avatar}` : p.avatar;
-        setAgentAvatar({ url, emoji: p.emoji });
+        // If avatar is a URL path (starts with /), it needs auth — use emoji instead
+        if (p.emoji) setAgentEmoji(p.emoji);
+        else if (p.avatar && !p.avatar.startsWith('/')) setAgentEmoji(p.avatar);
       }
       unsub();
     });
@@ -65,7 +67,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
 
     const timer = setTimeout(unsub, 5000);
     return () => { clearTimeout(timer); unsub(); };
-  }, [isConnected, currentSessionKey, gatewayUrl]);
+  }, [isConnected, currentSessionKey]);
 
   const adjustTextarea = useCallback(() => {
     const ta = textareaRef.current;
@@ -160,7 +162,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
             ) : (
               <>
                 {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} formatTime={formatTime} agentAvatar={agentAvatar} />
+                  <MessageBubble key={msg.id} message={msg} formatTime={formatTime} agentEmoji={agentEmoji} />
                 ))}
                 {isTyping && <TypingIndicator />}
               </>
@@ -317,7 +319,7 @@ function EmptyState() {
         fontSize: '32px',
         marginBottom: '4px',
       }}>
-        🦞
+        <LobsterIcon size={36} />
       </div>
       <span style={{
         fontFamily: 'var(--font-display)',
@@ -347,10 +349,10 @@ function EmptyState() {
   );
 }
 
-function MessageBubble({ message, formatTime, agentAvatar }: {
+function MessageBubble({ message, formatTime, agentEmoji }: {
   message: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string };
   formatTime: (ts: string) => string;
-  agentAvatar?: { url?: string; emoji?: string } | null;
+  agentEmoji?: string;
 }) {
   const isUser = message.role === 'user';
 
@@ -382,11 +384,7 @@ function MessageBubble({ message, formatTime, agentAvatar }: {
             lineHeight: 1,
             overflow: 'hidden',
           }}>
-            {agentAvatar?.url ? (
-              <img src={agentAvatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              agentAvatar?.emoji || '🦞'
-            )}
+            {agentEmoji || '🦞'}
           </div>
         )}
 
@@ -450,7 +448,7 @@ function TypingIndicator() {
         fontSize: '15px',
         lineHeight: 1,
       }}>
-        🦞
+        <LobsterIcon size={18} />
       </div>
       {/* Typing bubble — assistant style */}
       <div style={{
@@ -477,3 +475,4 @@ function TypingIndicator() {
     </div>
   );
 }
+

@@ -20,27 +20,36 @@ const LEVEL_COLORS: Record<string, string> = {
   fatal: 'var(--color-status-disconnected)',
 };
 
-function parseLogLine(raw: string): LogEntry | null {
-  try {
-    const obj = JSON.parse(raw);
-    const meta = obj._meta as { logLevelName?: string; date?: string } | undefined;
-    const level = (meta?.logLevelName || obj.level || 'info').toLowerCase();
-    const time = meta?.date || obj.time;
-
-    // Extract first meaningful string value as message
-    let msg = obj.msg || obj.message || '';
-    if (!msg) {
-      for (const [k, v] of Object.entries(obj)) {
-        if (k === '_meta' || k === 'level' || k === 'time') continue;
-        if (typeof v === 'string' && v.length > 0) { msg = v; break; }
-      }
-    }
-    if (!msg) msg = raw.slice(0, 200);
-
-    return { level, msg, time };
-  } catch {
-    return { level: 'info', msg: raw, time: undefined };
+function parseLogLine(raw: unknown): LogEntry | null {
+  let obj: Record<string, unknown>;
+  if (typeof raw === 'string') {
+    try { obj = JSON.parse(raw); } catch { return { level: 'info', msg: raw, time: undefined }; }
+  } else if (typeof raw === 'object' && raw !== null) {
+    obj = raw as Record<string, unknown>;
+  } else {
+    return null;
   }
+
+  const meta = obj._meta as { logLevelName?: string; date?: string } | undefined;
+  const level = (meta?.logLevelName || '').toLowerCase() || (typeof obj.level === 'string' ? obj.level.toLowerCase() : 'info');
+  const time = meta?.date || (typeof obj.time === 'string' ? obj.time : undefined);
+
+  // Extract message: try common fields, then numeric keys
+  let msg = '';
+  if (typeof obj.msg === 'string') msg = obj.msg;
+  else if (typeof obj.message === 'string') msg = obj.message;
+  else if (typeof obj['1'] === 'string') msg = obj['1'];
+  else if (typeof obj['0'] === 'string') msg = `[${obj['0']}]${typeof obj['1'] === 'string' ? ' ' + obj['1'] : ''}`;
+  else {
+    // Last resort: find any string value
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === '_meta') continue;
+      if (typeof v === 'string' && v.length > 0) { msg = v; break; }
+    }
+  }
+  if (!msg) msg = JSON.stringify(obj).slice(0, 200);
+
+  return { level, msg: String(msg).slice(0, 300), time };
 }
 
 export function LogsView() {
@@ -72,18 +81,14 @@ export function LogsView() {
     if (!api) return;
 
     setError(null);
-    let reqId = '';
+    let received = false;
 
     const unsub = api.onResponse((resp) => {
-      if (resp.id !== reqId) return;
-      if (!resp.ok) {
-        setError(String(resp.error || 'Failed to fetch logs'));
+      if (received) return;
+      const p = resp.payload as Record<string, unknown> | undefined;
+      if (resp.ok && p && 'lines' in p && Array.isArray(p.lines)) {
+        received = true;
         unsub();
-        return;
-      }
-
-      const p = resp.payload as { lines?: string[]; file?: string; cursor?: unknown } | undefined;
-      if (p?.lines && Array.isArray(p.lines)) {
         const entries: LogEntry[] = [];
         for (const line of p.lines) {
           const entry = parseLogLine(line);
@@ -95,17 +100,11 @@ export function LogsView() {
         });
         setLoaded(true);
       }
-      unsub();
     });
 
-    api.send('logs.tail', { level: 'trace' })
-      .then((r) => {
-        if (r.ok && r.id) reqId = r.id;
-        else { setError(r.error || 'Failed to send logs.tail'); }
-      })
-      .catch(() => setError('Failed to send logs.tail'));
+    api.send('logs.tail', {}).catch(() => setError('Failed to send logs.tail'));
 
-    const timer = setTimeout(() => { unsub(); setLoaded(true); }, 6000);
+    const timer = setTimeout(() => { if (!received) { unsub(); setLoaded(true); } }, 6000);
     return () => { clearTimeout(timer); unsub(); };
   }, []);
 

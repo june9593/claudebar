@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useSettingsStore } from '../stores/settingsStore';
 
 interface AgentInfo {
   id: string;
@@ -14,7 +13,6 @@ export function AgentsView() {
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
 
   const fetchAgents = useCallback(() => {
     const api = window.electronAPI?.ws;
@@ -140,12 +138,11 @@ export function AgentsView() {
     return () => { clearTimeout(timer); unsub(); };
   }, [agents.length, loading]);
 
-  const resolveAvatar = (agent: AgentInfo): string | null => {
-    if (!agent.avatar) return null;
-    if (agent.avatar.startsWith('/')) {
-      return `${gatewayUrl}${agent.avatar}`;
-    }
-    return agent.avatar;
+  const resolveEmoji = (agent: AgentInfo): string => {
+    // If avatar is a URL path (starts with /), it needs auth — use emoji instead
+    if (agent.emoji) return agent.emoji;
+    if (agent.avatar && !agent.avatar.startsWith('/')) return agent.avatar;
+    return '🦞';
   };
 
   return (
@@ -167,7 +164,7 @@ export function AgentsView() {
           gap: '6px',
         }}>
           {agents.map((agent) => {
-            const avatarUrl = resolveAvatar(agent);
+            const emoji = resolveEmoji(agent);
             return (
               <div
                 key={agent.id}
@@ -195,11 +192,7 @@ export function AgentsView() {
                   fontSize: '18px',
                   lineHeight: 1,
                 }}>
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt={agent.name || agent.id} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    agent.emoji || '🦞'
-                  )}
+                  {emoji}
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -298,3 +291,5 @@ function EmptyState() {
     </div>
   );
 }
+
+

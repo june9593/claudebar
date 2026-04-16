@@ -3,21 +3,35 @@ import { RefreshCw } from 'lucide-react';
 
 interface HealthData {
   ok: boolean;
-  duration?: number;
-  version?: string;
+  durationMs?: number;
+  ts?: number;
 }
 
-interface ChannelStatus {
-  channel: string;
-  status: string;
+interface ChannelInfo {
+  id: string;
+  configured: boolean;
+  running: boolean;
   [key: string]: unknown;
+}
+
+interface AgentInfo {
+  agentId: string;
+  enabled: boolean;
+  [key: string]: unknown;
+}
+
+interface CronData {
+  enabled: boolean;
+  nextWakeAtMs?: number;
 }
 
 export function OverviewView() {
   const [health, setHealth] = useState<HealthData | null>(null);
-  const [channels, setChannels] = useState<ChannelStatus[]>([]);
-  const [agentCount, setAgentCount] = useState<number | null>(null);
-  const [version, setVersion] = useState<string | null>(null);
+  const [channels, setChannels] = useState<ChannelInfo[]>([]);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [sessionCount, setSessionCount] = useState<number | null>(null);
+  const [cron, setCron] = useState<CronData | null>(null);
+  const [lastCheck, setLastCheck] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(() => {
@@ -29,10 +43,12 @@ export function OverviewView() {
     let healthReqId = '';
     let channelsReqId = '';
     let statusReqId = '';
-    let got = { health: false, channels: false, status: false };
+    let sessionsReqId = '';
+    let cronReqId = '';
+    const got = { health: false, channels: false, status: false, sessions: false, cron: false };
 
     const checkDone = () => {
-      if (got.health && got.channels && got.status) {
+      if (got.health && got.channels && got.status && got.sessions && got.cron) {
         setLoading(false);
         unsub();
       }
@@ -41,27 +57,50 @@ export function OverviewView() {
     const unsub = api.onResponse((resp) => {
       if (resp.id === healthReqId) {
         if (resp.ok) {
-          const p = resp.payload as { ok?: boolean; duration?: number; version?: string } | undefined;
-          if (p) setHealth({ ok: p.ok ?? true, duration: p.duration, version: p.version });
+          const p = resp.payload as { ok?: boolean; durationMs?: number; duration?: number; ts?: number } | undefined;
+          if (p) setHealth({ ok: p.ok ?? true, durationMs: p.durationMs ?? p.duration, ts: p.ts });
+          setLastCheck(Date.now());
         }
         got.health = true;
         checkDone();
       }
       if (resp.id === channelsReqId) {
         if (resp.ok) {
-          const p = resp.payload as { channels?: ChannelStatus[] } | undefined;
-          if (p?.channels) setChannels(p.channels);
+          const p = resp.payload as { channels?: Record<string, { configured?: boolean; running?: boolean }> } | undefined;
+          if (p?.channels && typeof p.channels === 'object' && !Array.isArray(p.channels)) {
+            const list: ChannelInfo[] = Object.entries(p.channels).map(([id, info]) => ({
+              id,
+              configured: info.configured ?? false,
+              running: info.running ?? false,
+            }));
+            setChannels(list);
+          }
         }
         got.channels = true;
         checkDone();
       }
       if (resp.id === statusReqId) {
         if (resp.ok) {
-          const p = resp.payload as { version?: string; heartbeat?: { agents?: unknown[] } } | undefined;
-          if (p?.version) setVersion(p.version);
-          if (p?.heartbeat?.agents) setAgentCount(p.heartbeat.agents.length);
+          const p = resp.payload as { heartbeat?: { agents?: AgentInfo[] } } | undefined;
+          if (p?.heartbeat?.agents) setAgents(p.heartbeat.agents);
         }
         got.status = true;
+        checkDone();
+      }
+      if (resp.id === sessionsReqId) {
+        if (resp.ok) {
+          const p = resp.payload as { count?: number; sessions?: unknown[] } | undefined;
+          if (p) setSessionCount(p.count ?? p.sessions?.length ?? null);
+        }
+        got.sessions = true;
+        checkDone();
+      }
+      if (resp.id === cronReqId) {
+        if (resp.ok) {
+          const p = resp.payload as { enabled?: boolean; nextWakeAtMs?: number } | undefined;
+          if (p) setCron({ enabled: p.enabled ?? false, nextWakeAtMs: p.nextWakeAtMs });
+        }
+        got.cron = true;
         checkDone();
       }
     });
@@ -69,6 +108,8 @@ export function OverviewView() {
     api.send('health', {}).then(r => { if (r.ok && r.id) healthReqId = r.id; else got.health = true; }).catch(() => { got.health = true; });
     api.send('channels.status', {}).then(r => { if (r.ok && r.id) channelsReqId = r.id; else got.channels = true; }).catch(() => { got.channels = true; });
     api.send('status', {}).then(r => { if (r.ok && r.id) statusReqId = r.id; else got.status = true; }).catch(() => { got.status = true; });
+    api.send('sessions.list', {}).then(r => { if (r.ok && r.id) sessionsReqId = r.id; else got.sessions = true; }).catch(() => { got.sessions = true; });
+    api.send('cron.status', {}).then(r => { if (r.ok && r.id) cronReqId = r.id; else got.cron = true; }).catch(() => { got.cron = true; });
 
     const timer = setTimeout(() => { setLoading(false); unsub(); }, 8000);
     return () => { clearTimeout(timer); unsub(); };
@@ -79,6 +120,8 @@ export function OverviewView() {
     return () => cleanup?.();
   }, [fetchData]);
 
+  const channelCount = channels.filter(c => c.configured).length;
+
   return (
     <div style={{
       flex: 1,
@@ -87,15 +130,24 @@ export function OverviewView() {
       flexDirection: 'column',
       background: 'var(--color-bg-chat)',
     }}>
-      <div style={{ padding: '12px 14px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '17px',
-          fontWeight: 500,
-          color: 'var(--color-text-primary)',
-        }}>
-          Overview
-        </span>
+      <div style={{ padding: '12px 14px 4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '17px',
+            fontWeight: 500,
+            color: 'var(--color-text-primary)',
+          }}>
+            Overview
+          </span>
+          <span style={{
+            fontSize: '11px',
+            fontFamily: 'var(--font-sans)',
+            color: 'var(--color-text-tertiary)',
+          }}>
+            Gateway status, entry points, and a fast health read.
+          </span>
+        </div>
         <button
           onClick={fetchData}
           title="Refresh"
@@ -142,47 +194,43 @@ export function OverviewView() {
           </div>
         ) : (
           <>
-            {/* Health card */}
+            {/* Snapshot grid */}
             <div style={{
-              padding: '12px 14px',
-              borderRadius: '8px',
-              background: 'var(--color-bg-secondary)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '6px',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{
-                  fontSize: '13px',
-                  fontFamily: 'var(--font-sans)',
-                  fontWeight: 500,
-                  color: 'var(--color-text-primary)',
-                }}>
-                  Gateway Health
-                </span>
-                <span style={{
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-sans)',
-                  fontWeight: 500,
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  background: health?.ok ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
-                  color: 'var(--color-bubble-user-text)',
-                }}>
-                  {health?.ok ? 'OK' : 'Error'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                {version && (
-                  <InfoPill label="Version" value={version} />
-                )}
-                {health?.duration != null && (
-                  <InfoPill label="Latency" value={`${health.duration}ms`} />
-                )}
-                {agentCount != null && (
-                  <InfoPill label="Agents" value={String(agentCount)} />
-                )}
-              </div>
+              <StatCard
+                label="Status"
+                value={health?.ok ? 'OK' : 'Error'}
+                valueColor={health?.ok ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)'}
+                sub={lastCheck ? `Checked ${formatRelative(lastCheck)}` : undefined}
+              />
+              <StatCard
+                label="Latency"
+                value={health?.durationMs != null ? `${health.durationMs}ms` : '—'}
+              />
+              <StatCard
+                label="Sessions"
+                value={sessionCount != null ? String(sessionCount) : '—'}
+                sub="Tracked session keys"
+              />
+              <StatCard
+                label="Agents"
+                value={agents.length > 0 ? String(agents.length) : '—'}
+                sub={agents.length > 0 ? `${agents.filter(a => a.enabled).length} enabled` : undefined}
+              />
+              <StatCard
+                label="Channels"
+                value={channelCount > 0 ? String(channelCount) : '—'}
+                sub={channels.length > 0 ? `${channels.filter(c => c.running).length} running` : undefined}
+              />
+              <StatCard
+                label="Cron"
+                value={cron ? (cron.enabled ? 'Enabled' : 'Disabled') : '—'}
+                valueColor={cron?.enabled ? 'var(--color-status-connected)' : undefined}
+                sub={cron?.nextWakeAtMs ? `Next: ${formatRelative(cron.nextWakeAtMs)}` : undefined}
+              />
             </div>
 
             {/* Channels */}
@@ -205,7 +253,7 @@ export function OverviewView() {
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {channels.map((ch) => (
-                    <div key={ch.channel} style={{
+                    <div key={ch.id} style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -218,10 +266,46 @@ export function OverviewView() {
                         fontFamily: 'var(--font-sans)',
                         color: 'var(--color-text-primary)',
                       }}>
-                        {ch.channel}
+                        {ch.id}
                       </span>
-                      <ChannelBadge status={ch.status} />
+                      <ChannelBadge running={ch.running} configured={ch.configured} />
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Agents */}
+            {agents.length > 0 && (
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '8px',
+                background: 'var(--color-bg-secondary)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <span style={{
+                  fontSize: '13px',
+                  fontFamily: 'var(--font-sans)',
+                  fontWeight: 500,
+                  color: 'var(--color-text-primary)',
+                }}>
+                  Agents
+                </span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {agents.map((a) => (
+                    <span key={a.agentId} style={{
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--color-border-secondary)',
+                      background: a.enabled ? 'var(--color-surface-active)' : 'transparent',
+                      color: a.enabled ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+                    }}>
+                      {a.agentId}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -233,29 +317,67 @@ export function OverviewView() {
   );
 }
 
-function InfoPill({ label, value }: { label: string; value: string }) {
+function formatRelative(ms: number): string {
+  const diff = ms - Date.now();
+  const abs = Math.abs(diff);
+  const future = diff > 0;
+  if (abs < 60_000) return future ? 'in <1m' : 'just now';
+  if (abs < 3600_000) {
+    const m = Math.round(abs / 60_000);
+    return future ? `in ${m}m` : `${m}m ago`;
+  }
+  if (abs < 86400_000) {
+    const h = Math.round(abs / 3600_000);
+    return future ? `in ${h}h` : `${h}h ago`;
+  }
+  const d = Math.round(abs / 86400_000);
+  return future ? `in ${d}d` : `${d}d ago`;
+}
+
+function StatCard({ label, value, valueColor, sub }: { label: string; value: string; valueColor?: string; sub?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+    <div style={{
+      padding: '10px 12px',
+      borderRadius: '8px',
+      background: 'var(--color-bg-secondary)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '4px',
+    }}>
       <span style={{
-        fontSize: '11px',
+        fontSize: '10px',
         fontFamily: 'var(--font-sans)',
         color: 'var(--color-text-tertiary)',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
       }}>
-        {label}:
+        {label}
       </span>
       <span style={{
-        fontSize: '11px',
+        fontSize: '15px',
         fontFamily: 'var(--font-mono)',
-        color: 'var(--color-text-secondary)',
+        fontWeight: 600,
+        color: valueColor || 'var(--color-text-primary)',
       }}>
         {value}
       </span>
+      {sub && (
+        <span style={{
+          fontSize: '9px',
+          fontFamily: 'var(--font-sans)',
+          color: 'var(--color-text-tertiary)',
+          lineHeight: 1.2,
+        }}>
+          {sub}
+        </span>
+      )}
     </div>
   );
 }
 
-function ChannelBadge({ status }: { status: string }) {
-  const isGood = status === 'running' || status === 'configured' || status === 'connected';
+function ChannelBadge({ running, configured }: { running: boolean; configured: boolean }) {
+  const status = running ? 'running' : configured ? 'stopped' : 'unconfigured';
+  const isGood = running;
   return (
     <span style={{
       fontSize: '10px',
