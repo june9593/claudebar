@@ -1,7 +1,31 @@
+import { useState, useEffect, useCallback } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function SettingsPanel() {
   const { gatewayUrl, authMode, authToken, authPassword, theme, chatMode, updateSetting } = useSettingsStore();
+  const [connStatus, setConnStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [connError, setConnError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const api = window.electronAPI?.ws;
+    if (!api) return;
+    const unsub = api.onStatus((s) => {
+      if (s.connected) { setConnStatus('connected'); setConnError(null); }
+      else if (s.error) { setConnStatus('error'); setConnError(s.error); }
+    });
+    // Check initial state
+    api.isConnected().then(c => { if (c) setConnStatus('connected'); });
+    return unsub;
+  }, []);
+
+  const handleReconnect = useCallback(() => {
+    setConnStatus('connecting');
+    setConnError(null);
+    window.electronAPI?.ws?.disconnect();
+    setTimeout(() => {
+      window.electronAPI?.ws?.connect(gatewayUrl, authToken);
+    }, 300);
+  }, [gatewayUrl, authToken]);
 
   return (
     <div style={{
@@ -70,32 +94,40 @@ export function SettingsPanel() {
             </>
           )}
         </Card>
-        {/* Reconnect button */}
-        <button
-          onClick={() => {
-            window.electronAPI?.ws?.disconnect();
-            setTimeout(() => {
-              window.electronAPI?.ws?.connect(gatewayUrl, authToken);
-            }, 500);
-          }}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: '1px solid var(--color-accent)',
-            background: 'transparent',
-            color: 'var(--color-accent)',
-            fontSize: '13px',
+        {/* Reconnect button + status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={handleReconnect}
+            disabled={connStatus === 'connecting'}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: '1px solid var(--color-accent)',
+              background: connStatus === 'connecting' ? 'var(--color-bg-tertiary)' : 'transparent',
+              color: 'var(--color-accent)',
+              fontSize: '13px',
+              fontFamily: 'var(--font-sans)',
+              fontWeight: 500,
+              cursor: connStatus === 'connecting' ? 'wait' : 'pointer',
+              transition: 'background 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            {connStatus === 'connecting' ? '连接中...' : '连接'}
+          </button>
+          <span style={{
+            fontSize: '12px',
             fontFamily: 'var(--font-sans)',
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'background 0.15s',
-            width: '100%',
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-        >
-          重新连接
-        </button>
+            color: connStatus === 'connected' ? 'var(--color-status-connected)'
+              : connStatus === 'error' ? 'var(--color-status-disconnected)'
+              : 'var(--color-text-tertiary)',
+          }}>
+            {connStatus === 'connected' ? '✓ 已连接'
+              : connStatus === 'error' ? (connError || '连接失败')
+              : connStatus === 'connecting' ? ''
+              : '未连接'}
+          </span>
+        </div>
       </Section>
 
       {/* Appearance */}

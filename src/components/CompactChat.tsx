@@ -133,11 +133,11 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
         onOpenSettings={() => setView('settings')}
       />
 
-      {/* Error banner — subtle, non-blocking */}
-      {error && (
+      {/* Connection status banner */}
+      {error ? (
         <div style={{
-          padding: '5px 14px',
-          fontSize: '11px',
+          padding: '8px 14px',
+          fontSize: '12px',
           fontFamily: 'var(--font-sans)',
           color: 'var(--color-status-disconnected)',
           background: 'var(--color-bg-secondary)',
@@ -147,7 +147,20 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
         }}>
           {error}
         </div>
-      )}
+      ) : !isConnected ? (
+        <div style={{
+          padding: '8px 14px',
+          fontSize: '12px',
+          fontFamily: 'var(--font-sans)',
+          color: 'var(--color-status-connecting)',
+          background: 'var(--color-bg-secondary)',
+          textAlign: 'center',
+          lineHeight: 1.33,
+          borderBottom: '0.5px solid var(--color-border-primary)',
+        }}>
+          正在连接 Gateway...
+        </div>
+      ) : null}
 
       {activeNav === 'chat' ? (
         <>
