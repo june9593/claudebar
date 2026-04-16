@@ -43,7 +43,7 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
       }}
     >
       {/* Left: hamburger + status + identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '100%' }}>
         {/* Hamburger menu button */}
         {onToggleSidebar && (
           <div className="titlebar-no-drag">
@@ -61,13 +61,17 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
           borderRadius: '50%',
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
+          display: 'inline-block',
         }} />
-        <LobsterIcon size={18} />
+        <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+          <LobsterIcon size={18} />
+        </span>
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',
           fontWeight: 500,
           color: 'var(--color-text-primary)',
+          lineHeight: 1,
         }}>
           ClawBar
         </span>

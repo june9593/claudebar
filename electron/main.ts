@@ -112,17 +112,24 @@ function createWindow() {
 }
 
 function createTray() {
-  const iconPath = path.join(__dirname, '../resources/iconTemplate.png');
-  let icon: Electron.NativeImage;
+  // Create lobster claw tray icon as a template image (black on transparent)
+  // macOS template images: black pixels become white in dark menu bar, stay black in light
+  const lobsterSvg = `<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 1.5C5.5 1.5 4 3.5 4 5.5C4 7.5 5.5 9.5 6.5 10L6.5 11.5L7.5 11.5L7.5 10C7.5 10 8 10.2 8.5 10L8.5 11.5L9.5 11.5L9.5 10C10.5 9.5 12 7.5 12 5.5C12 3.5 10.5 1.5 8 1.5Z" fill="black"/>
+    <path d="M4 5C3 4.5 2.5 5.5 2.8 6.2C3.1 7 4 6.8 4.3 6C4.5 5.5 4.3 5 4 5Z" fill="black"/>
+    <path d="M12 5C13 4.5 13.5 5.5 13.2 6.2C12.9 7 12 6.8 11.7 6C11.5 5.5 11.7 5 12 5Z" fill="black"/>
+    <path d="M6.5 2.5Q5.5 1.5 5 1.8" stroke="black" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    <path d="M9.5 2.5Q10.5 1.5 11 1.8" stroke="black" stroke-width="0.8" fill="none" stroke-linecap="round"/>
+    <circle cx="6.5" cy="4.5" r="0.8" fill="white"/>
+    <circle cx="9.5" cy="4.5" r="0.8" fill="white"/>
+  </svg>`;
 
-  try {
-    icon = nativeImage.createFromPath(iconPath);
-    icon = icon.resize({ width: 16, height: 16 });
-    icon.setTemplateImage(true);
-  } catch {
-    // Fallback: create a simple icon
-    icon = nativeImage.createEmpty();
-  }
+  // Convert SVG to data URI and create nativeImage
+  const svgBase64 = Buffer.from(lobsterSvg).toString('base64');
+  const dataUri = `data:image/svg+xml;base64,${svgBase64}`;
+  let icon = nativeImage.createFromDataURL(dataUri);
+  icon = icon.resize({ width: 16, height: 16 });
+  icon.setTemplateImage(true);
 
   tray = new Tray(icon);
   tray.setToolTip('ClawBar');
