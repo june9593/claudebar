@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
 import { ChatHistory } from './ChatHistory';
@@ -6,6 +7,10 @@ import { ApprovalCard } from './ApprovalCard';
 import { Sidebar, type NavId } from './Sidebar';
 import { UsageView } from './UsageView';
 import { SessionsView } from './SessionsView';
+import { CronView } from './CronView';
+import { AgentsView } from './AgentsView';
+import { SkillsView } from './SkillsView';
+import { LogsView } from './LogsView';
 
 interface CompactChatProps {
   sidebarOpen: boolean;
@@ -204,7 +209,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
               }}
               title="Send"
             >
-              ↑
+              <ArrowUp size={18} strokeWidth={2} />
             </button>
           </div>
 
@@ -229,10 +234,19 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
           sessions={sessions}
           currentSessionKey={currentSessionKey}
           onSwitchSession={switchSession}
-          onDeleteSession={deleteSession}
           onNewChat={createSession}
           onNavigateToChat={() => setActiveNav('chat')}
         />
+      ) : activeNav === 'usage' ? (
+        <UsageView />
+      ) : activeNav === 'cron' ? (
+        <CronView />
+      ) : activeNav === 'agents' ? (
+        <AgentsView />
+      ) : activeNav === 'skills' ? (
+        <SkillsView />
+      ) : activeNav === 'logs' ? (
+        <LogsView />
       ) : (
         <UsageView />
       )}

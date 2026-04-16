@@ -5,7 +5,6 @@ interface SessionsViewProps {
   sessions: Session[];
   currentSessionKey: string;
   onSwitchSession: (key: string) => void;
-  onDeleteSession: (key: string) => void;
   onNewChat: () => void;
   onNavigateToChat: () => void;
 }
@@ -41,26 +40,14 @@ export function SessionsView({
   sessions,
   currentSessionKey,
   onSwitchSession,
-  onDeleteSession,
   onNewChat,
   onNavigateToChat,
 }: SessionsViewProps) {
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const handleSelect = (key: string) => {
     onSwitchSession(key);
     onNavigateToChat();
-  };
-
-  const handleDelete = (e: React.MouseEvent, key: string) => {
-    e.stopPropagation();
-    if (confirmDelete === key) {
-      onDeleteSession(key);
-      setConfirmDelete(null);
-    } else {
-      setConfirmDelete(key);
-    }
   };
 
   return (
@@ -139,7 +126,7 @@ export function SessionsView({
                 key={session.key}
                 onClick={() => handleSelect(session.key)}
                 onMouseEnter={() => setHoveredKey(session.key)}
-                onMouseLeave={() => { setHoveredKey(null); setConfirmDelete(null); }}
+                onMouseLeave={() => { setHoveredKey(null); }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -207,27 +194,6 @@ export function SessionsView({
                     {session.key}
                   </span>
                 </div>
-
-                {/* Delete button (shown on hover) */}
-                {isHovered && (
-                  <button
-                    onClick={(e) => handleDelete(e, session.key)}
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid var(--color-border-primary)',
-                      background: confirmDelete === session.key ? 'var(--color-status-disconnected)' : 'transparent',
-                      color: confirmDelete === session.key ? 'var(--color-bubble-user-text)' : 'var(--color-status-disconnected)',
-                      fontSize: '11px',
-                      fontFamily: 'var(--font-sans)',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      transition: 'background 0.15s, color 0.15s',
-                    }}
-                  >
-                    {confirmDelete === session.key ? 'Confirm' : 'Delete'}
-                  </button>
-                )}
               </div>
             );
           })

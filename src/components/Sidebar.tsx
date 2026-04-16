@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react';
+import {
+  MessageSquare, MessagesSquare, BarChart3,
+  Clock, Bot, Puzzle, ScrollText, Settings as SettingsIcon,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-export type NavId = 'chat' | 'sessions' | 'usage';
+export type NavId = 'chat' | 'sessions' | 'usage' | 'cron' | 'agents' | 'skills' | 'logs';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,10 +15,19 @@ interface SidebarProps {
   onOpenSettings: () => void;
 }
 
-const navItems: { id: NavId; icon: string; label: string }[] = [
-  { id: 'chat', icon: '💬', label: 'Chat' },
-  { id: 'sessions', icon: '📋', label: 'Sessions' },
-  { id: 'usage', icon: '📊', label: 'Usage' },
+const ICON_PROPS = { size: 18, strokeWidth: 1.75 } as const;
+
+const topNavItems: { id: NavId; Icon: LucideIcon; label: string }[] = [
+  { id: 'chat', Icon: MessageSquare, label: 'Chat' },
+  { id: 'sessions', Icon: MessagesSquare, label: 'Sessions' },
+  { id: 'usage', Icon: BarChart3, label: 'Usage' },
+];
+
+const bottomNavItems: { id: NavId; Icon: LucideIcon; label: string }[] = [
+  { id: 'cron', Icon: Clock, label: 'Cron' },
+  { id: 'agents', Icon: Bot, label: 'Agents' },
+  { id: 'skills', Icon: Puzzle, label: 'Skills' },
+  { id: 'logs', Icon: ScrollText, label: 'Logs' },
 ];
 
 export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSettings }: SidebarProps) {
@@ -76,59 +90,20 @@ export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSetting
       >
         {/* Nav items */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 8px' }}>
-          {navItems.map((item) => {
-            const isActive = activeNav === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 10px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: isActive ? 'var(--color-surface-active)' : 'transparent',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'var(--color-surface-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                {/* Active indicator */}
-                {isActive && (
-                  <div style={{
-                    position: 'absolute',
-                    left: '-8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '3px',
-                    height: '20px',
-                    borderRadius: '0 3px 3px 0',
-                    background: 'var(--color-accent)',
-                  }} />
-                )}
-                <span style={{ fontSize: '20px', lineHeight: 1, flexShrink: 0 }}>
-                  {item.icon}
-                </span>
-                <span style={{
-                  fontSize: '13px',
-                  fontFamily: 'var(--font-sans)',
-                  fontWeight: isActive ? 600 : 400,
-                  color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-                  lineHeight: 1.33,
-                }}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
+          {topNavItems.map((item) => (
+            <NavButton key={item.id} item={item} isActive={activeNav === item.id} onClick={() => handleNavClick(item.id)} />
+          ))}
+
+          {/* Divider between data and config sections */}
+          <div style={{
+            height: '0.5px',
+            background: 'var(--color-border-secondary)',
+            margin: '6px 10px',
+          }} />
+
+          {bottomNavItems.map((item) => (
+            <NavButton key={item.id} item={item} isActive={activeNav === item.id} onClick={() => handleNavClick(item.id)} />
+          ))}
         </div>
 
         {/* Bottom: Settings */}
@@ -154,7 +129,7 @@ export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSetting
               e.currentTarget.style.background = 'transparent';
             }}
           >
-            <span style={{ fontSize: '20px', lineHeight: 1, flexShrink: 0 }}>⚙️</span>
+            <SettingsIcon {...ICON_PROPS} style={{ flexShrink: 0, color: 'var(--color-text-tertiary)' }} />
             <span style={{
               fontSize: '13px',
               fontFamily: 'var(--font-sans)',
@@ -167,5 +142,64 @@ export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSetting
         </div>
       </div>
     </>
+  );
+}
+
+function NavButton({ item, isActive, onClick }: {
+  item: { id: NavId; Icon: LucideIcon; label: string };
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+        padding: '8px 10px',
+        borderRadius: '8px',
+        border: 'none',
+        background: isActive ? 'var(--color-surface-active)' : 'transparent',
+        cursor: 'pointer',
+        position: 'relative',
+        transition: 'background 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.background = 'var(--color-surface-hover)';
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      {isActive && (
+        <div style={{
+          position: 'absolute',
+          left: '-8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '3px',
+          height: '20px',
+          borderRadius: '0 3px 3px 0',
+          background: 'var(--color-accent)',
+        }} />
+      )}
+      <item.Icon
+        {...ICON_PROPS}
+        style={{
+          flexShrink: 0,
+          color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+        }}
+      />
+      <span style={{
+        fontSize: '13px',
+        fontFamily: 'var(--font-sans)',
+        fontWeight: isActive ? 600 : 400,
+        color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+        lineHeight: 1.33,
+      }}>
+        {item.label}
+      </span>
+    </button>
   );
 }
