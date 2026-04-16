@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useSettingsStore } from '../stores/settingsStore';
 
-export function TitleBar() {
+interface TitleBarProps {
+  onToggleSidebar?: () => void;
+}
+
+export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
@@ -36,8 +40,23 @@ export function TitleBar() {
         flexShrink: 0,
       }}
     >
-      {/* Left: status + identity */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Left: hamburger + status + identity */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        {/* Hamburger menu button */}
+        {onToggleSidebar && (
+          <div className="titlebar-no-drag">
+            <TitleButton
+              onClick={onToggleSidebar}
+              title="Menu"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </TitleButton>
+          </div>
+        )}
         <span style={{
           width: '8px',
           height: '8px',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ApprovalRequest } from '../components/ApprovalCard';
+import type { ApprovalRequest, ApprovalDecision } from '../components/ApprovalCard';
 
 export type { ApprovalRequest };
 
@@ -31,7 +31,7 @@ export interface UseClawChat {
   deleteSession: (key: string) => void;
   fetchSessions: () => void;
   pendingApprovals: ApprovalRequest[];
-  resolveApproval: (requestId: string, decision: 'allow' | 'deny') => void;
+  resolveApproval: (id: string, decision: ApprovalDecision) => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -171,9 +171,9 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
     cleanups.current.push(
       api.onApproval((payload) => {
         const p = payload as ApprovalRequest;
-        if (p?.requestId) {
+        if (p?.id) {
           setPendingApprovals(prev => {
-            if (prev.some(a => a.requestId === p.requestId)) return prev;
+            if (prev.some(a => a.id === p.id)) return prev;
             return [...prev, p];
           });
         }
@@ -253,10 +253,10 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
     setIsTyping(false);
   }, []);
 
-  const resolveApproval = useCallback((requestId: string, decision: 'allow' | 'deny') => {
+  const resolveApproval = useCallback((id: string, decision: ApprovalDecision) => {
     if (!window.electronAPI?.ws) return;
-    window.electronAPI.ws.send('exec.approval.resolve', { requestId, decision });
-    setPendingApprovals(prev => prev.filter(a => a.requestId !== requestId));
+    window.electronAPI.ws.send('exec.approval.resolve', { id, decision });
+    setPendingApprovals(prev => prev.filter(a => a.id !== id));
   }, []);
 
   return {

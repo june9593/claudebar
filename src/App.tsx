@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { ChatWebView } from './components/ChatWebView';
 import { CompactChat } from './components/CompactChat';
@@ -10,6 +10,7 @@ export default function App() {
   const chatMode = useSettingsStore((s) => s.chatMode);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -21,7 +22,7 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden" style={{ borderRadius: '12px' }}>
-      <TitleBar />
+      <TitleBar onToggleSidebar={chatMode === 'compact' && view === 'chat' ? () => setSidebarOpen(prev => !prev) : undefined} />
       <div className="flex-1 min-h-0 relative">
         <div style={{
           position: 'absolute', inset: 0,
@@ -40,7 +41,7 @@ export default function App() {
           transition: 'opacity 0.2s ease',
           zIndex: view === 'chat' ? 2 : 1,
         }}>
-          {chatMode === 'compact' ? <CompactChat /> : <ChatWebView />}
+          {chatMode === 'compact' ? <CompactChat sidebarOpen={sidebarOpen} onSidebarClose={() => setSidebarOpen(false)} /> : <ChatWebView />}
         </div>
       </div>
     </div>

@@ -1,23 +1,25 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface UsageTotals {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cacheWrite: number;
-  totalTokens: number;
-  totalCost: number;
-  inputCost: number;
-  outputCost: number;
-  cacheReadCost: number;
-  cacheWriteCost: number;
-  missingCostEntries: number;
+type DateRange = 'today' | '7d' | '30d';
+
+interface SessionUsage {
+  key: string;
+  kind: string;
+  usage: {
+    totalTokens: number;
+    totalCost: number;
+    inputTokens: number;
+    outputTokens: number;
+    messageCounts: { total: number; errors: number };
+    toolUsage: { totalCalls: number };
+    durationMs: number;
+  };
 }
 
 interface UsageData {
-  updatedAt: number;
-  days: number;
-  totals: UsageTotals;
+  sessions: SessionUsage[];
+  totalTokens: number;
+  totalCost: number;
 }
 
 function formatTokens(n: number): string {
@@ -27,45 +29,82 @@ function formatTokens(n: number): string {
 }
 
 function formatCost(n: number): string {
-  return '$' + n.toFixed(2);
+  return '$' + n.toFixed(4);
 }
 
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+function getDateRange(range: DateRange): { startDate: string; endDate: string } {
+  const end = new Date();
+  const start = new Date();
+  if (range === 'today') {
+    start.setHours(0, 0, 0, 0);
+  } else if (range === '7d') {
+    start.setDate(start.getDate() - 7);
+  } else {
+    start.setDate(start.getDate() - 30);
+  }
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  return { startDate: fmt(start), endDate: fmt(end) };
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  const secs = Math.floor(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  return `${mins}m ${secs % 60}s`;
+}
+
+function formatSessionKey(key: string): string {
+  const parts = key.split(':');
+  return parts[parts.length - 1] || key;
 }
 
 export function UsageView() {
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<DateRange>('7d');
   const reqIdRef = useRef<string | null>(null);
 
-  const fetchUsage = useCallback(() => {
+  const fetchUsage = useCallback((dateRange: DateRange) => {
     setLoading(true);
-    window.electronAPI.ws.send('usage.cost', {}).then(({ ok, id }) => {
+    setData(null);
+    const { startDate, endDate } = getDateRange(dateRange);
+    window.electronAPI.ws.send('sessions.usage', { startDate, endDate, limit: 100 }).then(({ ok, id }) => {
       if (ok && id) reqIdRef.current = id;
     });
   }, []);
 
   useEffect(() => {
-    fetchUsage();
+    fetchUsage(range);
 
     const unsub = window.electronAPI.ws.onResponse((resp) => {
       if (resp.id === reqIdRef.current && resp.ok && resp.payload) {
-        setData(resp.payload as UsageData);
+        const p = resp.payload as { sessions?: SessionUsage[] };
+        if (p.sessions) {
+          const sessions = p.sessions;
+          const totalTokens = sessions.reduce((s, x) => s + (x.usage?.totalTokens ?? 0), 0);
+          const totalCost = sessions.reduce((s, x) => s + (x.usage?.totalCost ?? 0), 0);
+          setData({ sessions, totalTokens, totalCost });
+        } else {
+          setData({ sessions: [], totalTokens: 0, totalCost: 0 });
+        }
         setLoading(false);
         reqIdRef.current = null;
       }
     });
 
     return unsub;
-  }, [fetchUsage]);
+  }, [fetchUsage, range]);
+
+  const handleRangeChange = (r: DateRange) => {
+    setRange(r);
+  };
+
+  const ranges: { id: DateRange; label: string }[] = [
+    { id: 'today', label: 'Today' },
+    { id: '7d', label: '7d' },
+    { id: '30d', label: '30d' },
+  ];
 
   return (
     <div style={{
@@ -76,6 +115,7 @@ export function UsageView() {
       display: 'flex',
       flexDirection: 'column',
       gap: '12px',
+      background: 'var(--color-bg-chat)',
     }}>
       {/* Header */}
       <div style={{
@@ -91,15 +131,29 @@ export function UsageView() {
         }}>
           Usage
         </span>
-        {data && (
-          <span style={{
-            fontSize: '11px',
-            color: 'var(--color-text-tertiary)',
-            fontFamily: 'var(--font-sans)',
-          }}>
-            Updated {timeAgo(data.updatedAt)}
-          </span>
-        )}
+        {/* Date range pills */}
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {ranges.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => handleRangeChange(r.id)}
+              style={{
+                padding: '3px 10px',
+                borderRadius: '12px',
+                border: 'none',
+                background: range === r.id ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+                color: range === r.id ? 'var(--color-bubble-user-text)' : 'var(--color-text-secondary)',
+                fontSize: '11px',
+                fontFamily: 'var(--font-sans)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'background 0.15s, color 0.15s',
+              }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -115,21 +169,17 @@ export function UsageView() {
         </div>
       ) : data ? (
         <>
-          {/* Total cost + tokens cards */}
+          {/* Total summary cards */}
           <div style={{ display: 'flex', gap: '8px' }}>
-            <StatCard label="Total Cost" value={formatCost(data.totals.totalCost)} />
-            <StatCard label="Total Tokens" value={formatTokens(data.totals.totalTokens)} />
+            <StatCard label="Total Cost" value={formatCost(data.totalCost)} />
+            <StatCard label="Total Tokens" value={formatTokens(data.totalTokens)} />
           </div>
 
-          {/* Breakdown */}
+          {/* Per-session breakdown */}
           <div style={{
-            background: 'var(--color-surface-card)',
-            border: '0.5px solid var(--color-border-secondary)',
-            borderRadius: '8px',
-            padding: '12px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
+            gap: '6px',
           }}>
             <span style={{
               fontSize: '12px',
@@ -138,22 +188,83 @@ export function UsageView() {
               color: 'var(--color-text-secondary)',
               letterSpacing: '0.3px',
             }}>
-              Token Breakdown
+              Sessions ({data.sessions.length})
             </span>
-            <BreakdownRow label="Input" tokens={data.totals.input} cost={data.totals.inputCost} />
-            <BreakdownRow label="Output" tokens={data.totals.output} cost={data.totals.outputCost} />
-            <BreakdownRow label="Cache Read" tokens={data.totals.cacheRead} cost={data.totals.cacheReadCost} />
-            <BreakdownRow label="Cache Write" tokens={data.totals.cacheWrite} cost={data.totals.cacheWriteCost} />
-          </div>
 
-          {/* Period info */}
-          <span style={{
-            fontSize: '11px',
-            color: 'var(--color-text-tertiary)',
-            textAlign: 'center',
-          }}>
-            Last {data.days} days
-          </span>
+            {data.sessions.length === 0 ? (
+              <div style={{
+                padding: '20px',
+                textAlign: 'center',
+                color: 'var(--color-text-tertiary)',
+                fontSize: '12px',
+              }}>
+                No usage data for this period
+              </div>
+            ) : (
+              data.sessions.map((session) => (
+                <div key={session.key} style={{
+                  background: 'var(--color-surface-card)',
+                  border: '0.5px solid var(--color-border-secondary)',
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px',
+                }}>
+                  {/* Session header */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      <span style={{
+                        fontSize: '12px',
+                        fontFamily: 'var(--font-sans)',
+                        fontWeight: 500,
+                        color: 'var(--color-text-primary)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        {formatSessionKey(session.key)}
+                      </span>
+                      {session.kind && (
+                        <span style={{
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-mono)',
+                          color: 'var(--color-text-tertiary)',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: 'var(--color-bg-tertiary)',
+                          flexShrink: 0,
+                        }}>
+                          {session.kind}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{
+                      fontSize: '12px',
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: 600,
+                      color: 'var(--color-accent)',
+                      flexShrink: 0,
+                    }}>
+                      {formatCost(session.usage?.totalCost ?? 0)}
+                    </span>
+                  </div>
+
+                  {/* Stats row */}
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <MiniStat label="Tokens" value={formatTokens(session.usage?.totalTokens ?? 0)} />
+                    <MiniStat label="In" value={formatTokens(session.usage?.inputTokens ?? 0)} />
+                    <MiniStat label="Out" value={formatTokens(session.usage?.outputTokens ?? 0)} />
+                    <MiniStat label="Msgs" value={String(session.usage?.messageCounts?.total ?? 0)} />
+                    <MiniStat label="Tools" value={String(session.usage?.toolUsage?.totalCalls ?? 0)} />
+                    {(session.usage?.durationMs ?? 0) > 0 && (
+                      <MiniStat label="Time" value={formatDuration(session.usage.durationMs)} />
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </>
       ) : (
         <div style={{
@@ -203,38 +314,23 @@ function StatCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BreakdownRow({ label, tokens, cost }: { label: string; tokens: number; cost: number }) {
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    }}>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px' }}>
       <span style={{
-        fontSize: '12px',
+        fontSize: '10px',
         fontFamily: 'var(--font-sans)',
-        color: 'var(--color-text-secondary)',
+        color: 'var(--color-text-tertiary)',
       }}>
         {label}
       </span>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'baseline' }}>
-        <span style={{
-          fontSize: '12px',
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--color-text-primary)',
-        }}>
-          {formatTokens(tokens)}
-        </span>
-        <span style={{
-          fontSize: '11px',
-          fontFamily: 'var(--font-mono)',
-          color: 'var(--color-text-tertiary)',
-          minWidth: '48px',
-          textAlign: 'right',
-        }}>
-          {formatCost(cost)}
-        </span>
-      </div>
+      <span style={{
+        fontSize: '11px',
+        fontFamily: 'var(--font-mono)',
+        color: 'var(--color-text-primary)',
+      }}>
+        {value}
+      </span>
     </div>
   );
 }

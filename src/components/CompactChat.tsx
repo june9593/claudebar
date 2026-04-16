@@ -3,12 +3,19 @@ import { useSettingsStore } from '../stores/settingsStore';
 import { useClawChat } from '../hooks/useClawChat';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard } from './ApprovalCard';
-import { TabBar, type TabId } from './TabBar';
+import { Sidebar, type NavId } from './Sidebar';
 import { UsageView } from './UsageView';
+import { SessionsView } from './SessionsView';
 
-export function CompactChat() {
+interface CompactChatProps {
+  sidebarOpen: boolean;
+  onSidebarClose: () => void;
+}
+
+export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const authToken = useSettingsStore((s) => s.authToken);
+  const setView = useSettingsStore((s) => s.setView);
   const {
     messages, isConnected, isTyping, sendMessage, error,
     sessions, currentSessionKey, switchSession, createSession, deleteSession,
@@ -16,7 +23,7 @@ export function CompactChat() {
   } = useClawChat(gatewayUrl, authToken);
 
   const [input, setInput] = useState('');
-  const [activeTab, setActiveTab] = useState<TabId>('chat');
+  const [activeNav, setActiveNav] = useState<NavId>('chat');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -66,6 +73,15 @@ export function CompactChat() {
       background: 'var(--color-bg-chat)',
       position: 'relative',
     }}>
+      {/* Sidebar overlay */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={onSidebarClose}
+        activeNav={activeNav}
+        onNavChange={setActiveNav}
+        onOpenSettings={() => setView('settings')}
+      />
+
       {/* Error banner — subtle, non-blocking */}
       {error && (
         <div style={{
@@ -82,7 +98,7 @@ export function CompactChat() {
         </div>
       )}
 
-      {activeTab === 'chat' ? (
+      {activeNav === 'chat' ? (
         <>
           {/* Session header */}
           <ChatHistory
@@ -126,7 +142,7 @@ export function CompactChat() {
               borderTop: '0.5px solid var(--color-border-primary)',
             }}>
               {pendingApprovals.map(a => (
-                <ApprovalCard key={a.requestId} approval={a} onResolve={resolveApproval} />
+                <ApprovalCard key={a.id} approval={a} onResolve={resolveApproval} />
               ))}
             </div>
           )}
@@ -208,12 +224,18 @@ export function CompactChat() {
             }} />
           )}
         </>
+      ) : activeNav === 'sessions' ? (
+        <SessionsView
+          sessions={sessions}
+          currentSessionKey={currentSessionKey}
+          onSwitchSession={switchSession}
+          onDeleteSession={deleteSession}
+          onNewChat={createSession}
+          onNavigateToChat={() => setActiveNav('chat')}
+        />
       ) : (
         <UsageView />
       )}
-
-      {/* Bottom tab bar */}
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
