@@ -247,20 +247,31 @@ async function doConnect(gatewayUrl: string, authToken: string) {
     const wasConnected = connected;
     connected = false;
     ws = null;
-    sendToRenderer('ws:status', { connected: false, error: wasConnected ? `连接已断开 (code ${code})` : null });
 
-    // Auto-retry with backoff
+    // Only show error if we were previously connected (not on initial connection failures)
+    if (wasConnected) {
+      sendToRenderer('ws:status', { connected: false, error: `连接已断开 (code ${code})` });
+    }
+
+    // Auto-retry with exponential backoff
     if (retries < MAX_RETRIES) {
       retries++;
-      const delay = Math.min(1000 * Math.pow(2, retries - 1), 15000);
+      const delay = Math.min(2000 * Math.pow(2, retries - 1), 30000);
       retryTimer = setTimeout(() => doConnect(currentGateway, currentToken), delay);
     } else {
-      sendToRenderer('ws:status', { connected: false, error: `连接已断开 (code ${code})，已停止重试` });
+      sendToRenderer('ws:status', { connected: false, error: `无法连接到 Gateway，请检查网络` });
     }
   });
 
   ws.on('error', (e) => {
-    console.error('[WS Bridge] error:', e.message);
+    // Only log non-empty messages to avoid spam
+    if (e.message) {
+      console.error('[WS Bridge] error:', e.message);
+    }
+    // Send user-friendly error on connection refused
+    if (e.message.includes('ECONNREFUSED')) {
+      sendToRenderer('ws:status', { connected: false, error: 'Gateway 连接被拒绝，请检查服务是否运行' });
+    }
   });
 }
 
