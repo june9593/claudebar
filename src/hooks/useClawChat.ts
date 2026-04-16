@@ -31,6 +31,7 @@ export interface UseClawChat {
   deleteSession: (key: string) => void;
   fetchSessions: () => void;
   pendingApprovals: ApprovalRequest[];
+  resolvedApprovals: ApprovalRequest[];
   resolveApproval: (id: string, decision: ApprovalDecision) => void;
 }
 
@@ -60,6 +61,7 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionKey, setCurrentSessionKey] = useState('main');
   const [pendingApprovals, setPendingApprovals] = useState<ApprovalRequest[]>([]);
+  const [resolvedApprovals, setResolvedApprovals] = useState<ApprovalRequest[]>([]);
   const cleanups = useRef<Array<() => void>>([]);
   const sessionKeyRef = useRef('main');
   const sessionListReqId = useRef('');
@@ -256,12 +258,18 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
   const resolveApproval = useCallback((id: string, decision: ApprovalDecision) => {
     if (!window.electronAPI?.ws) return;
     window.electronAPI.ws.send('exec.approval.resolve', { id, decision });
-    setPendingApprovals(prev => prev.filter(a => a.id !== id));
+    setPendingApprovals(prev => {
+      const resolved = prev.find(a => a.id === id);
+      if (resolved) {
+        setResolvedApprovals(rp => [...rp, { ...resolved, resolvedDecision: decision } as ApprovalRequest]);
+      }
+      return prev.filter(a => a.id !== id);
+    });
   }, []);
 
   return {
     messages, isConnected, isTyping, sendMessage, clearMessages, error,
     sessions, currentSessionKey, switchSession, createSession, deleteSession, fetchSessions,
-    pendingApprovals, resolveApproval,
+    pendingApprovals, resolvedApprovals, resolveApproval,
   };
 }

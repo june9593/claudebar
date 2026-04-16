@@ -1,56 +1,96 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
 
-interface CronJob {
-  name: string;
-  every: string;
-  agent: string;
-  enabled: boolean;
-  lastRun?: string;
-  lastStatus?: string;
+interface CronSchedule {
+  kind: string;
+  expr: string;
+  tz?: string;
 }
 
-interface CronData {
+interface CronJob {
+  id: string;
+  name: string;
+  description?: string;
   enabled: boolean;
-  nextWake?: string;
-  jobs: CronJob[];
+  schedule: CronSchedule;
+  sessionTarget?: string;
+  wakeMode?: string;
+  payload?: { kind: string; [key: string]: unknown };
+}
+
+interface CronStatus {
+  enabled: boolean;
+  storePath?: string;
+  jobs: number;
+  nextWakeAtMs?: number;
 }
 
 export function CronView() {
-  const [data, setData] = useState<CronData | null>(null);
+  const [status, setStatus] = useState<CronStatus | null>(null);
+  const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     const api = window.electronAPI?.ws;
     if (!api) { setLoading(false); return; }
 
-    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    let statusReqId = '';
+    let listReqId = '';
+    let gotStatus = false;
+    let gotList = false;
 
     const unsub = api.onResponse((resp) => {
-      if (cancelled) return;
-      const p = resp.payload as Record<string, unknown> | undefined;
-      if (resp.ok && p && ('jobs' in p || 'enabled' in p)) {
-        setData(p as unknown as CronData);
+      if (resp.id === statusReqId && resp.ok) {
+        const p = resp.payload as CronStatus | undefined;
+        if (p) setStatus(p);
+        gotStatus = true;
+      }
+      if (resp.id === listReqId && resp.ok) {
+        const p = resp.payload as { jobs?: CronJob[] } | undefined;
+        if (p?.jobs) setJobs(p.jobs);
+        gotList = true;
+      }
+      if (gotStatus && gotList) {
         setLoading(false);
+        unsub();
       }
     });
 
-    api.send('cron.status', {}).catch(() => {
-      if (!cancelled) {
-        setError('Failed to send cron.status');
-        setLoading(false);
-      }
-    });
+    api.send('cron.status', {}).then(r => {
+      if (r.ok && r.id) statusReqId = r.id;
+      else { gotStatus = true; }
+    }).catch(() => { gotStatus = true; });
 
-    return () => { cancelled = true; unsub(); };
+    api.send('cron.list', {}).then(r => {
+      if (r.ok && r.id) listReqId = r.id;
+      else { gotList = true; }
+    }).catch(() => { gotList = true; });
+
+    const timer = setTimeout(() => {
+      if (!gotStatus || !gotList) {
+        setLoading(false);
+        if (!gotStatus && !gotList) setError('Timeout fetching cron data');
+      }
+      unsub();
+    }, 8000);
+
+    return () => { clearTimeout(timer); unsub(); };
   }, []);
 
-  if (loading) return <ViewShell title="Cron Jobs"><LoadingState /></ViewShell>;
-  if (error) return <ViewShell title="Cron Jobs"><ErrorState message={error} /></ViewShell>;
-  if (!data) return <ViewShell title="Cron Jobs"><EmptyState message="No cron data" /></ViewShell>;
+  useEffect(() => {
+    const cleanup = fetchData();
+    return () => cleanup?.();
+  }, [fetchData]);
+
+  if (loading) return <ViewShell title="Cron Jobs" onRefresh={fetchData}><LoadingState /></ViewShell>;
+  if (error) return <ViewShell title="Cron Jobs" onRefresh={fetchData}><ErrorState message={error} /></ViewShell>;
 
   return (
-    <ViewShell title="Cron Jobs">
+    <ViewShell title="Cron Jobs" onRefresh={fetchData}>
       {/* Status header */}
       <div style={{
         display: 'flex',
@@ -58,14 +98,14 @@ export function CronView() {
         gap: '8px',
         padding: '0 14px 8px',
       }}>
-        <StatusBadge enabled={data.enabled} />
-        {data.nextWake && (
+        <StatusBadge enabled={status?.enabled ?? false} />
+        {status?.nextWakeAtMs != null && (
           <span style={{
             fontSize: '11px',
             fontFamily: 'var(--font-mono)',
             color: 'var(--color-text-tertiary)',
           }}>
-            Next: {data.nextWake}
+            Next: {new Date(status.nextWakeAtMs).toLocaleString()}
           </span>
         )}
       </div>
@@ -80,12 +120,12 @@ export function CronView() {
         flexDirection: 'column',
         gap: '6px',
       }}>
-        {data.jobs.length === 0 ? (
+        {jobs.length === 0 ? (
           <EmptyState message="No cron jobs configured" />
         ) : (
-          data.jobs.map((job) => (
+          jobs.map((job) => (
             <div
-              key={job.name}
+              key={job.id}
               style={{
                 padding: '10px 12px',
                 borderRadius: '8px',
@@ -107,6 +147,15 @@ export function CronView() {
                 </span>
                 <StatusBadge enabled={job.enabled} />
               </div>
+              {job.description && (
+                <span style={{
+                  fontSize: '11px',
+                  fontFamily: 'var(--font-sans)',
+                  color: 'var(--color-text-secondary)',
+                }}>
+                  {job.description}
+                </span>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{
                   fontSize: '11px',
@@ -116,28 +165,33 @@ export function CronView() {
                   borderRadius: '4px',
                   background: 'var(--color-bg-tertiary)',
                 }}>
-                  every {job.every}
+                  {job.schedule.kind}: {job.schedule.expr}
                 </span>
-                <span style={{
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--color-text-tertiary)',
-                  padding: '1px 5px',
-                  borderRadius: '4px',
-                  background: 'var(--color-bg-tertiary)',
-                }}>
-                  {job.agent}
-                </span>
+                {job.schedule.tz && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--color-text-tertiary)',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: 'var(--color-bg-tertiary)',
+                  }}>
+                    {job.schedule.tz}
+                  </span>
+                )}
+                {job.sessionTarget && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--color-text-tertiary)',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    background: 'var(--color-bg-tertiary)',
+                  }}>
+                    {job.sessionTarget}
+                  </span>
+                )}
               </div>
-              {job.lastRun && (
-                <span style={{
-                  fontSize: '10px',
-                  fontFamily: 'var(--font-sans)',
-                  color: 'var(--color-text-tertiary)',
-                }}>
-                  Last: {job.lastRun} {job.lastStatus ? `(${job.lastStatus})` : ''}
-                </span>
-              )}
             </div>
           ))
         )}
@@ -148,7 +202,7 @@ export function CronView() {
 
 /* ── Shared helpers ── */
 
-function ViewShell({ title, children }: { title: string; children: React.ReactNode }) {
+function ViewShell({ title, children, onRefresh }: { title: string; children: React.ReactNode; onRefresh?: () => void }) {
   return (
     <div style={{
       flex: 1,
@@ -157,7 +211,7 @@ function ViewShell({ title, children }: { title: string; children: React.ReactNo
       flexDirection: 'column',
       background: 'var(--color-bg-chat)',
     }}>
-      <div style={{ padding: '12px 14px 8px', flexShrink: 0 }}>
+      <div style={{ padding: '12px 14px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '17px',
@@ -166,6 +220,29 @@ function ViewShell({ title, children }: { title: string; children: React.ReactNo
         }}>
           {title}
         </span>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            title="Refresh"
+            style={{
+              width: '28px',
+              height: '28px',
+              borderRadius: '6px',
+              border: 'none',
+              background: 'transparent',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-text-tertiary)',
+              transition: 'background 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <RefreshCw size={14} strokeWidth={1.75} />
+          </button>
+        )}
       </div>
       {children}
     </div>

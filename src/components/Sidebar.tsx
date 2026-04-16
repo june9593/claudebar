@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react';
 import {
   MessageSquare, MessagesSquare, BarChart3,
   Clock, Bot, Puzzle, ScrollText, Settings as SettingsIcon,
+  LayoutDashboard, Shield,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-export type NavId = 'chat' | 'sessions' | 'usage' | 'cron' | 'agents' | 'skills' | 'logs';
+export type NavId = 'overview' | 'chat' | 'approvals' | 'sessions' | 'usage' | 'cron' | 'agents' | 'skills' | 'logs';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -18,12 +19,14 @@ interface SidebarProps {
 const ICON_PROPS = { size: 18, strokeWidth: 1.75 } as const;
 
 const topNavItems: { id: NavId; Icon: LucideIcon; label: string }[] = [
+  { id: 'overview', Icon: LayoutDashboard, label: 'Overview' },
   { id: 'chat', Icon: MessageSquare, label: 'Chat' },
+  { id: 'approvals', Icon: Shield, label: 'Approvals' },
   { id: 'sessions', Icon: MessagesSquare, label: 'Sessions' },
-  { id: 'usage', Icon: BarChart3, label: 'Usage' },
 ];
 
 const bottomNavItems: { id: NavId; Icon: LucideIcon; label: string }[] = [
+  { id: 'usage', Icon: BarChart3, label: 'Usage' },
   { id: 'cron', Icon: Clock, label: 'Cron' },
   { id: 'agents', Icon: Bot, label: 'Agents' },
   { id: 'skills', Icon: Puzzle, label: 'Skills' },

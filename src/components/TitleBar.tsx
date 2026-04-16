@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, Pin, PinOff, Settings } from 'lucide-react';
+import { Menu, Pin, PinOff, Settings, Shell } from 'lucide-react';
 import { useSettingsStore } from '../stores/settingsStore';
 
 interface TitleBarProps {
@@ -61,7 +61,7 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
           background: hasGateway ? 'var(--color-status-connected)' : 'var(--color-status-disconnected)',
           flexShrink: 0,
         }} />
-        <span style={{ fontSize: '16px', lineHeight: 1 }}>🦞</span>
+        <Shell size={18} strokeWidth={1.75} style={{ color: 'var(--color-accent)' }} />
         <span style={{
           fontFamily: 'var(--font-display)',
           fontSize: '14px',

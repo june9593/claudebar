@@ -1,7 +1,7 @@
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function SettingsPanel() {
-  const { gatewayUrl, authMode, authToken, authPassword, theme, chatMode, hideOnClickOutside, updateSetting } = useSettingsStore();
+  const { gatewayUrl, authMode, authToken, authPassword, theme, chatMode, updateSetting } = useSettingsStore();
 
   return (
     <div style={{
@@ -70,6 +70,32 @@ export function SettingsPanel() {
             </>
           )}
         </Card>
+        {/* Reconnect button */}
+        <button
+          onClick={() => {
+            window.electronAPI?.ws?.disconnect();
+            setTimeout(() => {
+              window.electronAPI?.ws?.connect(gatewayUrl, authToken);
+            }, 500);
+          }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: '1px solid var(--color-accent)',
+            background: 'transparent',
+            color: 'var(--color-accent)',
+            fontSize: '13px',
+            fontFamily: 'var(--font-sans)',
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'background 0.15s',
+            width: '100%',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          重新连接
+        </button>
       </Section>
 
       {/* Appearance */}
@@ -102,14 +128,6 @@ export function SettingsPanel() {
                 { value: 'classic', label: 'Classic' },
               ]}
               onChange={(v) => updateSetting('chatMode', v)}
-            />
-          </Row>
-          <RowSep />
-          <Row>
-            <Label>点击外部隐藏窗口</Label>
-            <Toggle
-              value={hideOnClickOutside}
-              onChange={(v) => updateSetting('hideOnClickOutside', v)}
             />
           </Row>
         </Card>
@@ -306,36 +324,5 @@ function SegmentedControl({ value, options, onChange }: {
         </button>
       ))}
     </div>
-  );
-}
-
-function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      onClick={() => onChange(!value)}
-      style={{
-        position: 'relative',
-        width: '44px',
-        height: '26px',
-        borderRadius: '13px',
-        border: 'none',
-        background: value ? 'var(--color-status-connected)' : 'var(--color-bg-tertiary)',
-        cursor: 'pointer',
-        transition: 'background 0.25s',
-        flexShrink: 0,
-      }}
-    >
-      <span style={{
-        position: 'absolute',
-        top: '3px',
-        left: value ? '21px' : '3px',
-        width: '20px',
-        height: '20px',
-        borderRadius: '50%',
-        background: '#ffffff',
-        transition: 'left 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-      }} />
-    </button>
   );
 }

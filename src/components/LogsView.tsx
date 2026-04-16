@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { RefreshCw } from 'lucide-react';
 
 interface LogEntry {
   level: string;
@@ -19,10 +20,33 @@ const LEVEL_COLORS: Record<string, string> = {
   fatal: 'var(--color-status-disconnected)',
 };
 
+function parseLogLine(raw: string): LogEntry | null {
+  try {
+    const obj = JSON.parse(raw);
+    const meta = obj._meta as { logLevelName?: string; date?: string } | undefined;
+    const level = (meta?.logLevelName || obj.level || 'info').toLowerCase();
+    const time = meta?.date || obj.time;
+
+    // Extract first meaningful string value as message
+    let msg = obj.msg || obj.message || '';
+    if (!msg) {
+      for (const [k, v] of Object.entries(obj)) {
+        if (k === '_meta' || k === 'level' || k === 'time') continue;
+        if (typeof v === 'string' && v.length > 0) { msg = v; break; }
+      }
+    }
+    if (!msg) msg = raw.slice(0, 200);
+
+    return { level, msg, time };
+  } catch {
+    return { level: 'info', msg: raw, time: undefined };
+  }
+}
+
 export function LogsView() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<Set<LogLevel>>(new Set(['info', 'warn', 'error', 'fatal']));
-  const [subscribed, setSubscribed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScroll = useRef(true);
@@ -43,47 +67,52 @@ export function LogsView() {
     }
   }, [logs]);
 
-  // Subscribe to logs
-  useEffect(() => {
+  const fetchLogs = useCallback(() => {
     const api = window.electronAPI?.ws;
     if (!api) return;
 
-    let cancelled = false;
+    setError(null);
+    let reqId = '';
 
     const unsub = api.onResponse((resp) => {
-      if (cancelled) return;
-      if (!resp.ok) return;
+      if (resp.id !== reqId) return;
+      if (!resp.ok) {
+        setError(String(resp.error || 'Failed to fetch logs'));
+        unsub();
+        return;
+      }
 
-      const p = resp.payload as Record<string, unknown> | undefined;
-      if (!p) return;
-
-      // Handle streaming log entries
-      if ('level' in p && 'msg' in p) {
-        setLogs((prev) => {
-          const next = [...prev, p as unknown as LogEntry];
-          // Keep at most 500 entries
+      const p = resp.payload as { lines?: string[]; file?: string; cursor?: unknown } | undefined;
+      if (p?.lines && Array.isArray(p.lines)) {
+        const entries: LogEntry[] = [];
+        for (const line of p.lines) {
+          const entry = parseLogLine(line);
+          if (entry) entries.push(entry);
+        }
+        setLogs(prev => {
+          const next = [...prev, ...entries];
           return next.length > 500 ? next.slice(-500) : next;
         });
+        setLoaded(true);
       }
-      // Handle batch of entries
-      if ('entries' in p && Array.isArray(p.entries)) {
-        setLogs((prev) => {
-          const next = [...prev, ...(p.entries as LogEntry[])];
-          return next.length > 500 ? next.slice(-500) : next;
-        });
-      }
+      unsub();
     });
 
     api.send('logs.tail', { level: 'trace' })
       .then((r) => {
-        if (!cancelled && r.ok) setSubscribed(true);
+        if (r.ok && r.id) reqId = r.id;
+        else { setError(r.error || 'Failed to send logs.tail'); }
       })
-      .catch(() => {
-        if (!cancelled) setError('Failed to subscribe to logs');
-      });
+      .catch(() => setError('Failed to send logs.tail'));
 
-    return () => { cancelled = true; unsub(); };
+    const timer = setTimeout(() => { unsub(); setLoaded(true); }, 6000);
+    return () => { clearTimeout(timer); unsub(); };
   }, []);
+
+  useEffect(() => {
+    const cleanup = fetchLogs();
+    return () => cleanup?.();
+  }, [fetchLogs]);
 
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -91,6 +120,12 @@ export function LogsView() {
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     autoScroll.current = atBottom;
   }, []);
+
+  const handleRefresh = useCallback(() => {
+    setLogs([]);
+    setLoaded(false);
+    fetchLogs();
+  }, [fetchLogs]);
 
   const filteredLogs = logs.filter((l) => filter.has(l.level as LogLevel));
 
@@ -118,15 +153,27 @@ export function LogsView() {
         }}>
           Logs
         </span>
-        {!subscribed && !error && (
-          <span style={{
-            fontSize: '11px',
-            fontFamily: 'var(--font-sans)',
+        <button
+          onClick={handleRefresh}
+          title="Refresh"
+          style={{
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px',
+            border: 'none',
+            background: 'transparent',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             color: 'var(--color-text-tertiary)',
-          }}>
-            Connecting…
-          </span>
-        )}
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+        >
+          <RefreshCw size={14} strokeWidth={1.75} />
+        </button>
       </div>
 
       {/* Level filter pills */}
@@ -213,7 +260,7 @@ export function LogsView() {
               fontFamily: 'var(--font-sans)',
               fontSize: '13px',
             }}>
-              {logs.length === 0 ? 'Waiting for log entries…' : 'No logs match filters'}
+              {logs.length === 0 ? (loaded ? 'No log entries' : 'Loading…') : 'No logs match filters'}
             </div>
           ) : (
             filteredLogs.map((entry, i) => (

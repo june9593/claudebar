@@ -11,6 +11,8 @@ import { CronView } from './CronView';
 import { AgentsView } from './AgentsView';
 import { SkillsView } from './SkillsView';
 import { LogsView } from './LogsView';
+import { ApprovalsView } from './ApprovalsView';
+import { OverviewView } from './OverviewView';
 
 interface CompactChatProps {
   sidebarOpen: boolean;
@@ -24,17 +26,46 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
   const {
     messages, isConnected, isTyping, sendMessage, error,
     sessions, currentSessionKey, switchSession, createSession, deleteSession,
-    pendingApprovals, resolveApproval,
+    pendingApprovals, resolvedApprovals, resolveApproval,
   } = useClawChat(gatewayUrl, authToken);
 
   const [input, setInput] = useState('');
   const [activeNav, setActiveNav] = useState<NavId>('chat');
+  const [agentAvatar, setAgentAvatar] = useState<{ url?: string; emoji?: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Fetch agent identity for avatar
+  useEffect(() => {
+    const api = window.electronAPI?.ws;
+    if (!api || !isConnected) return;
+
+    let reqId = '';
+    const unsub = api.onResponse((resp) => {
+      if (resp.id !== reqId || !resp.ok) return;
+      const p = resp.payload as { avatar?: string; emoji?: string } | undefined;
+      if (p) {
+        const url = p.avatar?.startsWith('/') ? `${gatewayUrl}${p.avatar}` : p.avatar;
+        setAgentAvatar({ url, emoji: p.emoji });
+      }
+      unsub();
+    });
+
+    // Extract agentId from currentSessionKey (e.g. "agent:daily:..." → "daily")
+    const parts = currentSessionKey.split(':');
+    const agentId = parts.length >= 2 ? parts[1] : 'daily';
+    api.send('agent.identity.get', { agentId }).then(r => {
+      if (r.ok && r.id) reqId = r.id;
+      else unsub();
+    }).catch(() => unsub());
+
+    const timer = setTimeout(unsub, 5000);
+    return () => { clearTimeout(timer); unsub(); };
+  }, [isConnected, currentSessionKey, gatewayUrl]);
 
   const adjustTextarea = useCallback(() => {
     const ta = textareaRef.current;
@@ -129,7 +160,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
             ) : (
               <>
                 {messages.map((msg) => (
-                  <MessageBubble key={msg.id} message={msg} formatTime={formatTime} />
+                  <MessageBubble key={msg.id} message={msg} formatTime={formatTime} agentAvatar={agentAvatar} />
                 ))}
                 {isTyping && <TypingIndicator />}
               </>
@@ -229,6 +260,14 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
             }} />
           )}
         </>
+      ) : activeNav === 'overview' ? (
+        <OverviewView />
+      ) : activeNav === 'approvals' ? (
+        <ApprovalsView
+          pendingApprovals={pendingApprovals}
+          resolvedApprovals={resolvedApprovals}
+          resolveApproval={resolveApproval}
+        />
       ) : activeNav === 'sessions' ? (
         <SessionsView
           sessions={sessions}
@@ -248,7 +287,7 @@ export function CompactChat({ sidebarOpen, onSidebarClose }: CompactChatProps) {
       ) : activeNav === 'logs' ? (
         <LogsView />
       ) : (
-        <UsageView />
+        <OverviewView />
       )}
     </div>
   );
@@ -308,9 +347,10 @@ function EmptyState() {
   );
 }
 
-function MessageBubble({ message, formatTime }: {
+function MessageBubble({ message, formatTime, agentAvatar }: {
   message: { id: string; role: 'user' | 'assistant'; content: string; timestamp: string };
   formatTime: (ts: string) => string;
+  agentAvatar?: { url?: string; emoji?: string } | null;
 }) {
   const isUser = message.role === 'user';
 
@@ -327,7 +367,7 @@ function MessageBubble({ message, formatTime }: {
         maxWidth: '85%',
         flexDirection: isUser ? 'row-reverse' : 'row',
       }}>
-        {/* Assistant avatar — 🦞 in 28px circle */}
+        {/* Assistant avatar */}
         {!isUser && (
           <div style={{
             width: '28px',
@@ -340,8 +380,13 @@ function MessageBubble({ message, formatTime }: {
             flexShrink: 0,
             fontSize: '15px',
             lineHeight: 1,
+            overflow: 'hidden',
           }}>
-            🦞
+            {agentAvatar?.url ? (
+              <img src={agentAvatar.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              agentAvatar?.emoji || '🦞'
+            )}
           </div>
         )}
 
