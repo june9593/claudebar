@@ -155,7 +155,7 @@ function createTray() {
   let icon = nativeImage.createFromDataURL(lobsterPng);
   // Resize to 16x16pt — macOS standard tray icon size.
   // 'best' quality uses Lanczos interpolation for crisp downscaling.
-  icon = icon.resize({ width: 16, height: 16, quality: 'best' });
+  icon = icon.resize({ width: 18, height: 18, quality: 'best' });
   icon.setTemplateImage(true);
 
   tray = new Tray(icon);
