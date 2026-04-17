@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { formatRelative } from '../utils/format';
 
 interface HealthData {
   ok: boolean;
@@ -311,23 +312,6 @@ export function OverviewView() {
       </div>
     </div>
   );
-}
-
-function formatRelative(ms: number): string {
-  const diff = ms - Date.now();
-  const abs = Math.abs(diff);
-  const future = diff > 0;
-  if (abs < 60_000) return future ? 'in <1m' : 'just now';
-  if (abs < 3600_000) {
-    const m = Math.round(abs / 60_000);
-    return future ? `in ${m}m` : `${m}m ago`;
-  }
-  if (abs < 86400_000) {
-    const h = Math.round(abs / 3600_000);
-    return future ? `in ${h}h` : `${h}h ago`;
-  }
-  const d = Math.round(abs / 86400_000);
-  return future ? `in ${d}d` : `${d}d ago`;
 }
 
 function StatCard({ label, value, valueColor, sub }: { label: string; value: string; valueColor?: string; sub?: string }) {

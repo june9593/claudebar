@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Session } from '../hooks/useClawChat';
+import { formatSessionName, timeAgo } from '../utils/format';
 
 interface SessionsViewProps {
   sessions: Session[];
@@ -7,26 +8,6 @@ interface SessionsViewProps {
   onSwitchSession: (key: string) => void;
   onNewChat: () => void;
   onNavigateToChat: () => void;
-}
-
-function formatSessionName(session: Session): string {
-  if (session.displayName) return session.displayName;
-  const parts = session.key.split(':');
-  const last = parts[parts.length - 1];
-  if (last.startsWith('clawbar-')) return 'New Chat';
-  return last.charAt(0).toUpperCase() + last.slice(1);
-}
-
-function timeAgo(ts: string | undefined): string {
-  if (!ts) return '';
-  const diff = Date.now() - new Date(ts).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 function extractAgentFromKey(key: string): string {
