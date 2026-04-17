@@ -22,14 +22,12 @@ export interface UseClawChat {
   isConnected: boolean;
   isTyping: boolean;
   sendMessage: (text: string) => void;
-  clearMessages: () => void;
   error: string | null;
   sessions: Session[];
   currentSessionKey: string;
   switchSession: (key: string) => void;
   createSession: () => void;
   deleteSession: (key: string) => void;
-  fetchSessions: () => void;
   pendingApprovals: ApprovalRequest[];
   resolvedApprovals: ApprovalRequest[];
   resolveApproval: (id: string, decision: ApprovalDecision) => void;
@@ -192,15 +190,6 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
     };
   }, [gatewayUrl, authToken]);
 
-  const fetchSessions = useCallback(() => {
-    if (!window.electronAPI?.ws) return;
-    window.electronAPI.ws.send('sessions.list', {}).then(result => {
-      if (result.ok && result.id) {
-        sessionListReqId.current = result.id;
-      }
-    });
-  }, []);
-
   const switchSession = useCallback((key: string) => {
     if (!window.electronAPI?.ws) return;
     setCurrentSessionKey(key);
@@ -250,11 +239,6 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
     });
   }, []);
 
-  const clearMessages = useCallback(() => {
-    setMessages([]);
-    setIsTyping(false);
-  }, []);
-
   const resolveApproval = useCallback((id: string, decision: ApprovalDecision) => {
     if (!window.electronAPI?.ws) return;
     window.electronAPI.ws.send('exec.approval.resolve', { id, decision });
@@ -268,8 +252,8 @@ export function useClawChat(gatewayUrl: string, authToken: string): UseClawChat 
   }, []);
 
   return {
-    messages, isConnected, isTyping, sendMessage, clearMessages, error,
-    sessions, currentSessionKey, switchSession, createSession, deleteSession, fetchSessions,
+    messages, isConnected, isTyping, sendMessage, error,
+    sessions, currentSessionKey, switchSession, createSession, deleteSession,
     pendingApprovals, resolvedApprovals, resolveApproval,
   };
 }

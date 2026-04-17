@@ -102,11 +102,6 @@ export function createPetWindow(
     savePetBounds();
   });
 
-  // Reset drag offset when mouse is released (detected by next click)
-  ipcMain.on('pet:drag-end', () => {
-    dragOffset = { x: 0, y: 0 };
-  });
-
   ipcMain.on('pet:right-click', () => {
     if (!petWindow) return;
     const contextMenu = Menu.buildFromTemplate([
@@ -131,12 +126,4 @@ export function createPetWindow(
     ]);
     contextMenu.popup({ window: petWindow! });
   });
-}
-
-export function getPetWindow(): BrowserWindow | null {
-  return petWindow;
-}
-
-export function sendToPet(channel: string, ...args: unknown[]) {
-  petWindow?.webContents.send(channel, ...args);
 }
