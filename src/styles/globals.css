@@ -30,6 +30,7 @@
   --color-status-connected: #5a9a68;
   --color-status-disconnected: #b53333;
   --color-status-connecting: #c96442;
+  --color-status-warning: #e6a700;
 
   --color-bubble-user: #c96442;
   --color-bubble-user-text: #faf9f5;
@@ -74,6 +75,7 @@
   --color-status-connected: #5a9a68;
   --color-status-disconnected: #b53333;
   --color-status-connecting: #d97757;
+  --color-status-warning: #e6a700;
 
   --color-bubble-user: #c96442;
   --color-bubble-user-text: #faf9f5;

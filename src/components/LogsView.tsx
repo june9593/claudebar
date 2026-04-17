@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { useSettingsStore } from '../stores/settingsStore';
 
 interface LogEntry {
   level: string;
@@ -15,7 +16,7 @@ const LEVEL_COLORS: Record<string, string> = {
   trace: 'var(--color-text-tertiary)',
   debug: 'var(--color-text-tertiary)',
   info: 'var(--color-text-secondary)',
-  warn: '#e6a700',
+  warn: 'var(--color-status-warning)',
   error: 'var(--color-status-disconnected)',
   fatal: 'var(--color-status-disconnected)',
 };
@@ -53,6 +54,7 @@ function parseLogLine(raw: unknown): LogEntry | null {
 }
 
 export function LogsView() {
+  const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState<Set<LogLevel>>(new Set(['info', 'warn', 'error', 'fatal']));
   const [loaded, setLoaded] = useState(false);
@@ -229,7 +231,7 @@ export function LogsView() {
         }}>
           <span>{error}</span>
           <a
-            href="http://localhost:18789/logs"
+            href={`${gatewayUrl.replace(/\/+$/, '')}/logs`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
