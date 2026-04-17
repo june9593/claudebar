@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { ViewShell } from './views/ViewShell';
+import { LoadingState, ErrorState, EmptyState } from './views/ViewStates';
 
 interface AgentInfo {
   id: string;
@@ -152,7 +154,7 @@ export function AgentsView() {
       ) : error ? (
         <ErrorState message={error} />
       ) : agents.length === 0 ? (
-        <EmptyState />
+        <EmptyState message="No agents found" />
       ) : (
         <div style={{
           flex: 1,
@@ -244,62 +246,5 @@ export function AgentsView() {
   );
 }
 
-function ViewShell({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--color-bg-chat)',
-    }}>
-      <div style={{ padding: '12px 14px 8px', flexShrink: 0 }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '17px',
-          fontWeight: 500,
-          color: 'var(--color-text-primary)',
-        }}>
-          {title}
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-text-tertiary)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-    }}>
-      Loading…
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-status-disconnected)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-      padding: '0 14px', textAlign: 'center',
-    }}>
-      {message}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-text-tertiary)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-    }}>
-      No agents found
-    </div>
-  );
-}
 
 
