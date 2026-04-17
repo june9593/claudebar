@@ -4,6 +4,7 @@ import type { Settings, ViewState } from '../types';
 interface SettingsState extends Settings {
   resolvedTheme: 'light' | 'dark';
   view: ViewState;
+  hydrated: boolean;
   setView: (view: ViewState) => void;
   loadSettings: () => Promise<void>;
   updateSetting: (key: string, value: unknown) => Promise<void>;
@@ -37,6 +38,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...defaults,
   resolvedTheme: 'light',
   view: 'chat',
+  hydrated: false,
 
   setView: (view: ViewState) => set({ view }),
 
@@ -45,7 +47,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // Browser mode: use localStorage as fallback
       const saved = loadFromLocalStorage();
       const merged = { ...defaults, ...saved };
-      set({ ...merged, resolvedTheme: merged.theme === 'dark' ? 'dark' : 'light' });
+      set({ ...merged, resolvedTheme: merged.theme === 'dark' ? 'dark' : 'light', hydrated: true });
       return;
     }
     try {
@@ -64,9 +66,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         resolvedTheme = merged.theme;
       }
 
-      set({ ...merged, resolvedTheme });
+      set({ ...merged, resolvedTheme, hydrated: true });
     } catch {
-      set({ ...defaults, resolvedTheme: 'light' });
+      set({ ...defaults, resolvedTheme: 'light', hydrated: true });
     }
   },
 
@@ -90,7 +92,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           }
         }
         // Persist to localStorage (browser fallback)
-        const { resolvedTheme: _r, view: _v, setView: _sv, loadSettings: _ls, updateSetting: _us, ...settingsOnly } = next;
+        const { resolvedTheme: _r, view: _v, hydrated: _h, setView: _sv, loadSettings: _ls, updateSetting: _us, ...settingsOnly } = next;
         saveToLocalStorage(settingsOnly as Settings);
         return next;
       });

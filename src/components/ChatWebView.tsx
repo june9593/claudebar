@@ -6,6 +6,7 @@ export function ChatWebView() {
   const authMode = useSettingsStore((s) => s.authMode);
   const authToken = useSettingsStore((s) => s.authToken);
   const authPassword = useSettingsStore((s) => s.authPassword);
+  const hydrated = useSettingsStore((s) => s.hydrated);
   const setView = useSettingsStore((s) => s.setView);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -15,7 +16,7 @@ export function ChatWebView() {
 
   // Timeout fallback: if iframe hasn't loaded after 10s, show error
   useEffect(() => {
-    if (!loading || !gatewayUrl || authIncomplete) return;
+    if (!loading || !gatewayUrl || authIncomplete || !hydrated) return;
     const timer = setTimeout(() => {
       if (loading) {
         setLoading(false);
@@ -23,7 +24,13 @@ export function ChatWebView() {
       }
     }, 10000);
     return () => clearTimeout(timer);
-  }, [loading, gatewayUrl, authIncomplete]);
+  }, [loading, gatewayUrl, authIncomplete, hydrated]);
+
+  // Wait for settings to hydrate from disk before deciding to mount iframe
+  // (otherwise we mount with default auth, which OpenClaw rejects)
+  if (!hydrated) {
+    return <div style={{ width: '100%', height: '100%', background: 'var(--color-bg-primary)' }} />;
+  }
 
   if (!gatewayUrl || authIncomplete) {
     return <WelcomeState onOpenSettings={() => setView('settings')} needsAuth={authIncomplete} />;
