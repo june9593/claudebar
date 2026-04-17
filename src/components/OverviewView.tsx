@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { formatRelative } from '../utils/format';
 
 interface HealthData {
   ok: boolean;
@@ -40,76 +41,73 @@ export function OverviewView() {
 
     setLoading(true);
 
-    let healthReqId = '';
-    let channelsReqId = '';
-    let statusReqId = '';
-    let sessionsReqId = '';
-    let cronReqId = '';
-    const got = { health: false, channels: false, status: false, sessions: false, cron: false };
+    type ReqKey = 'health' | 'channels' | 'status' | 'sessions' | 'cron';
+    const reqIds: Partial<Record<ReqKey, string>> = {};
+    const got: Record<ReqKey, boolean> = { health: false, channels: false, status: false, sessions: false, cron: false };
+
+    const requests: { key: ReqKey; method: string; onPayload: (p: unknown) => void }[] = [
+      {
+        key: 'health', method: 'health',
+        onPayload: (p) => {
+          const hp = p as { ok?: boolean; durationMs?: number; duration?: number; ts?: number } | undefined;
+          if (hp) setHealth({ ok: hp.ok ?? true, durationMs: hp.durationMs ?? hp.duration, ts: hp.ts });
+          setLastCheck(Date.now());
+        },
+      },
+      {
+        key: 'channels', method: 'channels.status',
+        onPayload: (p) => {
+          const cp = p as { channels?: Record<string, { configured?: boolean; running?: boolean }> } | undefined;
+          if (cp?.channels && typeof cp.channels === 'object' && !Array.isArray(cp.channels)) {
+            setChannels(Object.entries(cp.channels).map(([id, info]) => ({
+              id, configured: info.configured ?? false, running: info.running ?? false,
+            })));
+          }
+        },
+      },
+      {
+        key: 'status', method: 'status',
+        onPayload: (p) => {
+          const sp = p as { heartbeat?: { agents?: AgentInfo[] } } | undefined;
+          if (sp?.heartbeat?.agents) setAgents(sp.heartbeat.agents);
+        },
+      },
+      {
+        key: 'sessions', method: 'sessions.list',
+        onPayload: (p) => {
+          const ep = p as { count?: number; sessions?: unknown[] } | undefined;
+          if (ep) setSessionCount(ep.count ?? ep.sessions?.length ?? null);
+        },
+      },
+      {
+        key: 'cron', method: 'cron.status',
+        onPayload: (p) => {
+          const rp = p as { enabled?: boolean; nextWakeAtMs?: number } | undefined;
+          if (rp) setCron({ enabled: rp.enabled ?? false, nextWakeAtMs: rp.nextWakeAtMs });
+        },
+      },
+    ];
 
     const checkDone = () => {
-      if (got.health && got.channels && got.status && got.sessions && got.cron) {
-        setLoading(false);
-        unsub();
-      }
+      if (requests.every(r => got[r.key])) { setLoading(false); unsub(); }
     };
 
     const unsub = api.onResponse((resp) => {
-      if (resp.id === healthReqId) {
-        if (resp.ok) {
-          const p = resp.payload as { ok?: boolean; durationMs?: number; duration?: number; ts?: number } | undefined;
-          if (p) setHealth({ ok: p.ok ?? true, durationMs: p.durationMs ?? p.duration, ts: p.ts });
-          setLastCheck(Date.now());
+      for (const req of requests) {
+        if (resp.id && resp.id === reqIds[req.key]) {
+          if (resp.ok) req.onPayload(resp.payload);
+          got[req.key] = true;
+          checkDone();
+          break;
         }
-        got.health = true;
-        checkDone();
-      }
-      if (resp.id === channelsReqId) {
-        if (resp.ok) {
-          const p = resp.payload as { channels?: Record<string, { configured?: boolean; running?: boolean }> } | undefined;
-          if (p?.channels && typeof p.channels === 'object' && !Array.isArray(p.channels)) {
-            const list: ChannelInfo[] = Object.entries(p.channels).map(([id, info]) => ({
-              id,
-              configured: info.configured ?? false,
-              running: info.running ?? false,
-            }));
-            setChannels(list);
-          }
-        }
-        got.channels = true;
-        checkDone();
-      }
-      if (resp.id === statusReqId) {
-        if (resp.ok) {
-          const p = resp.payload as { heartbeat?: { agents?: AgentInfo[] } } | undefined;
-          if (p?.heartbeat?.agents) setAgents(p.heartbeat.agents);
-        }
-        got.status = true;
-        checkDone();
-      }
-      if (resp.id === sessionsReqId) {
-        if (resp.ok) {
-          const p = resp.payload as { count?: number; sessions?: unknown[] } | undefined;
-          if (p) setSessionCount(p.count ?? p.sessions?.length ?? null);
-        }
-        got.sessions = true;
-        checkDone();
-      }
-      if (resp.id === cronReqId) {
-        if (resp.ok) {
-          const p = resp.payload as { enabled?: boolean; nextWakeAtMs?: number } | undefined;
-          if (p) setCron({ enabled: p.enabled ?? false, nextWakeAtMs: p.nextWakeAtMs });
-        }
-        got.cron = true;
-        checkDone();
       }
     });
 
-    api.send('health', {}).then(r => { if (r.ok && r.id) healthReqId = r.id; else got.health = true; }).catch(() => { got.health = true; });
-    api.send('channels.status', {}).then(r => { if (r.ok && r.id) channelsReqId = r.id; else got.channels = true; }).catch(() => { got.channels = true; });
-    api.send('status', {}).then(r => { if (r.ok && r.id) statusReqId = r.id; else got.status = true; }).catch(() => { got.status = true; });
-    api.send('sessions.list', {}).then(r => { if (r.ok && r.id) sessionsReqId = r.id; else got.sessions = true; }).catch(() => { got.sessions = true; });
-    api.send('cron.status', {}).then(r => { if (r.ok && r.id) cronReqId = r.id; else got.cron = true; }).catch(() => { got.cron = true; });
+    for (const req of requests) {
+      api.send(req.method, {})
+        .then(r => { if (r.ok && r.id) reqIds[req.key] = r.id; else got[req.key] = true; })
+        .catch(() => { got[req.key] = true; });
+    }
 
     const timer = setTimeout(() => { setLoading(false); unsub(); }, 8000);
     return () => { clearTimeout(timer); unsub(); };
@@ -311,23 +309,6 @@ export function OverviewView() {
       </div>
     </div>
   );
-}
-
-function formatRelative(ms: number): string {
-  const diff = ms - Date.now();
-  const abs = Math.abs(diff);
-  const future = diff > 0;
-  if (abs < 60_000) return future ? 'in <1m' : 'just now';
-  if (abs < 3600_000) {
-    const m = Math.round(abs / 60_000);
-    return future ? `in ${m}m` : `${m}m ago`;
-  }
-  if (abs < 86400_000) {
-    const h = Math.round(abs / 3600_000);
-    return future ? `in ${h}h` : `${h}h ago`;
-  }
-  const d = Math.round(abs / 86400_000);
-  return future ? `in ${d}d` : `${d}d ago`;
 }
 
 function StatCard({ label, value, valueColor, sub }: { label: string; value: string; valueColor?: string; sub?: string }) {

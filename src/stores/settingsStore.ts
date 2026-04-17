@@ -11,7 +11,7 @@ interface SettingsState extends Settings {
 
 const defaults: Settings = {
   gatewayUrl: 'http://localhost:18789',
-  authMode: 'token',
+  authMode: 'none',
   authToken: '',
   authPassword: '',
   theme: 'system',

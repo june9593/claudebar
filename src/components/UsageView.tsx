@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState } from 'react';
+import { useWsRequest } from '../hooks/useWsRequest';
 
 type DateRange = 'today' | '7d' | '30d';
 
@@ -16,10 +17,8 @@ interface SessionUsage {
   };
 }
 
-interface UsageData {
-  sessions: SessionUsage[];
-  totalTokens: number;
-  totalCost: number;
+interface UsagePayload {
+  sessions?: SessionUsage[];
 }
 
 function formatTokens(n: number): string {
@@ -60,41 +59,19 @@ function formatSessionKey(key: string): string {
 }
 
 export function UsageView() {
-  const [data, setData] = useState<UsageData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<DateRange>('7d');
-  const reqIdRef = useRef<string | null>(null);
+  const { startDate, endDate } = getDateRange(range);
 
-  const fetchUsage = useCallback((dateRange: DateRange) => {
-    setLoading(true);
-    setData(null);
-    const { startDate, endDate } = getDateRange(dateRange);
-    window.electronAPI.ws.send('sessions.usage', { startDate, endDate, limit: 100 }).then(({ ok, id }) => {
-      if (ok && id) reqIdRef.current = id;
-    });
-  }, []);
+  const { data: payload, loading } = useWsRequest<UsagePayload>(
+    'sessions.usage',
+    { startDate, endDate, limit: 100 },
+    [startDate, endDate],
+  );
 
-  useEffect(() => {
-    fetchUsage(range);
-
-    const unsub = window.electronAPI.ws.onResponse((resp) => {
-      if (resp.id === reqIdRef.current && resp.ok && resp.payload) {
-        const p = resp.payload as { sessions?: SessionUsage[] };
-        if (p.sessions) {
-          const sessions = p.sessions;
-          const totalTokens = sessions.reduce((s, x) => s + (x.usage?.totalTokens ?? 0), 0);
-          const totalCost = sessions.reduce((s, x) => s + (x.usage?.totalCost ?? 0), 0);
-          setData({ sessions, totalTokens, totalCost });
-        } else {
-          setData({ sessions: [], totalTokens: 0, totalCost: 0 });
-        }
-        setLoading(false);
-        reqIdRef.current = null;
-      }
-    });
-
-    return unsub;
-  }, [fetchUsage, range]);
+  const sessions = payload?.sessions ?? [];
+  const totalTokens = sessions.reduce((s, x) => s + (x.usage?.totalTokens ?? 0), 0);
+  const totalCost = sessions.reduce((s, x) => s + (x.usage?.totalCost ?? 0), 0);
+  const data = payload ? { sessions, totalTokens, totalCost } : null;
 
   const handleRangeChange = (r: DateRange) => {
     setRange(r);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { ViewShell } from './views/ViewShell';
+import { LoadingState, ErrorState, EmptyState } from './views/ViewStates';
 
 interface CronSchedule {
   kind: string;
@@ -202,53 +203,6 @@ export function CronView() {
 
 /* ── Shared helpers ── */
 
-function ViewShell({ title, children, onRefresh }: { title: string; children: React.ReactNode; onRefresh?: () => void }) {
-  return (
-    <div style={{
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--color-bg-chat)',
-    }}>
-      <div style={{ padding: '12px 14px 8px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '17px',
-          fontWeight: 500,
-          color: 'var(--color-text-primary)',
-        }}>
-          {title}
-        </span>
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            title="Refresh"
-            style={{
-              width: '28px',
-              height: '28px',
-              borderRadius: '6px',
-              border: 'none',
-              background: 'transparent',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--color-text-tertiary)',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-hover)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-          >
-            <RefreshCw size={14} strokeWidth={1.75} />
-          </button>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
-
 function StatusBadge({ enabled }: { enabled: boolean }) {
   return (
     <span style={{
@@ -265,52 +219,3 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
   );
 }
 
-function LoadingState() {
-  return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'var(--color-text-tertiary)',
-      fontSize: '13px',
-      fontFamily: 'var(--font-sans)',
-    }}>
-      Loading…
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'var(--color-status-disconnected)',
-      fontSize: '13px',
-      fontFamily: 'var(--font-sans)',
-      padding: '0 14px',
-      textAlign: 'center',
-    }}>
-      {message}
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div style={{
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: 'var(--color-text-tertiary)',
-      fontSize: '13px',
-      fontFamily: 'var(--font-sans)',
-    }}>
-      {message}
-    </div>
-  );
-}

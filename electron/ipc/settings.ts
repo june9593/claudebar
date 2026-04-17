@@ -8,6 +8,7 @@ interface AppSettings {
   authToken: string;
   authPassword: string;
   theme: 'light' | 'dark' | 'system';
+  chatMode: 'compact' | 'classic';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
 }
@@ -18,6 +19,7 @@ const defaults: AppSettings = {
   authToken: '',
   authPassword: '',
   theme: 'system',
+  chatMode: 'compact',
   hideOnClickOutside: false,
   autoLaunch: false,
 };
@@ -59,7 +61,7 @@ export function setupSettingsIPC() {
   ipcMain.handle('settings:set', (_, key: string, value: unknown) => {
     if (typeof key !== 'string' || !key) return;
 
-    const allowedKeys = ['gatewayUrl', 'authMode', 'authToken', 'authPassword', 'theme', 'hideOnClickOutside', 'autoLaunch'];
+    const allowedKeys = ['gatewayUrl', 'authMode', 'authToken', 'authPassword', 'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch'];
     if (!allowedKeys.includes(key)) return;
 
     const settings = readStore();

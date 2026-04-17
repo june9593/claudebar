@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Session } from '../hooks/useClawChat';
+import { formatSessionName } from '../utils/format';
 
 interface ChatHistoryProps {
   sessions: Session[];
@@ -7,14 +8,6 @@ interface ChatHistoryProps {
   onSwitchSession: (key: string) => void;
   onDeleteSession: (key: string) => void;
   onNewChat: () => void;
-}
-
-function formatSessionName(session: { key: string; displayName?: string }): string {
-  if (session.displayName) return session.displayName;
-  const parts = session.key.split(':');
-  const last = parts[parts.length - 1];
-  if (last.startsWith('clawbar-')) return 'New Chat';
-  return last.charAt(0).toUpperCase() + last.slice(1);
 }
 
 export function ChatHistory({

@@ -14,7 +14,7 @@ const PetApp: React.FC = () => {
 
   // Listen for ws:status from main process
   useEffect(() => {
-    const cleanup = window.electronAPI.pet.onStatus((status) => {
+    const cleanup = window.electronAPI.ws.onStatus((status) => {
       if (status.connected) {
         setConnectionStatus('connected');
         // Clear disconnected state when reconnected
@@ -31,7 +31,7 @@ const PetApp: React.FC = () => {
 
   // Listen for approval events → notification state
   useEffect(() => {
-    const cleanup = window.electronAPI.pet.onApproval(() => {
+    const cleanup = window.electronAPI.ws.onApproval(() => {
       setPetState('notification');
     });
     return cleanup;

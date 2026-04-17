@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useWsRequest } from '../hooks/useWsRequest';
+import { ViewShell } from './views/ViewShell';
+import { LoadingState, ErrorState, EmptyState } from './views/ViewStates';
 
 interface Skill {
   name: string;
@@ -13,34 +15,8 @@ interface Skill {
 }
 
 export function SkillsView() {
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const api = window.electronAPI?.ws;
-    if (!api) { setLoading(false); return; }
-
-    let cancelled = false;
-
-    const unsub = api.onResponse((resp) => {
-      if (cancelled) return;
-      const p = resp.payload as Record<string, unknown> | undefined;
-      if (resp.ok && p && 'skills' in p) {
-        setSkills((p.skills as Skill[]) ?? []);
-        setLoading(false);
-      }
-    });
-
-    api.send('skills.status', {}).catch(() => {
-      if (!cancelled) {
-        setError('Failed to send skills.status');
-        setLoading(false);
-      }
-    });
-
-    return () => { cancelled = true; unsub(); };
-  }, []);
+  const { data, loading, error } = useWsRequest<{ skills: Skill[] }>('skills.status', {});
+  const skills = data?.skills ?? [];
 
   return (
     <ViewShell title="Skills">
@@ -49,7 +25,7 @@ export function SkillsView() {
       ) : error ? (
         <ErrorState message={error} />
       ) : skills.length === 0 ? (
-        <EmptyState />
+        <EmptyState message="No skills found" />
       ) : (
         <div style={{
           flex: 1,
@@ -143,63 +119,5 @@ function Badge({ label, variant }: { label: string; variant?: 'muted' | 'warn' }
     }}>
       {label}
     </span>
-  );
-}
-
-function ViewShell({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{
-      flex: 1,
-      minHeight: 0,
-      display: 'flex',
-      flexDirection: 'column',
-      background: 'var(--color-bg-chat)',
-    }}>
-      <div style={{ padding: '12px 14px 8px', flexShrink: 0 }}>
-        <span style={{
-          fontFamily: 'var(--font-display)',
-          fontSize: '17px',
-          fontWeight: 500,
-          color: 'var(--color-text-primary)',
-        }}>
-          {title}
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-text-tertiary)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-    }}>
-      Loading…
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-status-disconnected)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-      padding: '0 14px', textAlign: 'center',
-    }}>
-      {message}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div style={{
-      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: 'var(--color-text-tertiary)', fontSize: '13px', fontFamily: 'var(--font-sans)',
-    }}>
-      No skills found
-    </div>
   );
 }

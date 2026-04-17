@@ -31,8 +31,6 @@ export interface ElectronAPI {
     onClick(): void;
     onDrag(x: number, y: number): void;
     onRightClick(): void;
-    onStatus(cb: (status: { connected: boolean; error: string | null }) => void): () => void;
-    onApproval(cb: (payload: unknown) => void): () => void;
   };
 }
 

@@ -59,15 +59,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onClick: () => ipcRenderer.send('pet:click'),
     onDrag: (x: number, y: number) => ipcRenderer.send('pet:drag', x, y),
     onRightClick: () => ipcRenderer.send('pet:right-click'),
-    onStatus: (cb: (status: { connected: boolean; error: string | null }) => void) => {
-      const handler = (_e: unknown, status: { connected: boolean; error: string | null }) => cb(status);
-      ipcRenderer.on('ws:status', handler);
-      return () => ipcRenderer.removeListener('ws:status', handler);
-    },
-    onApproval: (cb: (payload: unknown) => void) => {
-      const handler = (_e: unknown, payload: unknown) => cb(payload);
-      ipcRenderer.on('ws:approval', handler);
-      return () => ipcRenderer.removeListener('ws:approval', handler);
-    },
   },
 });
