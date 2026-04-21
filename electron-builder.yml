@@ -33,3 +33,8 @@ files:
   - "!node_modules/**/*"
 
 asar: true
+compression: maximum
+npmRebuild: false
+electronLanguages:
+  - en
+  - zh_CN
