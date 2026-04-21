@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name to publish (e.g. v1.0.0). Leave empty for a draft.'
+        required: false
+
+jobs:
+  build:
+    name: Build & release (macOS arm64)
+    runs-on: macos-14  # Apple Silicon runner
+    permissions:
+      contents: write   # needed to create the GitHub Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer + main process
+        run: npm run build
+
+      - name: Package DMG (arm64)
+        env:
+          # GitHub Releases publishing — auto-provided
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ─── To enable code signing + notarization later, populate these:
+          # CSC_LINK: ${{ secrets.MAC_CERTS }}              # base64 .p12
+          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npx electron-builder --mac dmg --arm64 --publish never
+
+      - name: Upload DMG as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clawbar-macos-arm64
+          path: release-artifacts/*.dmg
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: release-artifacts/*.dmg
