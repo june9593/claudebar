@@ -12,7 +12,19 @@ macOS menu bar chat client and management dashboard for [OpenClaw](https://githu
 - **Light / Dark Theme** — Follows system or manual override
 - **Desktop Pet** — Optional floating 🦞 mascot window
 
-## Quick Start
+## Install (pre-built DMG)
+
+Download the latest `.dmg` from the [Releases page](https://github.com/june9593/clawbar/releases), open it and drag **ClawBar** to `/Applications`.
+
+> **Heads up — the app is not code-signed.** macOS Gatekeeper will refuse to launch it the first time. Either:
+>
+> - In Finder, **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog. (Only needed once.)
+> - Or run in Terminal:
+>   ```bash
+>   xattr -dr com.apple.quarantine /Applications/ClawBar.app
+>   ```
+
+## Quick Start (from source)
 
 ### Prerequisites
 
@@ -23,7 +35,7 @@ macOS menu bar chat client and management dashboard for [OpenClaw](https://githu
 ### Install & Run
 
 ```bash
-git clone https://github.com/<you>/clawbar.git
+git clone https://github.com/june9593/clawbar.git
 cd clawbar
 npm install
 npm run dev:electron
