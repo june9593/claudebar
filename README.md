@@ -89,11 +89,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full details.
 ## Documentation
 
 - [Product Requirements](docs/PRD.md)
-- [UI/UX Design Spec](docs/DESIGN.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Test Plan](docs/TEST-PLAN.md)
-- [Agent Development Prompt](docs/AGENT-PROMPT.md) — For AI coding agents
-- [Design Tokens](docs/design-tokens.json)
 
 ## License
 

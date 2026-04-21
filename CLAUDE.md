@@ -1,6 +1,6 @@
 # ClawBar
 
-macOS menu bar chat client and management dashboard for OpenClaw. Dual-mode: compact native WS chat + classic iframe embed. Left sidebar with 10 views (Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings).
+macOS menu bar chat client and management dashboard for OpenClaw. Dual-mode: compact native WebSocket chat + classic iframe embed of the OpenClaw Control UI. Left sidebar with 10 views (Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings).
 
 ## Commands
 
@@ -22,7 +22,7 @@ npm run pack:mac:dmg:arm64  # Package macOS DMG (Apple Silicon)
 - **Security** — `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`
 - **State** — Zustand stores, no React Context
 - **Icons** — Lucide React only (`lucide-react`), size 18, strokeWidth 1.75
-- **WS protocol** — OpenClaw custom framing (`type:"req"`, NOT JSON-RPC). See `/memories/repo/openclaw-ws-protocol.md`
+- **WS protocol** — OpenClaw custom framing (`type:"req"`, NOT JSON-RPC)
 
 ## Architecture
 
@@ -32,17 +32,4 @@ npm run pack:mac:dmg:arm64  # Package macOS DMG (Apple Silicon)
 - **Classic mode**: iframe loads `http://<gateway>:18789/` with CSP header stripping
 - **Compact mode**: Native WS chat via `ws:connect/send/status/history/chat-event/approval` IPC channels
 
-## Agent Protocol
-
-See `AGENTS.md` for roles. Agent definitions in `.claude/agents/`.
-
-### File Ownership
-
-| Owner | Writable |
-|-------|----------|
-| pm-agent | `docs/PRD.md` |
-| designer-agent | `docs/DESIGN.md`, `docs/design-tokens.json` |
-| dev-agent | `electron/`, `src/`, `types/`, config files |
-| tester-agent | `docs/TEST-PLAN.md` |
-| Orchestrator | `AGENTS.md`, `progress.json`, `CLAUDE.md` |
-| Nobody modifies | `docs/ARCHITECTURE.md` (orchestrator only) |
+See `docs/ARCHITECTURE.md` for the full system diagram and `docs/PRD.md` for product requirements.

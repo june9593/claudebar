@@ -1,6 +1,5 @@
 # ClawBar — Architecture Document
 
-> **角色**: Developer
 > **版本**: v1.0
 > **日期**: 2026-03-31
 
@@ -110,11 +109,7 @@ clawbar/
 ├── index.html
 └── docs/                         # 项目文档
     ├── PRD.md
-    ├── DESIGN.md
-    ├── ARCHITECTURE.md
-    ├── TEST-PLAN.md
-    ├── AGENT-PROMPT.md
-    └── design-tokens.json
+    └── ARCHITECTURE.md
 ```
 
 ---
