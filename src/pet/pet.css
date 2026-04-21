@@ -100,7 +100,7 @@ html, body {
 }
 .state-hover .left-claw {
   animation: wave-claw 0.6s ease-in-out infinite;
-  transform-origin: 22px 38px;
+  transform-origin: 24px 38px;
 }
 @keyframes hover-grow {
   0% { transform: translateX(-50%) scale(1); }
