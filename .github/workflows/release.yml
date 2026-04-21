@@ -60,4 +60,17 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## Install
+
+            1. Download the `.dmg` below.
+            2. Open it and drag **ClawBar** to **Applications**.
+            3. **First launch** — because the app is **not code-signed**, macOS Gatekeeper will block it. Pick one:
+               - In Finder, **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog.
+               - Or paste this in Terminal once:
+                 ```bash
+                 xattr -dr com.apple.quarantine /Applications/ClawBar.app
+                 ```
+
+            ---
           files: release-artifacts/*.dmg

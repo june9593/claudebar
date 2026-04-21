@@ -12,13 +12,17 @@ mac:
   darkModeSupport: true
 
 dmg:
-  title: ClawBar
-  iconSize: 80
+  title: ClawBar ${version}
+  iconSize: 100
+  window:
+    width: 540
+    height: 380
   contents:
-    - x: 130
-      y: 220
-    - x: 410
-      y: 220
+    - x: 140
+      y: 200
+      type: file
+    - x: 400
+      y: 200
       type: link
       path: /Applications
 
@@ -29,7 +33,18 @@ files:
   - dist/**/*
   - dist-electron/**/*
   - resources/**/*
-  - "!node_modules/**/*"
+  - package.json
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
+  - "!**/node_modules/*.d.ts"
+  - "!**/node_modules/.bin"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!.editorconfig"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
 
 asar: true
 compression: maximum
