@@ -2,6 +2,16 @@ import { ipcMain } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 
+interface Channel {
+  id: string;
+  kind: 'openclaw' | 'web';
+  name: string;
+  builtin: boolean;
+  enabled: boolean;
+  url?: string;
+  icon?: string;
+}
+
 interface AppSettings {
   gatewayUrl: string;
   authMode: 'none' | 'token' | 'password';
@@ -11,7 +21,17 @@ interface AppSettings {
   chatMode: 'compact' | 'classic';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
+  channels: Channel[];
+  activeChannelId: string;
 }
+
+const defaultChannels: Channel[] = [
+  { id: 'openclaw', kind: 'openclaw', name: 'OpenClaw',  builtin: true, enabled: true },
+  { id: 'telegram', kind: 'web',      name: 'Telegram',  builtin: true, enabled: true, url: 'https://web.telegram.org/', icon: '✈️' },
+  { id: 'discord',  kind: 'web',      name: 'Discord',   builtin: true, enabled: true, url: 'https://discord.com/app',   icon: '💬' },
+  { id: 'feishu',   kind: 'web',      name: '飞书',      builtin: true, enabled: true, url: 'https://www.feishu.cn/messenger/',     icon: '🪶' },
+  { id: 'lark',     kind: 'web',      name: 'Lark',      builtin: true, enabled: true, url: 'https://www.larksuite.com/messenger/', icon: '🐦' },
+];
 
 const defaults: AppSettings = {
   gatewayUrl: 'http://localhost:18789',
@@ -22,6 +42,8 @@ const defaults: AppSettings = {
   chatMode: 'compact',
   hideOnClickOutside: false,
   autoLaunch: false,
+  channels: defaultChannels,
+  activeChannelId: 'openclaw',
 };
 
 function getConfigPath(): string {
@@ -61,7 +83,11 @@ export function setupSettingsIPC() {
   ipcMain.handle('settings:set', (_, key: string, value: unknown) => {
     if (typeof key !== 'string' || !key) return;
 
-    const allowedKeys = ['gatewayUrl', 'authMode', 'authToken', 'authPassword', 'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch'];
+    const allowedKeys = [
+      'gatewayUrl', 'authMode', 'authToken', 'authPassword',
+      'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch',
+      'channels', 'activeChannelId',
+    ];
     if (!allowedKeys.includes(key)) return;
 
     const settings = readStore();
