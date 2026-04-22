@@ -16,11 +16,21 @@ export function ChannelDock() {
 
   const visible = channels.filter((c) => c.enabled);
 
-  // Anchor the AddChannelMenu just to the right of the + button.
-  let addAnchor = { x: 56, y: 200 };
+  // Anchor the AddChannelMenu near the + button, clamped inside the viewport.
+  // The menu is ~280px wide and ~330px tall.
+  const MENU_W = 280;
+  const MENU_H = 340;
+  let addAnchor = { x: 56, y: 16 };
   if (adding && addBtnRef.current) {
     const r = addBtnRef.current.getBoundingClientRect();
-    addAnchor = { x: r.right + 8, y: Math.max(8, r.top - 280) };
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let x = r.right + 8;
+    let y = r.top - MENU_H + r.height;     // align bottom of menu near button
+    if (x + MENU_W > vw - 8) x = Math.max(8, vw - MENU_W - 8);
+    if (y + MENU_H > vh - 8) y = Math.max(8, vh - MENU_H - 8);
+    if (y < 8) y = 8;
+    addAnchor = { x, y };
   }
 
   return (

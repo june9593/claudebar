@@ -12,7 +12,7 @@ export function OpenClawChannel({ isActive }: Props) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: isActive ? 'flex' : 'none' }}>
+    <div style={{ width: '100%', height: '100%', display: isActive ? 'block' : 'none' }}>
       {chatMode === 'compact'
         ? <CompactChat sidebarOpen={sidebarOpen} onSidebarClose={() => setSidebarOpen(false)} />
         : <ChatWebView />
