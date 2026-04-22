@@ -7,7 +7,7 @@ interface Props {
   isActive: boolean;
 }
 
-// Electron webview is a custom element — declare it for TS/React.
+// Electron webview is a custom element — declare it minimally for TS/React.
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
@@ -16,8 +16,6 @@ declare global {
         React.HTMLAttributes<HTMLElement> & {
           src?: string;
           partition?: string;
-          allowpopups?: boolean | string;
-          useragent?: string;
         },
         HTMLElement
       >;
@@ -29,12 +27,17 @@ export function WebChannel({ channel, isActive }: Props) {
   const webviewRef = useRef<HTMLElement | null>(null);
   const setIcon = useChannelStore((s) => s.setIcon);
 
-  // Capture favicon updates for user-added channels (so the dock icon
-  // stops being 🌐 once the page loads).
+  // Set boolean / non-React-typed attributes imperatively on mount.
+  useEffect(() => {
+    const el = webviewRef.current;
+    if (!el) return;
+    el.setAttribute('allowpopups', '');
+  }, []);
+
+  // Capture favicon updates for user-added channels.
   useEffect(() => {
     const el = webviewRef.current;
     if (!el || channel.builtin) return;
-
     const onFavicon = (e: Event) => {
       const ev = e as Event & { favicons?: string[] };
       const url = ev.favicons?.[0];
@@ -49,7 +52,6 @@ export function WebChannel({ channel, isActive }: Props) {
       ref={(el) => { webviewRef.current = el; }}
       src={channel.url}
       partition={`persist:channel-${channel.id}`}
-      allowpopups={true}
       style={{
         width: '100%',
         height: '100%',

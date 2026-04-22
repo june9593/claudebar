@@ -14,13 +14,13 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
 
   const renderGlyph = () => {
     if (channel.kind === 'openclaw') {
-      return <LobsterIcon size={22} />;
+      return <LobsterIcon size={26} />;
     }
     const icon = channel.icon;
     if (icon.startsWith('http://') || icon.startsWith('https://') || icon.startsWith('data:')) {
       return <img src={icon} alt="" style={{ width: 22, height: 22, borderRadius: 4 }} />;
     }
-    return <span style={{ fontSize: 20, lineHeight: 1 }}>{icon}</span>;
+    return <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>;
   };
 
   return (
@@ -43,10 +43,10 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
       >
         {renderGlyph()}
       </button>
-      {/* Active indicator pill on the left edge */}
+      {/* Active indicator pill on the left edge of the icon */}
       {active && (
         <span style={{
-          position: 'absolute', left: -10, top: 8, width: 3, height: 20,
+          position: 'absolute', left: -2, top: 8, width: 3, height: 20,
           borderRadius: 2, background: 'var(--color-accent)',
         }} />
       )}

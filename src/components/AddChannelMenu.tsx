@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useChannelStore } from '../stores/channelStore';
 import type { WebChannelDef } from '../types';
 
 interface Props {
+  x: number;
+  y: number;
   onClose: () => void;
 }
 
-export function AddChannelMenu({ onClose }: Props) {
+export function AddChannelMenu({ x, y, onClose }: Props) {
   const channels = useChannelStore((s) => s.channels);
   const enableBuiltin = useChannelStore((s) => s.enableBuiltin);
   const setActive = useChannelStore((s) => s.setActive);
@@ -25,20 +28,25 @@ export function AddChannelMenu({ onClose }: Props) {
     onClose();
   };
 
-  return (
-    <div
-      style={{
-        position: 'absolute', left: 56, bottom: 12,
-        width: 280,
-        background: 'var(--color-bg-primary)',
-        border: '0.5px solid var(--color-border-primary)',
-        borderRadius: 12,
-        boxShadow: 'var(--shadow-card)',
-        padding: 12,
-        zIndex: 100,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
+  return createPortal(
+    <>
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+      />
+      <div
+        style={{
+          position: 'fixed', left: x, top: y,
+          width: 280,
+          background: 'var(--color-bg-primary)',
+          border: '0.5px solid var(--color-border-primary)',
+          borderRadius: 12,
+          boxShadow: 'var(--shadow-card)',
+          padding: 12,
+          zIndex: 100,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
       <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: 8 }}>
         Add a channel
       </div>
@@ -117,5 +125,7 @@ export function AddChannelMenu({ onClose }: Props) {
         </button>
       </div>
     </div>
+    </>,
+    document.body,
   );
 }

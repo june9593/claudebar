@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Channel } from '../types';
 import { useChannelStore } from '../stores/channelStore';
 
@@ -43,7 +44,7 @@ export function ChannelContextMenu({ channel, x, y, onClose }: Props) {
 
   const isOpenClaw = channel.kind === 'openclaw';
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       style={{
@@ -90,7 +91,8 @@ export function ChannelContextMenu({ channel, x, y, onClose }: Props) {
           )}
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
