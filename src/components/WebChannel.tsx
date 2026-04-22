@@ -16,6 +16,7 @@ declare global {
         React.HTMLAttributes<HTMLElement> & {
           src?: string;
           partition?: string;
+          useragent?: string;
         },
         HTMLElement
       >;
@@ -23,21 +24,22 @@ declare global {
   }
 }
 
+const MOBILE_UA =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) ' +
+  'AppleWebKit/605.1.15 (KHTML, like Gecko) ' +
+  'Version/17.4 Mobile/15E148 Safari/604.1';
+
 export function WebChannel({ channel, isActive }: Props) {
   const webviewRef = useRef<HTMLElement | null>(null);
   const setIcon = useChannelStore((s) => s.setIcon);
 
-  // Set boolean / non-React-typed attributes imperatively on mount.
+  // `allowpopups` is a boolean in HTMLAttributes typing; set imperatively
+  // (also runs in time because the webview hasn't navigated yet — Electron
+  // reads it on the dom-ready event).
   useEffect(() => {
     const el = webviewRef.current;
     if (!el) return;
     el.setAttribute('allowpopups', '');
-    // Pretend to be a mobile browser so IM web apps return their phone
-    // layout — much easier to read inside a narrow menu-bar window.
-    el.setAttribute(
-      'useragent',
-      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
-    );
   }, []);
 
   // Capture favicon updates for user-added channels.
@@ -58,6 +60,7 @@ export function WebChannel({ channel, isActive }: Props) {
       ref={(el) => { webviewRef.current = el; }}
       src={channel.url}
       partition={`persist:channel-${channel.id}`}
+      useragent={MOBILE_UA}
       style={{
         width: '100%',
         height: '100%',

@@ -53,7 +53,7 @@ export default function App() {
           <div style={{
             position: 'absolute', inset: 0,
             background: 'var(--color-bg-primary)',
-            zIndex: 5,
+            zIndex: 200,
           }}>
             <SettingsPanel />
           </div>
