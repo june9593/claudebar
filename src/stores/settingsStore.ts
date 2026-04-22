@@ -89,7 +89,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         if (value === 'classic') {
           window.electronAPI?.window?.setSize(800, 700);
         } else {
-          window.electronAPI?.window?.setSize(380, 560);
+          window.electronAPI?.window?.setSize(440, 560);
         }
       }
       set((s) => {
