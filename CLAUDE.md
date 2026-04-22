@@ -1,6 +1,6 @@
 # ClawBar
 
-macOS menu bar chat client and management dashboard for OpenClaw. Dual-mode: compact native WebSocket chat + classic iframe embed of the OpenClaw Control UI. Left sidebar with 10 views (Overview, Chat, Approvals, Sessions, Usage, Cron, Agents, Skills, Logs, Settings).
+macOS menu bar chat client and management dashboard for OpenClaw plus a multi-channel IM hub. A 48 px channel dock on the left switches between OpenClaw (compact native chat / classic iframe + 10 operator views) and any number of web-based IM channels (Telegram, Discord, Feishu, Lark, or user-added URLs). Channels persist their login state across launches via Electron `<webview>` partitions.
 
 ## Commands
 

@@ -63,7 +63,10 @@ export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSetting
         onClick={onClose}
         style={{
           position: 'fixed',
-          inset: 0,
+          top: 'var(--title-bar-height)',
+          left: 48,
+          right: 0,
+          bottom: 0,
           background: 'rgba(0, 0, 0, 0.3)',
           zIndex: 90,
           opacity: isOpen ? 1 : 0,
@@ -78,13 +81,13 @@ export function Sidebar({ isOpen, onClose, activeNav, onNavChange, onOpenSetting
         style={{
           position: 'fixed',
           top: 'var(--title-bar-height)',
-          left: 0,
+          left: 48,
           bottom: 0,
           width: '200px',
           background: 'var(--color-bg-secondary)',
           borderRight: '0.5px solid var(--color-border-secondary)',
           zIndex: 100,
-          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(calc(-100% - 48px))',
           transition: 'transform 200ms ease-out',
           display: 'flex',
           flexDirection: 'column',

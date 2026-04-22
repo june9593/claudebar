@@ -1,12 +1,20 @@
 import { useState } from 'react';
-import { Menu, Pin, PinOff, RotateCw, Settings } from 'lucide-react';
+import { ArrowLeft, Menu, Pin, PinOff, RotateCw, Settings } from 'lucide-react';
 import { LobsterIcon } from './LobsterIcon';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useWebViewStore } from '../stores/webviewStore';
+import { useChannelStore } from '../stores/channelStore';
 
 interface TitleBarProps {
   onToggleSidebar?: () => void;
 }
+
+// Electron <webview> exposes goBack / canGoBack / reload as element methods.
+type WebviewEl = HTMLElement & {
+  goBack?: () => void;
+  canGoBack?: () => boolean;
+  reload?: () => void;
+};
 
 export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   const view = useSettingsStore((s) => s.view);
@@ -14,6 +22,8 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   const gatewayUrl = useSettingsStore((s) => s.gatewayUrl);
   const chatMode = useSettingsStore((s) => s.chatMode);
   const reloadWebView = useWebViewStore((s) => s.reload);
+  const activeChannelId = useChannelStore((s) => s.activeChannelId);
+  const activeWebview = useChannelStore((s) => s.activeWebview) as WebviewEl | null;
   const [pinned, setPinned] = useState(false);
 
   const handleTogglePin = async () => {
@@ -26,6 +36,16 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
   };
 
   const hasGateway = !!gatewayUrl;
+  const isWebChannel = activeChannelId !== 'openclaw';
+
+  const goBack = () => {
+    try {
+      if (activeWebview?.canGoBack?.()) activeWebview.goBack?.();
+    } catch { /* ignore */ }
+  };
+  const reloadWeb = () => {
+    try { activeWebview?.reload?.(); } catch { /* ignore */ }
+  };
 
   return (
     <div
@@ -84,11 +104,21 @@ export function TitleBar({ onToggleSidebar }: TitleBarProps) {
         }}>
           ClawBar
         </div>
+        {isWebChannel && (
+          <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', marginLeft: 4 }}>
+            <TitleButton onClick={goBack} title="后退">
+              <ArrowLeft size={14} strokeWidth={1.75} />
+            </TitleButton>
+            <TitleButton onClick={reloadWeb} title="刷新">
+              <RotateCw size={14} strokeWidth={1.75} />
+            </TitleButton>
+          </div>
+        )}
       </div>
 
       {/* Right buttons */}
       <div className="titlebar-no-drag" style={{ display: 'flex', alignItems: 'center', gap: '1px', height: '44px' }}>
-        {chatMode === 'classic' && view === 'chat' && (
+        {chatMode === 'classic' && view === 'chat' && !isWebChannel && (
           <TitleButton
             onClick={reloadWebView}
             title="重新加载"

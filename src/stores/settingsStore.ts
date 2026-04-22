@@ -19,6 +19,14 @@ const defaults: Settings = {
   chatMode: 'compact',
   hideOnClickOutside: false,
   autoLaunch: false,
+  channels: [
+    { id: 'openclaw', kind: 'openclaw', name: 'OpenClaw',  builtin: true, enabled: true },
+    { id: 'telegram', kind: 'web',      name: 'Telegram',  builtin: true, enabled: true, url: 'https://web.telegram.org/', icon: '✈️' },
+    { id: 'discord',  kind: 'web',      name: 'Discord',   builtin: true, enabled: true, url: 'https://discord.com/app',   icon: '💬' },
+    { id: 'feishu',   kind: 'web',      name: '飞书',      builtin: true, enabled: true, url: 'https://www.feishu.cn/messenger/',     icon: '🪶' },
+    { id: 'lark',     kind: 'web',      name: 'Lark',      builtin: true, enabled: true, url: 'https://www.larksuite.com/messenger/', icon: '🐦' },
+  ],
+  activeChannelId: 'openclaw',
 };
 
 const LS_KEY = 'clawbar-settings';
@@ -81,7 +89,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         if (value === 'classic') {
           window.electronAPI?.window?.setSize(800, 700);
         } else {
-          window.electronAPI?.window?.setSize(380, 560);
+          window.electronAPI?.window?.setSize(390, 720);
         }
       }
       set((s) => {

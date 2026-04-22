@@ -1,28 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { TitleBar } from './components/TitleBar';
-import { ChatWebView } from './components/ChatWebView';
-import { CompactChat } from './components/CompactChat';
 import { SettingsPanel } from './components/SettingsPanel';
+import { ChannelDock } from './components/ChannelDock';
+import { ChannelHost } from './components/ChannelHost';
 import { useSettingsStore } from './stores/settingsStore';
+import { useChannelStore } from './stores/channelStore';
 
 export default function App() {
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
-  const chatMode = useSettingsStore((s) => s.chatMode);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const hydrated = useSettingsStore((s) => s.hydrated);
   const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const syncFromSettings = useChannelStore((s) => s.syncFromSettings);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+  useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, [resolvedTheme]);
 
-  // Listen for navigate IPC from main process (tray/pet right-click → Settings)
   useEffect(() => {
     const unsub = window.electronAPI?.window?.onNavigate?.((v: string) => {
       if (v === 'settings') setView('settings');
@@ -31,14 +30,11 @@ export default function App() {
     return () => unsub?.();
   }, [setView]);
 
-  // Prevent phantom scroll on the root container
-  // (overflow:hidden containers can still be scrolled by focus/autoscroll)
   useEffect(() => {
     const el = rootRef.current;
     if (!el) return;
     const fix = () => { if (el.scrollTop !== 0) el.scrollTop = 0; };
     fix();
-    // Fix on any scroll event (catches focus-induced scroll)
     el.addEventListener('scroll', fix, { passive: true });
     return () => el.removeEventListener('scroll', fix);
   }, []);
@@ -49,27 +45,19 @@ export default function App() {
       className="flex flex-col h-full"
       style={{ borderRadius: '12px', overflow: 'clip' }}
     >
-      <TitleBar onToggleSidebar={chatMode === 'compact' && view === 'chat' ? () => setSidebarOpen(prev => !prev) : undefined} />
-      <div className="flex-1 min-h-0 relative">
-        <div style={{
-          position: 'absolute', inset: 0,
-          opacity: view === 'settings' ? 1 : 0,
-          pointerEvents: view === 'settings' ? 'auto' : 'none',
-          transition: 'opacity 0.2s ease, transform 0.2s ease',
-          transform: view === 'settings' ? 'translateY(0)' : 'translateY(8px)',
-          zIndex: view === 'settings' ? 2 : 1,
-        }}>
-          <SettingsPanel />
-        </div>
-        <div style={{
-          position: 'absolute', inset: 0,
-          opacity: view === 'chat' ? 1 : 0,
-          pointerEvents: view === 'chat' ? 'auto' : 'none',
-          transition: 'opacity 0.2s ease',
-          zIndex: view === 'chat' ? 2 : 1,
-        }}>
-          {chatMode === 'compact' ? <CompactChat sidebarOpen={sidebarOpen} onSidebarClose={() => setSidebarOpen(false)} /> : <ChatWebView />}
-        </div>
+      <TitleBar />
+      <div className="flex-1 min-h-0 relative" style={{ display: 'flex' }}>
+        <ChannelDock />
+        <ChannelHost />
+        {view === 'settings' && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'var(--color-bg-primary)',
+            zIndex: 200,
+          }}>
+            <SettingsPanel />
+          </div>
+        )}
       </div>
     </div>
   );
