@@ -1,10 +1,10 @@
 # ClawBar — Architecture
 
-> 版本: v2.0 — 2026-04-21
+> 版本: v2.1 — 2026-04-22
 
 ## 1. Overview
 
-ClawBar is a frameless macOS menu bar Electron app. It talks to a self-hosted [OpenClaw](https://github.com/nicepkg/openclaw) gateway either through a native WebSocket UI (compact mode) or by embedding the gateway's own web UI in an iframe (classic mode).
+ClawBar is a frameless macOS menu bar Electron app with a left-edge **channel dock**. The first channel is OpenClaw — a self-hosted [OpenClaw](https://github.com/nicepkg/openclaw) gateway accessed either via native WebSocket UI (compact mode) or via embedded iframe (classic mode). Additional channels host arbitrary IM web apps (Telegram, Discord, Feishu, Lark, plus user-added URLs) inside Electron `<webview>` tags with persistent partitions.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -58,6 +58,13 @@ clawbar/
 │   ├── components/
 │   │   ├── TitleBar.tsx
 │   │   ├── Sidebar.tsx
+│   │   ├── ChannelDock.tsx
+│   │   ├── ChannelIcon.tsx
+│   │   ├── ChannelHost.tsx
+│   │   ├── WebChannel.tsx
+│   │   ├── OpenClawChannel.tsx
+│   │   ├── AddChannelMenu.tsx
+│   │   ├── ChannelContextMenu.tsx
 │   │   ├── CompactChat.tsx    # compact mode shell + ViewRouter
 │   │   ├── ChatView.tsx       # native chat (messages, input, approvals)
 │   │   ├── ChatWebView.tsx    # classic mode iframe
@@ -81,6 +88,7 @@ clawbar/
 │   │   └── useWsRequest.ts    # one-shot ws:send + correlate response
 │   ├── stores/
 │   │   ├── settingsStore.ts   # Zustand: settings + theme + view
+│   │   ├── channelStore.ts    # Zustand: channel list + active id + CRUD
 │   │   └── webviewStore.ts    # Zustand: trigger iframe reload
 │   ├── utils/format.ts
 │   └── styles/globals.css     # CSS variables (color tokens)
@@ -193,7 +201,13 @@ Frameless `BrowserWindow` with `vibrancy: 'popover'`. Position rules:
 | `tsc -p tsconfig.node.json` | `electron/*.ts`        | `dist-electron/` (CommonJS)               |
 | electron-builder | `dist/`, `dist-electron/`, `resources/` | `release-artifacts/*.dmg` |
 
-## 8. Security
+## 8. Channels
+
+The renderer shell is a **channel dock** (`ChannelDock`, 48 px wide, left edge) plus a **channel host** (`ChannelHost`, fills the rest). Each entry in `settings.channels` becomes either an `OpenClawChannel` (the existing compact / classic OpenClaw UI) or a `WebChannel` (an Electron `<webview>` with `partition="persist:channel-<id>"`). All enabled channels are mounted at once and toggled with `display: none` so login state, draft messages, and the OpenClaw WebSocket connection survive switching.
+
+The `+` button at the dock's bottom opens `AddChannelMenu` — a popover that lets users re-enable any hidden built-in (Telegram / Discord / Feishu / Lark) or paste a custom URL. Right-clicking any channel opens `ChannelContextMenu` for rename, change icon, move up/down, hide (built-in only), or delete (custom only). OpenClaw is always at index 0 and cannot be removed; user-added channels' favicons are auto-captured via the `<webview>`'s `page-favicon-updated` event.
+
+## 9. Security
 
 - `contextIsolation`, `sandbox`, `nodeIntegration: false` (renderer can't reach Node).
 - `settings:set` whitelists the keys it accepts.
