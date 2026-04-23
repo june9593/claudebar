@@ -2,8 +2,6 @@
 
 A macOS menu-bar **multi-IM hub** that puts your [OpenClaw](https://github.com/nicepkg/openclaw) agent, Telegram, Discord, Feishu, Lark — and any other web app — one click away from the menu bar. No Dock clutter, no app-switcher dance.
 
-![ClawBar screenshot placeholder](docs/screenshot.png)
-
 ## Features
 
 - **Channel Dock** — A 48 px sidebar lists OpenClaw plus any web channels you add. Each channel runs in its own Electron `<webview>` with a persistent partition, so logins survive across launches.
@@ -15,6 +13,7 @@ A macOS menu-bar **multi-IM hub** that puts your [OpenClaw](https://github.com/n
 - **Frameless popover** — vibrancy background, resizable, draggable, optional always-on-top.
 - **Optional desktop pet** — A draggable lobster mascot that doubles as a click-to-toggle shortcut. Hide / show from the tray menu, persisted across launches.
 - **Light / dark theme** — follows macOS or override per app.
+- **No telemetry** — no analytics, no phone-home. The OpenClaw bridge only talks to the gateway URL you configure.
 
 ## Install (pre-built DMG)
 

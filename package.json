@@ -1,8 +1,16 @@
 {
   "name": "clawbar",
-  "version": "1.0.0",
-  "description": "macOS menu bar chat client for OpenClaw",
+  "version": "0.2.3",
+  "description": "macOS menu bar multi-IM hub for OpenClaw + Telegram + Discord + Feishu + Lark",
   "main": "dist-electron/main.js",
+  "homepage": "https://github.com/june9593/clawbar",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/june9593/clawbar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/june9593/clawbar/issues"
+  },
   "scripts": {
     "dev": "vite",
     "dev:electron": "npm run build:electron && electron .",
@@ -20,7 +28,7 @@
     "electron",
     "chat"
   ],
-  "author": "",
+  "author": "june9593",
   "license": "MIT",
   "devDependencies": {
     "@types/react": "^19.0.0",

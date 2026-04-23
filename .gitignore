@@ -1,33 +1,39 @@
+# Dependencies
+node_modules/
 
-.claude/
-.DS_Store
+# Build outputs
+dist/
+dist-electron/
+release-artifacts/
+out/
+
+# Environment
 .env
 .env.local
-.idea/
-.playwright-mcp/
-.vscode/
-*.log
-*.png
-*.swo
-*.swp
-*~
-/docs/superpowers/
-/node_modules
-# Build outputs
-# Coverage
-# Dependencies
-# Electron
-# Environment
+
 # IDE
-# Local agent settings (user-specific MCP permissions)
-# Logs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # macOS
-# Playwright MCP artifacts
-coverage/
-dist-electron/
-dist/
-node_modules/
-npm-debug.log*
-out/
-release-artifacts/
+.DS_Store
 Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+
+# Local AI agent settings + scratch artifacts
+.claude/
+.playwright-mcp/
+docs/superpowers/
+
+# Local screenshots (but keep tracked PNG assets)
+*.png
+!resources/*.png
