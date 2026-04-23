@@ -1,39 +1,32 @@
-# Dependencies
-node_modules/
 
-# Build outputs
-dist/
-dist-electron/
-release-artifacts/
-
-# Environment
+.claude/
+.DS_Store
 .env
 .env.local
-
-# IDE
-.vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# macOS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-
-# Electron
-out/
-
-# Coverage
-coverage/
-
-# Local agent settings (user-specific MCP permissions)
-.claude/
-
-# Playwright MCP artifacts
 .playwright-mcp/
+.vscode/
+*.log
 *.png
+*.swo
+*.swp
+*~
+/node_modules
+# Build outputs
+# Coverage
+# Dependencies
+# Electron
+# Environment
+# IDE
+# Local agent settings (user-specific MCP permissions)
+# Logs
+# macOS
+# Playwright MCP artifacts
+coverage/
+dist-electron/
+dist/
+node_modules/
+npm-debug.log*
+out/
+release-artifacts/
+Thumbs.db

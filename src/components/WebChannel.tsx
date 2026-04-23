@@ -72,9 +72,18 @@ export function WebChannel({ channel, isActive }: Props) {
       partition={`persist:channel-${channel.id}`}
       useragent={MOBILE_UA}
       style={{
+        position: 'absolute',
+        inset: 0,
         width: '100%',
         height: '100%',
-        display: isActive ? 'flex' : 'none',
+        // Use visibility + zIndex instead of `display: none` so Electron
+        // keeps painting the inactive webviews. With display:none Electron
+        // suspends compositing, so when you switch back the page can look
+        // stuck on a blank/loading frame for a few seconds even though the
+        // DOM is fully ready.
+        visibility: isActive ? 'visible' : 'hidden',
+        pointerEvents: isActive ? 'auto' : 'none',
+        zIndex: isActive ? 1 : 0,
         background: 'var(--color-bg-primary)',
       }}
     />
