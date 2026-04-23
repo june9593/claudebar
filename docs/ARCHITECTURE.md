@@ -203,11 +203,18 @@ Frameless `BrowserWindow` with `vibrancy: 'popover'`. Position rules:
 
 ## 8. Channels
 
-The renderer shell is a **channel dock** (`ChannelDock`, 48 px wide, left edge) plus a **channel host** (`ChannelHost`, fills the rest). Each entry in `settings.channels` becomes either an `OpenClawChannel` (the existing compact / classic OpenClaw UI) or a `WebChannel` (an Electron `<webview>` with `partition="persist:channel-<id>"`). All enabled channels are mounted at once and toggled with `display: none` so login state, draft messages, and the OpenClaw WebSocket connection survive switching.
+The renderer shell is a **channel dock** (`ChannelDock`, 48 px wide, left edge) plus a **channel host** (`ChannelHost`, fills the rest). Each entry in `settings.channels` becomes either an `OpenClawChannel` (the existing compact / classic OpenClaw UI) or a `WebChannel` (an Electron `<webview>` with `partition="persist:channel-<id>"` and a mobile iPhone user-agent so IM web apps render their phone layouts). All enabled channels mount once and stay mounted; the inactive ones are stacked offscreen with `position:absolute + visibility:hidden + zIndex:0` so Electron keeps painting them — `display:none` would suspend the webview's compositor and make channel switches look like the page is "still loading".
 
-The `+` button at the dock's bottom opens `AddChannelMenu` — a popover that lets users re-enable any hidden built-in (Telegram / Discord / Feishu / Lark) or paste a custom URL. Right-clicking any channel opens `ChannelContextMenu` for rename, change icon, move up/down, hide (built-in only), or delete (custom only). OpenClaw is always at index 0 and cannot be removed; user-added channels' favicons are auto-captured via the `<webview>`'s `page-favicon-updated` event.
+The `+` button at the dock's bottom opens `AddChannelMenu` — a popover (rendered via React Portal so it isn't clipped by the dock) that lets users re-enable any hidden built-in (Telegram / Discord / Feishu / Lark) or paste a custom URL. Right-clicking any channel opens `ChannelContextMenu` for rename, change icon, move up/down, hide (built-in only), or delete (custom only). OpenClaw is always at index 0 and cannot be removed; user-added channels' favicons are auto-captured via the `<webview>`'s `page-favicon-updated` event.
 
-## 9. Security
+Clicking the OpenClaw dock icon while OpenClaw is the active channel toggles its internal operator sidebar (Overview / Approvals / Sessions / Usage / Cron / Agents / Skills / Logs / Settings). The sidebar panel + backdrop start at `left: 48 px` so the channel dock stays visible and clickable. When a web channel is active the TitleBar gains Back / Reload buttons that drive the `<webview>` via `goBack()` / `reload()`; the webview element is exposed through `channelStore.activeWebview`.
+
+## 9. Pet window
+
+`pet-window.ts` owns an optional always-on-top `BrowserWindow` (100 × 110, transparent, frameless) showing the lobster mascot. Spawn lazily — only if `settings.petVisible !== false`. Right-click the pet → "Hide Pet"; right-click the tray icon → "Show Pet" / "Hide Pet". Both update the persisted `petVisible` flag through a small `setSetting()` helper exposed by the settings module. Drag works via a `pet:drag` IPC; `pet:drag-end` resets the captured offset between drag sessions (without it the window snaps to a stale position on subsequent drags).
+
+## 10. Security
+
 
 - `contextIsolation`, `sandbox`, `nodeIntegration: false` (renderer can't reach Node).
 - `settings:set` whitelists the keys it accepts.
