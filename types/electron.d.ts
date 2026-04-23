@@ -30,6 +30,7 @@ export interface ElectronAPI {
   pet: {
     onClick(): void;
     onDrag(x: number, y: number): void;
+    onDragEnd(): void;
     onRightClick(): void;
   };
 }

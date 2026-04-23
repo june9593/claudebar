@@ -129,6 +129,12 @@ export function createPetWindow(
     savePetBounds();
   });
 
+  // Reset offset when a drag ends so the next drag re-anchors against the
+  // mouse-down position (otherwise the pet snaps to a stale offset).
+  ipcMain.on('pet:drag-end', () => {
+    dragOffset = { x: 0, y: 0 };
+  });
+
   ipcMain.on('pet:right-click', () => {
     if (!petWindow || !createArgs) return;
     const contextMenu = Menu.buildFromTemplate([

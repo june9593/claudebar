@@ -87,6 +87,9 @@ const PetApp: React.FC = () => {
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      if (isDraggingRef.current) {
+        window.electronAPI.pet.onDragEnd();
+      }
       // Reset drag flag after a tick so click handler can check it
       setTimeout(() => {
         isDraggingRef.current = false;

@@ -58,6 +58,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pet: {
     onClick: () => ipcRenderer.send('pet:click'),
     onDrag: (x: number, y: number) => ipcRenderer.send('pet:drag', x, y),
+    onDragEnd: () => ipcRenderer.send('pet:drag-end'),
     onRightClick: () => ipcRenderer.send('pet:right-click'),
   },
 });
