@@ -1,10 +1,16 @@
 import { BrowserWindow, ipcMain, Menu, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getSettings, setSetting } from './ipc/settings';
 
 let petWindow: BrowserWindow | null = null;
+let createArgs: {
+  showMainWindow: () => void;
+  hideMainWindow: () => void;
+  isMainWindowVisible: () => boolean;
+  quitApp: () => void;
+} | null = null;
 
-// Drag offset tracking
 let dragOffset = { x: 0, y: 0 };
 
 function getPetBoundsPath(): string {
@@ -39,12 +45,8 @@ function getDefaultPosition(): { x: number; y: number } {
   return { x: width - 120, y: height - 130 };
 }
 
-export function createPetWindow(
-  showMainWindow: () => void,
-  hideMainWindow: () => void,
-  isMainWindowVisible: () => boolean,
-  quitApp: () => void,
-) {
+function spawnPetWindow() {
+  if (petWindow) return;
   const saved = loadPetBounds();
   const pos = saved || getDefaultPosition();
 
@@ -79,8 +81,34 @@ export function createPetWindow(
   petWindow.on('closed', () => {
     petWindow = null;
   });
+}
 
-  // --- IPC handlers for pet ---
+export function isPetVisible(): boolean {
+  return !!petWindow;
+}
+
+export function hidePet() {
+  if (petWindow) {
+    petWindow.destroy();
+    petWindow = null;
+  }
+  setSetting('petVisible', false);
+}
+
+export function showPet() {
+  if (!petWindow) spawnPetWindow();
+  setSetting('petVisible', true);
+}
+
+export function createPetWindow(
+  showMainWindow: () => void,
+  hideMainWindow: () => void,
+  isMainWindowVisible: () => boolean,
+  quitApp: () => void,
+) {
+  createArgs = { showMainWindow, hideMainWindow, isMainWindowVisible, quitApp };
+
+  // --- IPC handlers (registered once, regardless of pet visibility) ---
 
   ipcMain.on('pet:click', () => {
     if (isMainWindowVisible()) {
@@ -92,7 +120,6 @@ export function createPetWindow(
 
   ipcMain.on('pet:drag', (_event, screenX: number, screenY: number) => {
     if (!petWindow) return;
-    // On first drag event, calculate offset from window position to mouse
     const [winX, winY] = petWindow.getPosition();
     if (dragOffset.x === 0 && dragOffset.y === 0) {
       dragOffset.x = winX - screenX;
@@ -103,27 +130,36 @@ export function createPetWindow(
   });
 
   ipcMain.on('pet:right-click', () => {
-    if (!petWindow) return;
+    if (!petWindow || !createArgs) return;
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show Chat',
-        click: () => showMainWindow(),
+        click: () => createArgs!.showMainWindow(),
       },
       {
         label: 'Settings',
         click: () => {
-          showMainWindow();
-          // Send IPC to main window to switch to settings view
+          createArgs!.showMainWindow();
           const mainWin = BrowserWindow.getAllWindows().find(w => w !== petWindow);
           mainWin?.webContents.send('navigate', 'settings');
         },
       },
       { type: 'separator' },
       {
+        label: 'Hide Pet',
+        click: () => hidePet(),
+      },
+      { type: 'separator' },
+      {
         label: 'Quit ClawBar',
-        click: () => quitApp(),
+        click: () => createArgs!.quitApp(),
       },
     ]);
     contextMenu.popup({ window: petWindow! });
   });
+
+  // Spawn the pet window only if persisted settings say it should be visible.
+  // Default (first launch) is true.
+  const visible = getSettings().petVisible !== false;
+  if (visible) spawnPetWindow();
 }

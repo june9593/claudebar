@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { setupSettingsIPC } from './ipc/settings';
 import { setupWsBridge } from './ws-bridge';
-import { createPetWindow } from './pet-window';
+import { createPetWindow, isPetVisible, showPet, hidePet } from './pet-window';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -177,12 +177,20 @@ function createTray() {
 
   tray.on('right-click', () => {
     const { Menu } = require('electron');
+    const petShown = isPetVisible();
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Settings',
         click: () => {
           showWindow();
           mainWindow?.webContents.send('navigate', 'settings');
+        },
+      },
+      { type: 'separator' },
+      {
+        label: petShown ? 'Hide Pet' : 'Show Pet',
+        click: () => {
+          if (petShown) hidePet(); else showPet();
         },
       },
       { type: 'separator' },

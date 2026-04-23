@@ -23,8 +23,8 @@ const defaults: Settings = {
     { id: 'openclaw', kind: 'openclaw', name: 'OpenClaw',  builtin: true, enabled: true },
     { id: 'telegram', kind: 'web',      name: 'Telegram',  builtin: true, enabled: true, url: 'https://web.telegram.org/', icon: '✈️' },
     { id: 'discord',  kind: 'web',      name: 'Discord',   builtin: true, enabled: true, url: 'https://discord.com/app',   icon: '💬' },
-    { id: 'feishu',   kind: 'web',      name: '飞书',      builtin: true, enabled: true, url: 'https://www.feishu.cn/messenger/',     icon: '🪶' },
-    { id: 'lark',     kind: 'web',      name: 'Lark',      builtin: true, enabled: true, url: 'https://www.larksuite.com/messenger/', icon: '🐦' },
+    { id: 'feishu',   kind: 'web',      name: '飞书',      builtin: true, enabled: true, url: 'https://accounts.feishu.cn/accounts/page/login?app_id=1&no_trap=1&redirect_uri=https%3A%2F%2Fwww.feishu.cn%2Fmessages',     icon: '🪶' },
+    { id: 'lark',     kind: 'web',      name: 'Lark',      builtin: true, enabled: true, url: 'https://accounts.larksuite.com/accounts/page/login?app_id=1&no_trap=1&redirect_uri=https%3A%2F%2Fwww.larksuite.com%2Fmessages', icon: '🐦' },
   ],
   activeChannelId: 'openclaw',
 };
