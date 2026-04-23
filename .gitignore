@@ -11,6 +11,7 @@
 *.swo
 *.swp
 *~
+/docs/superpowers/
 /node_modules
 # Build outputs
 # Coverage
