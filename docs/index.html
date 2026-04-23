@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClawBar — A menu-bar hub for OpenClaw + every other chat</title>
+<meta name="description" content="A macOS menu-bar app that puts OpenClaw, Telegram, Discord, Feishu, Lark — and any URL — one click away from the menu bar. Free, MIT-licensed.">
+<meta property="og:title" content="ClawBar — A menu-bar hub for every chat">
+<meta property="og:description" content="OpenClaw + Telegram + Discord + Feishu + Lark + any URL, all in one menu-bar popover.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://june9593.github.io/clawbar/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─────────────────────────────────────────────────
+     Tokens
+     ───────────────────────────────────────────────── */
+  :root {
+    --paper:        #f5f4ed;
+    --paper-light:  #faf9f5;
+    --paper-deep:   #ecebe1;
+    --ink:          #141413;
+    --ink-soft:     #3a3a36;
+    --ink-mute:     #87867f;
+    --rule:         #d8d5c5;
+    --lobster:      #c96442;
+    --lobster-soft: #d97757;
+    --lobster-deep: #a04e30;
+    --moss:         #5a9a68;
+    --berry:        #b53333;
+
+    --window-radius: 14px;
+    --shadow-window:
+      0 1px 0 rgba(20,20,19,0.04),
+      0 2px 6px rgba(20,20,19,0.06),
+      0 24px 60px rgba(20,20,19,0.18);
+    --shadow-button: 0 1px 2px rgba(20,20,19,0.1), 0 4px 14px rgba(201,100,66,0.25);
+
+    --serif:   'Fraunces', Georgia, serif;
+    --sans:    'Inter Tight', -apple-system, system-ui, sans-serif;
+    --mono:    'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  html, body { background: var(--paper); color: var(--ink); }
+  body {
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(rgba(20,20,19,0.025) 1px, transparent 1px),
+      radial-gradient(rgba(20,20,19,0.018) 1px, transparent 1px);
+    background-size: 3px 3px, 7px 7px;
+    background-position: 0 0, 1px 2px;
+  }
+
+  ::selection { background: var(--lobster); color: var(--paper-light); }
+
+  a { color: var(--lobster); text-decoration: none; }
+  a:hover { color: var(--lobster-soft); }
+
+  /* ─────────────────────────────────────────────────
+     Buttons
+     ───────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 26px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    border-radius: 10px;
+    border: 1.5px solid transparent;
+    transition: transform 0.15s ease, filter 0.15s ease, background 0.15s, color 0.15s;
+    cursor: pointer;
+    text-decoration: none !important;
+    line-height: 1;
+  }
+  .btn-primary {
+    background: var(--lobster);
+    color: var(--paper-light);
+    box-shadow: var(--shadow-button);
+  }
+  .btn-primary:hover {
+    color: var(--paper-light);
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .btn-ghost:hover {
+    color: var(--ink);
+    background: var(--ink);
+    color: var(--paper-light);
+  }
+  .btn .arrow {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    transition: transform 0.15s ease;
+  }
+  .btn:hover .arrow { transform: translateX(3px); }
+  .btn .meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.75;
+    margin-left: 6px;
+    padding-left: 10px;
+    border-left: 1px solid currentColor;
+  }
+
+  /* ─────────────────────────────────────────────────
+     Page chrome
+     ───────────────────────────────────────────────── */
+  .container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 48px;
+    max-width: 1180px;
+    margin: 0 auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .nav .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--ink);
+    text-transform: none;
+    font-family: var(--serif);
+    font-size: 18px;
+    letter-spacing: -0.01em;
+    font-weight: 500;
+  }
+  .nav .brand-mark {
+    width: 22px; height: 22px;
+    background: var(--lobster);
+    -webkit-mask:
+      radial-gradient(ellipse 7px 8px at 50% 75%, #000 99%, transparent),
+      radial-gradient(circle 5px at 28% 38%, #000 99%, transparent),
+      radial-gradient(circle 5px at 72% 38%, #000 99%, transparent);
+    border-radius: 5px;
+  }
+  .nav-right { display: flex; gap: 28px; align-items: center; }
+  .nav-right a { color: var(--ink-mute); }
+  .nav-right a:hover { color: var(--lobster); }
+  .nav-right .gh {
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  /* ─────────────────────────────────────────────────
+     Hero
+     ───────────────────────────────────────────────── */
+  .hero {
+    padding: 48px 0 80px;
+    position: relative;
+  }
+  .hero .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--lobster);
+    margin-bottom: 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .hero .eyebrow::before, .hero .eyebrow::after {
+    content: '';
+    flex: 0 1 60px;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.4;
+  }
+  .hero .eyebrow::after { flex: 1; }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: clamp(56px, 8vw, 124px);
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 32px;
+  }
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--lobster);
+  }
+  .hero h1 .amp {
+    font-style: italic;
+    color: var(--lobster);
+    padding: 0 0.04em;
+  }
+  .hero .lede {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-style: italic;
+    color: var(--ink-soft);
+    max-width: 38ch;
+    line-height: 1.4;
+    margin-bottom: 40px;
+  }
+  .hero .actions {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .hero .install-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ink-mute);
+    line-height: 1.7;
+  }
+  .hero .install-note strong { color: var(--ink-soft); font-weight: 600; }
+
+  /* hero stats strip */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    margin-top: 60px;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 24px 0;
+  }
+  .stats div {
+    border-right: 1px solid var(--rule);
+    padding: 6px 24px;
+  }
+  .stats div:last-child { border-right: none; }
+  .stats .num {
+    font-family: var(--serif);
+    font-size: 36px;
+    font-weight: 300;
+    color: var(--lobster);
+    line-height: 1;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+  .stats .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ─────────────────────────────────────────────────
+     Plates
+     ───────────────────────────────────────────────── */
+  .plates { padding: 80px 0 40px; }
+
+  .plate {
+    display: grid;
+    grid-template-columns: 80px 1.05fr 1.4fr;
+    gap: 48px;
+    margin-bottom: 130px;
+    align-items: center;
+  }
+  .plate.flip { grid-template-columns: 80px 1.4fr 1.05fr; }
+  .plate.flip .copy { order: 3; }
+  .plate.flip .stage { order: 2; }
+
+  .plate-no {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    font-size: 80px;
+    color: var(--lobster);
+    line-height: 0.85;
+    text-align: right;
+    border-right: 1px solid var(--rule);
+    padding-right: 18px;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 20px;
+  }
+  .plate-no .small {
+    display: block;
+    font-style: normal;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--ink-mute);
+    margin-top: 12px;
+  }
+
+  .copy h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 40px;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    margin-bottom: 22px;
+  }
+  .copy h2 em { font-style: italic; color: var(--lobster); }
+  .copy p {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+    max-width: 38ch;
+  }
+  .copy ul { list-style: none; margin-top: 18px; padding: 0; }
+  .copy ul li {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 12px;
+    font-size: 14.5px;
+    padding: 9px 0;
+    border-top: 1px dashed var(--rule);
+    color: var(--ink);
+  }
+  .copy ul li:last-child { border-bottom: 1px dashed var(--rule); }
+  .copy ul li .marker {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--lobster);
+    letter-spacing: 0.1em;
+    padding-top: 3px;
+  }
+
+  /* ─────────────────────────────────────────────────
+     Stage (window mockup container)
+     ───────────────────────────────────────────────── */
+  .stage {
+    position: relative;
+    padding: 36px 24px 44px;
+    background: linear-gradient(160deg, #ede9da 0%, #e2dec9 100%);
+    border-radius: 18px;
+    border: 1px solid var(--rule);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    overflow: hidden;
+    min-height: 520px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage .stage-label {
+    position: absolute;
+    bottom: 12px; left: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: rgba(20,20,19,0.45);
+  }
+
+  /* ─────────────────────────────────────────────────
+     Window mockup
+     ───────────────────────────────────────────────── */
+  .window {
+    width: 360px;
+    height: 500px;
+    background: var(--paper);
+    border-radius: var(--window-radius);
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 0.5px solid rgba(20,20,19,0.08);
+  }
+  .window.wide { width: 420px; }
+  .window.small { width: 300px; height: 420px; }
+
+  .titlebar {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px 0 14px;
+    border-bottom: 0.5px solid var(--rule);
+    background: rgba(245,244,237,0.85);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+  }
+  .titlebar .left { display: flex; align-items: center; gap: 8px; }
+  .titlebar .left .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--moss);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
+  }
+  .titlebar .left .name {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 14px;
+  }
+  .titlebar .left .lobster-icon {
+    width: 16px; height: 16px;
+    background: var(--lobster);
+    -webkit-mask:
+      radial-gradient(ellipse 5px 6px at 50% 75%, #000 99%, transparent 100%),
+      radial-gradient(circle 4px at 28% 38%, #000 99%, transparent 100%),
+      radial-gradient(circle 4px at 72% 38%, #000 99%, transparent 100%);
+    border-radius: 4px;
+  }
+  .titlebar .right { display: flex; gap: 2px; }
+  .iconbtn {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-mute);
+    font-size: 13px;
+  }
+  .iconbtn.active { background: var(--paper-deep); color: var(--lobster); }
+
+  .body { display: flex; flex: 1; min-height: 0; }
+
+  /* dock */
+  .dock {
+    width: 44px;
+    flex-shrink: 0;
+    background: var(--paper-light);
+    border-right: 0.5px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 4px;
+  }
+  .dock-icon {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    position: relative;
+    color: var(--ink-soft);
+  }
+  .dock-icon.active { background: var(--paper-deep); }
+  .dock-icon.active::before {
+    content: '';
+    position: absolute;
+    left: -2px; top: 7px;
+    width: 3px; height: 18px;
+    border-radius: 2px;
+    background: var(--lobster);
+  }
+  .dock-icon .lobster-glyph {
+    width: 22px; height: 22px;
+    background: var(--lobster);
+    -webkit-mask:
+      radial-gradient(ellipse 7px 8px at 50% 75%, #000 99%, transparent),
+      radial-gradient(circle 5px at 28% 38%, #000 99%, transparent),
+      radial-gradient(circle 5px at 72% 38%, #000 99%, transparent);
+    border-radius: 5px;
+  }
+  .dock-icon.dim { opacity: 0.55; }
+  .dock-spacer { flex: 1; }
+  .dock-icon.plus { color: var(--ink-mute); }
+
+  /* compact chat content */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--paper);
+    position: relative;
+  }
+  .content-head {
+    height: 36px;
+    border-bottom: 0.5px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    flex-shrink: 0;
+  }
+  .content-head .crumb { font-size: 12px; color: var(--ink-soft); }
+  .messages {
+    flex: 1;
+    padding: 18px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 6px;
+    color: var(--ink-mute);
+  }
+  .empty .badge {
+    width: 56px; height: 56px;
+    background: var(--paper-light);
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px;
+  }
+  .empty .badge .lobster-glyph {
+    width: 30px; height: 30px;
+    background: var(--lobster);
+    -webkit-mask:
+      radial-gradient(ellipse 9px 11px at 50% 75%, #000 99%, transparent),
+      radial-gradient(circle 7px at 28% 38%, #000 99%, transparent),
+      radial-gradient(circle 7px at 72% 38%, #000 99%, transparent);
+    border-radius: 6px;
+  }
+  .empty h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 17px;
+    color: var(--ink);
+    margin-top: 6px;
+  }
+  .empty p {
+    font-size: 13px;
+    color: var(--ink-soft);
+    max-width: 24ch;
+  }
+  .empty .hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    margin-top: 8px;
+    color: var(--ink-mute);
+    letter-spacing: 0.04em;
+  }
+
+  /* bubbles */
+  .bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    word-wrap: break-word;
+  }
+  .bubble.user {
+    background: var(--lobster);
+    color: var(--paper-light);
+    border-radius: 16px 16px 4px 16px;
+    align-self: flex-end;
+  }
+  .bubble.assist {
+    background: var(--paper-light);
+    color: var(--ink);
+    border-radius: 16px 16px 16px 4px;
+    align-self: flex-start;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .row { display: flex; align-items: flex-end; gap: 6px; }
+  .row.user { justify-content: flex-end; }
+  .avatar {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--paper-light);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  /* composer */
+  .composer {
+    border-top: 0.5px solid var(--rule);
+    padding: 8px 12px 10px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-shrink: 0;
+    background: var(--paper);
+  }
+  .composer .input {
+    flex: 1;
+    height: 30px;
+    background: #fff;
+    border-radius: 18px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--ink-mute);
+    border: 0.5px solid var(--rule);
+  }
+  .composer .send {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: var(--paper-deep);
+    color: var(--ink-mute);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .composer .send.on { background: var(--lobster); color: var(--paper-light); }
+
+  /* operator sidebar */
+  .op-sidebar {
+    position: absolute;
+    top: 40px; bottom: 0; left: 44px;
+    width: 188px;
+    background: var(--paper-light);
+    border-right: 0.5px solid var(--rule);
+    box-shadow: 8px 0 24px rgba(20,20,19,0.06);
+    padding: 8px 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+  }
+  .op-item {
+    display: flex; align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    margin: 0 6px;
+    border-radius: 7px;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .op-item.active {
+    background: var(--paper-deep);
+    color: var(--lobster);
+    font-weight: 500;
+  }
+  .op-item .op-glyph { width: 14px; text-align: center; opacity: 0.7; }
+  .op-item.active .op-glyph { opacity: 1; }
+  .op-divider { margin: 8px 14px; height: 1px; background: var(--rule); }
+  .op-spacer { flex: 1; }
+  .op-backdrop {
+    position: absolute;
+    top: 40px; bottom: 0; left: 44px; right: 0;
+    background: rgba(20,20,19,0.32);
+    z-index: 4;
+  }
+
+  /* add channel popover */
+  .add-pop {
+    position: absolute;
+    bottom: 16px; left: 56px;
+    width: 250px;
+    background: var(--paper);
+    border-radius: 12px;
+    box-shadow: var(--shadow-window);
+    padding: 12px;
+    z-index: 6;
+    border: 0.5px solid var(--rule);
+  }
+  .add-pop h4 {
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .add-pop .small-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 6px 0 4px;
+  }
+  .add-pop .row-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 6px; border-radius: 5px;
+    font-size: 12.5px;
+  }
+  .add-pop .row-item .check { color: var(--lobster); margin-left: auto; font-weight: 500; }
+  .add-pop .url-input {
+    margin-top: 4px;
+    height: 26px;
+    border-radius: 6px;
+    border: 0.5px solid var(--lobster);
+    padding: 0 8px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    display: flex; align-items: center;
+  }
+  .add-pop .actions {
+    display: flex; justify-content: flex-end; gap: 6px;
+    margin-top: 8px;
+  }
+  .add-pop .btn-cancel {
+    font-size: 11px;
+    color: var(--ink-mute);
+    padding: 4px 10px;
+  }
+  .add-pop .btn-add {
+    font-size: 11px;
+    color: var(--paper-light);
+    background: var(--lobster);
+    padding: 4px 12px;
+    border-radius: 5px;
+    font-weight: 500;
+  }
+
+  /* mobile webview mock (Lark) */
+  .webview-mock {
+    flex: 1;
+    background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 50px 24px;
+    color: var(--ink);
+    text-align: center;
+  }
+  .webview-mock .logo {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #29c5b8 0%, #4f7eff 100%);
+    border-radius: 14px;
+    margin-bottom: 18px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-family: var(--serif); font-weight: 600;
+    font-size: 28px;
+  }
+  .webview-mock h3 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: #222;
+  }
+  .webview-mock .field {
+    width: 100%;
+    max-width: 240px;
+    height: 38px;
+    background: #f3f3f3;
+    border-radius: 8px;
+    padding: 0 14px;
+    display: flex; align-items: center;
+    font-size: 13px; color: #888;
+    margin-bottom: 12px;
+  }
+  .webview-mock .next-btn {
+    width: 100%;
+    max-width: 240px;
+    height: 38px;
+    background: #4f7eff;
+    color: white;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 500;
+    margin-top: 4px;
+  }
+  .webview-mock .switch {
+    margin-top: 18px;
+    font-size: 12px;
+    color: #4f7eff;
+  }
+
+  /* pet */
+  .pet-stage-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+  .pet-window {
+    width: 96px; height: 110px;
+    position: relative;
+  }
+  .pet-shadow {
+    position: absolute;
+    bottom: 6px; left: 50%;
+    transform: translateX(-50%);
+    width: 60px; height: 9px;
+    background: radial-gradient(ellipse, rgba(20,20,19,0.18) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .pet-svg {
+    position: absolute;
+    bottom: 12px; left: 50%;
+    transform: translateX(-50%);
+    width: 80px; height: 80px;
+  }
+  .pet-context {
+    width: 160px;
+    background: var(--paper);
+    border-radius: 8px;
+    border: 0.5px solid var(--rule);
+    box-shadow: var(--shadow-window);
+    padding: 5px;
+    font-size: 13px;
+  }
+  .pet-context .item {
+    padding: 6px 12px;
+    border-radius: 5px;
+    color: var(--ink-soft);
+  }
+  .pet-context .item:hover { background: var(--paper-deep); }
+  .pet-context .item.danger { color: var(--berry); }
+  .pet-context hr {
+    border: none;
+    border-top: 1px solid var(--rule);
+    margin: 4px 6px;
+  }
+  .pet-tray-mock {
+    margin-top: 30px;
+    width: 220px;
+    background: var(--paper);
+    border-radius: 8px;
+    border: 0.5px solid var(--rule);
+    box-shadow: var(--shadow-window);
+    padding: 5px;
+    font-size: 13px;
+  }
+  .pet-tray-mock .header {
+    padding: 4px 10px 8px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    border-bottom: 0.5px solid var(--rule);
+    margin-bottom: 4px;
+  }
+
+  /* theme duo */
+  .duo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    width: 100%;
+    max-width: 720px;
+  }
+  .duo .label {
+    text-align: center;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+  }
+  .window.dark {
+    background: #1c1c1a;
+    color: #f5f4ed;
+    border-color: rgba(255,255,255,0.08);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.45);
+  }
+  .window.dark .titlebar {
+    background: rgba(20,20,19,0.85);
+    border-bottom-color: #30302e;
+  }
+  .window.dark .titlebar .name { color: #f5f4ed; }
+  .window.dark .dock {
+    background: #232321;
+    border-right-color: #30302e;
+  }
+  .window.dark .dock-icon.active { background: rgba(255,255,255,0.08); }
+  .window.dark .content { background: #1c1c1a; }
+  .window.dark .content-head { border-bottom-color: #30302e; }
+  .window.dark .content-head .crumb { color: #b5b3ac; }
+  .window.dark .composer { background: #1c1c1a; border-top-color: #30302e; }
+  .window.dark .composer .input { background: #30302e; color: #87867f; border-color: #30302e; }
+  .window.dark .composer .send { background: #30302e; }
+  .window.dark .bubble.assist { background: #30302e; color: #f5f4ed; box-shadow: none; }
+
+  /* ─────────────────────────────────────────────────
+     Install / Get Started section
+     ───────────────────────────────────────────────── */
+  .install {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 100px 0;
+    margin: 80px 0 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .install::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 5px 5px;
+    pointer-events: none;
+  }
+  .install .container { position: relative; z-index: 1; }
+  .install .grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 80px;
+    align-items: center;
+  }
+  .install h2 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+  .install h2 em { font-style: italic; color: var(--lobster-soft); }
+  .install p { color: rgba(245,244,237,0.7); margin-bottom: 26px; max-width: 36ch; }
+  .install .actions { display: flex; gap: 14px; flex-wrap: wrap; }
+  .install .btn-primary { background: var(--lobster); }
+  .install .btn-ghost {
+    background: transparent;
+    color: var(--paper);
+    border-color: var(--paper);
+  }
+  .install .btn-ghost:hover { color: var(--ink); background: var(--paper); }
+
+  .install .panels { display: grid; gap: 18px; }
+  .install .panel {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .install .panel h4 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--lobster-soft);
+    margin-bottom: 14px;
+  }
+  .install .panel .step {
+    display: grid;
+    grid-template-columns: 28px 1fr;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: rgba(245,244,237,0.85);
+  }
+  .install .panel .step .num {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--lobster-soft);
+  }
+  .install code, .install pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: rgba(0,0,0,0.32);
+    color: #f0e5d0;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .install pre {
+    display: block;
+    padding: 14px 18px;
+    line-height: 1.6;
+    overflow-x: auto;
+    margin-top: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    white-space: pre;
+  }
+  .install pre .comment { color: #87867f; }
+
+  /* ─────────────────────────────────────────────────
+     FAQ
+     ───────────────────────────────────────────────── */
+  .faq {
+    padding: 100px 0 60px;
+  }
+  .faq .head {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+  .faq .head .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--lobster);
+    margin-bottom: 16px;
+  }
+  .faq .head h2 {
+    font-family: var(--serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .faq .head h2 em { font-style: italic; color: var(--lobster); }
+  .faq .list {
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .faq details {
+    border-top: 1px solid var(--rule);
+    padding: 24px 0;
+  }
+  .faq details:last-child { border-bottom: 1px solid var(--rule); }
+  .faq summary {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--ink);
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: '+';
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 300;
+    color: var(--lobster);
+    font-size: 32px;
+    line-height: 0.7;
+    transition: transform 0.2s;
+  }
+  .faq details[open] summary::after { content: '−'; }
+  .faq details p {
+    margin-top: 14px;
+    color: var(--ink-soft);
+    max-width: 64ch;
+    font-size: 15px;
+  }
+  .faq details p code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--paper-deep);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* ─────────────────────────────────────────────────
+     Footer
+     ───────────────────────────────────────────────── */
+  .footer {
+    border-top: 1px solid var(--rule);
+    padding: 50px 0 80px;
+  }
+  .footer .grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 48px;
+  }
+  .footer h5 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .footer p, .footer a {
+    font-size: 13px;
+    color: var(--ink-mute);
+    line-height: 1.7;
+    display: block;
+  }
+  .footer a:hover { color: var(--lobster); }
+  .footer .brand-block {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .footer .brand-block .brand-mark {
+    width: 24px; height: 24px;
+    background: var(--lobster);
+    -webkit-mask:
+      radial-gradient(ellipse 7px 9px at 50% 75%, #000 99%, transparent),
+      radial-gradient(circle 5px at 28% 38%, #000 99%, transparent),
+      radial-gradient(circle 5px at 72% 38%, #000 99%, transparent);
+    border-radius: 5px;
+  }
+  .footer .brand-block span {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .footer .stamp {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--lobster);
+    margin-top: 18px;
+  }
+  .footer .colophon {
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    text-align: center;
+    font-family: var(--mono);
+    letter-spacing: 0.04em;
+  }
+
+  /* ─────────────────────────────────────────────────
+     Responsive
+     ───────────────────────────────────────────────── */
+  @media (max-width: 980px) {
+    .container, .nav { padding-left: 24px; padding-right: 24px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats div:nth-child(2) { border-right: none; }
+    .stats div:nth-child(3), .stats div:nth-child(4) { border-top: 1px solid var(--rule); padding-top: 18px; margin-top: 12px; }
+    .plate, .plate.flip { grid-template-columns: 1fr; gap: 24px; }
+    .plate.flip .copy, .plate.flip .stage { order: initial; }
+    .plate-no { border-right: none; padding: 0; text-align: left; padding-bottom: 0; font-size: 56px; }
+    .plate-no .small { display: inline-block; margin-left: 16px; }
+    .copy h2 { font-size: 32px; }
+    .install .grid { grid-template-columns: 1fr; gap: 40px; }
+    .install h2 { font-size: 40px; }
+    .faq .head h2 { font-size: 36px; }
+    .footer .grid { grid-template-columns: 1fr 1fr; }
+    .duo { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="#top" class="brand">
+    <span class="brand-mark"></span>
+    ClawBar
+  </a>
+  <div class="nav-right">
+    <a href="#features">Features</a>
+    <a href="#install">Install</a>
+    <a href="#faq">FAQ</a>
+    <a href="https://github.com/june9593/clawbar" class="gh">GitHub →</a>
+  </div>
+</nav>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<header class="hero container" id="top">
+  <div class="eyebrow">A macOS menu-bar hub</div>
+  <h1>One claw,<br><em>every</em> chat<span class="amp">&amp;</span><br>your agent.</h1>
+  <p class="lede">Telegram, Discord, Feishu, Lark, OpenClaw — and any URL you can think of — collapsed into one quiet menu-bar popover.</p>
+  <div class="actions">
+    <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest/download/ClawBar-1.0.0-arm64.dmg">
+      Download for macOS
+      <span class="meta">v0.2.3 · arm64</span>
+    </a>
+    <a class="btn btn-ghost" href="https://github.com/june9593/clawbar">
+      View source
+      <span class="arrow">→</span>
+    </a>
+  </div>
+  <div class="install-note">
+    <strong>Apple Silicon (M-series)</strong> · macOS 12+ · Unsigned DMG, see install note below.
+  </div>
+
+  <div class="stats">
+    <div>
+      <div class="num">5</div>
+      <div class="label">built-in channels</div>
+    </div>
+    <div>
+      <div class="num">∞</div>
+      <div class="label">custom URLs</div>
+    </div>
+    <div>
+      <div class="num">10</div>
+      <div class="label">operator views</div>
+    </div>
+    <div>
+      <div class="num">0</div>
+      <div class="label">telemetry calls</div>
+    </div>
+  </div>
+</header>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="plates container" id="features">
+
+  <article class="plate">
+    <div class="plate-no">II<span class="small">THE&nbsp;DOCK</span></div>
+    <div class="copy">
+      <h2>A 48&nbsp;px column for your <em>whole conversational life.</em></h2>
+      <p>Channels live as icons in a slim left dock. The lobster sits at the top — fixed, irremovable. Anything else is yours to add, hide, rename, or delete by right-click.</p>
+      <ul>
+        <li><span class="marker">A</span><span><strong>OpenClaw</strong> — your gateway agent, native WebSocket UI.</span></li>
+        <li><span class="marker">B</span><span><strong>Telegram, Discord, 飞书, Lark</strong> — built-in, persistent partitions.</span></li>
+        <li><span class="marker">C</span><span><strong>+</strong> — paste any URL; favicon and host auto-populate.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="window">
+        <div class="titlebar">
+          <div class="left">
+            <span class="dot"></span>
+            <span class="lobster-icon"></span>
+            <span class="name">ClawBar</span>
+          </div>
+          <div class="right">
+            <span class="iconbtn">⌘</span>
+            <span class="iconbtn">⚙</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="dock">
+            <div class="dock-icon active"><span class="lobster-glyph"></span></div>
+            <div class="dock-icon">✈️</div>
+            <div class="dock-icon">💬</div>
+            <div class="dock-icon">🪶</div>
+            <div class="dock-icon">🐦</div>
+            <div class="dock-spacer"></div>
+            <div class="dock-icon plus">+</div>
+          </div>
+          <div class="content">
+            <div class="content-head">
+              <span class="crumb">Main · ▾</span>
+              <span style="font-size:14px;color:var(--ink-mute);">+</span>
+            </div>
+            <div class="messages">
+              <div class="empty">
+                <div class="badge"><span class="lobster-glyph"></span></div>
+                <h3>Start a conversation</h3>
+                <p>Send a message to your OpenClaw agent.</p>
+                <span class="hint">⏎ send · ⇧⏎ newline</span>
+              </div>
+            </div>
+            <div class="composer">
+              <div class="input">Message…</div>
+              <div class="send">↑</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. II · Default state · 360 × 500</span>
+    </div>
+  </article>
+
+  <article class="plate flip">
+    <div class="plate-no">III<span class="small">OPERATOR</span></div>
+    <div class="copy">
+      <h2>Click the lobster again — the <em>operator panel</em> appears.</h2>
+      <p>OpenClaw isn't only chat. Behind the icon hides a 10-pane operator surface: overview, approvals, sessions, usage, cron, agents, skills, logs, settings.</p>
+      <ul>
+        <li><span class="marker">↑</span><span><strong>Re-clicking the active channel</strong> toggles its own sidebar — no extra hamburger.</span></li>
+        <li><span class="marker">→</span><span><strong>Backdrop respects the dock</strong> — switch channels at any moment.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="window">
+        <div class="titlebar">
+          <div class="left">
+            <span class="dot"></span>
+            <span class="lobster-icon"></span>
+            <span class="name">ClawBar</span>
+          </div>
+          <div class="right">
+            <span class="iconbtn">⌘</span>
+            <span class="iconbtn">⚙</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="dock">
+            <div class="dock-icon active"><span class="lobster-glyph"></span></div>
+            <div class="dock-icon dim">✈️</div>
+            <div class="dock-icon dim">💬</div>
+            <div class="dock-icon dim">🪶</div>
+            <div class="dock-icon dim">🐦</div>
+            <div class="dock-spacer"></div>
+            <div class="dock-icon plus dim">+</div>
+          </div>
+          <div class="content">
+            <div class="content-head"><span class="crumb">Main · ▾</span></div>
+            <div class="messages"><div class="empty"><div class="badge"><span class="lobster-glyph"></span></div></div></div>
+            <div class="composer"><div class="input">Message…</div><div class="send">↑</div></div>
+          </div>
+        </div>
+        <div class="op-backdrop"></div>
+        <div class="op-sidebar">
+          <div class="op-item"><span class="op-glyph">▣</span> Overview</div>
+          <div class="op-item active"><span class="op-glyph">●</span> Chat</div>
+          <div class="op-item"><span class="op-glyph">◈</span> Approvals</div>
+          <div class="op-item"><span class="op-glyph">◇</span> Sessions</div>
+          <div class="op-divider"></div>
+          <div class="op-item"><span class="op-glyph">▥</span> Usage</div>
+          <div class="op-item"><span class="op-glyph">⏱</span> Cron</div>
+          <div class="op-item"><span class="op-glyph">◉</span> Agents</div>
+          <div class="op-item"><span class="op-glyph">◊</span> Skills</div>
+          <div class="op-item"><span class="op-glyph">▦</span> Logs</div>
+          <div class="op-spacer"></div>
+          <div class="op-divider"></div>
+          <div class="op-item"><span class="op-glyph">⚙</span> Settings</div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. III · Operator sidebar over OpenClaw</span>
+    </div>
+  </article>
+
+  <article class="plate">
+    <div class="plate-no">IV<span class="small">ADD</span></div>
+    <div class="copy">
+      <h2>Add anything — even your <em>company intranet.</em></h2>
+      <p>The plus button at the dock's foot opens a popover. Built-ins toggle on with a tap; arbitrary URLs become channels in a single keystroke.</p>
+      <ul>
+        <li><span class="marker">·</span><span>Hostname becomes the channel name; favicon auto-loads as the icon.</span></li>
+        <li><span class="marker">·</span><span>Right-click the new icon to rename, change icon, reorder, or delete.</span></li>
+        <li><span class="marker">·</span><span>Each channel keeps its own cookie jar — log in once, log in forever.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="window wide">
+        <div class="titlebar">
+          <div class="left">
+            <span class="dot"></span>
+            <span class="lobster-icon"></span>
+            <span class="name">ClawBar</span>
+          </div>
+          <div class="right">
+            <span class="iconbtn">⌘</span>
+            <span class="iconbtn">⚙</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="dock">
+            <div class="dock-icon"><span class="lobster-glyph"></span></div>
+            <div class="dock-icon">✈️</div>
+            <div class="dock-icon">💬</div>
+            <div class="dock-icon">🪶</div>
+            <div class="dock-icon">🐦</div>
+            <div class="dock-spacer"></div>
+            <div class="dock-icon plus active">+</div>
+          </div>
+          <div class="content"></div>
+        </div>
+        <div class="add-pop">
+          <h4>Add a channel</h4>
+          <div class="small-label">Built-in</div>
+          <div class="row-item">✈️ Telegram <span class="check">✓</span></div>
+          <div class="row-item">💬 Discord <span class="check">✓</span></div>
+          <div class="row-item">🪶 飞书 <span class="check">✓</span></div>
+          <div class="row-item">🐦 Lark <span class="check">✓</span></div>
+          <div class="small-label" style="margin-top:8px;border-top:0.5px solid var(--rule);padding-top:8px;">Custom URL</div>
+          <div class="url-input">https://notion.so</div>
+          <div class="actions">
+            <span class="btn-cancel">Cancel</span>
+            <span class="btn-add">Add</span>
+          </div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. IV · Adding a custom URL</span>
+    </div>
+  </article>
+
+  <article class="plate flip">
+    <div class="plate-no">V<span class="small">MOBILE&nbsp;UA</span></div>
+    <div class="copy">
+      <h2>Phone-shaped windows demand phone-shaped <em>web pages.</em></h2>
+      <p>Web channels report an iPhone user-agent so IM apps render their compact mobile layouts — readable in 390&nbsp;px instead of cramped desktop chrome.</p>
+      <ul>
+        <li><span class="marker">←</span><span>The title bar grows browser-style <strong>Back</strong> and <strong>Reload</strong> while a web channel is active.</span></li>
+        <li><span class="marker">⊕</span><span>Inactive channels keep painting (visibility, not <code>display:none</code>) so switches feel instant.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="window">
+        <div class="titlebar">
+          <div class="left">
+            <span class="dot"></span>
+            <span class="lobster-icon"></span>
+            <span class="name">ClawBar</span>
+            <span style="display:inline-flex;gap:1px;margin-left:6px;">
+              <span class="iconbtn">←</span>
+              <span class="iconbtn">↻</span>
+            </span>
+          </div>
+          <div class="right">
+            <span class="iconbtn">⌘</span>
+            <span class="iconbtn">⚙</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="dock">
+            <div class="dock-icon"><span class="lobster-glyph"></span></div>
+            <div class="dock-icon">✈️</div>
+            <div class="dock-icon">💬</div>
+            <div class="dock-icon">🪶</div>
+            <div class="dock-icon active">🐦</div>
+            <div class="dock-spacer"></div>
+            <div class="dock-icon plus">+</div>
+          </div>
+          <div class="webview-mock">
+            <div class="logo">L</div>
+            <h3>Welcome to Lark</h3>
+            <div class="field">Phone or email</div>
+            <div class="field">Password</div>
+            <div class="next-btn">Next →</div>
+            <div class="switch">Log in with QR code</div>
+          </div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. V · Lark login, mobile layout</span>
+    </div>
+  </article>
+
+  <article class="plate">
+    <div class="plate-no">VI<span class="small">PET</span></div>
+    <div class="copy">
+      <h2>An optional lobster, <em>tethered to your desktop.</em></h2>
+      <p>A 100×110 transparent always-on-top window with a tiny mascot. Click to toggle the popover. Drag freely. Hide whenever it gets in the way; bring it back from the tray menu.</p>
+      <ul>
+        <li><span class="marker">↶</span><span><strong>Click</strong> — toggle the main popover from anywhere on screen.</span></li>
+        <li><span class="marker">⇄</span><span><strong>Drag</strong> — position is remembered across launches.</span></li>
+        <li><span class="marker">⌫</span><span><strong>Hide</strong> — right-click → "Hide Pet". Persisted to settings.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="pet-stage-content">
+        <div class="pet-window">
+          <div class="pet-shadow"></div>
+          <svg class="pet-svg" viewBox="0 0 120 120" fill="none">
+            <defs>
+              <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff4d4d"/>
+                <stop offset="100%" stop-color="#991b1b"/>
+              </linearGradient>
+            </defs>
+            <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z" fill="url(#lg)"/>
+            <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z" fill="url(#lg)"/>
+            <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" fill="url(#lg)"/>
+            <path d="M45 15 Q35 5 30 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round"/>
+            <path d="M75 15 Q85 5 90 8" stroke="#ff4d4d" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="45" cy="35" r="6" fill="#050810"/>
+            <circle cx="75" cy="35" r="6" fill="#050810"/>
+            <circle cx="46" cy="34" r="2.5" fill="#00e5cc"/>
+            <circle cx="76" cy="34" r="2.5" fill="#00e5cc"/>
+          </svg>
+        </div>
+        <div>
+          <div class="pet-context">
+            <div class="item">Show Chat</div>
+            <div class="item">Settings</div>
+            <hr>
+            <div class="item">Hide Pet</div>
+            <hr>
+            <div class="item danger">Quit ClawBar</div>
+          </div>
+          <div class="pet-tray-mock">
+            <div class="header">🦞 Tray menu</div>
+            <div class="item" style="padding:6px 12px;">Settings</div>
+            <hr style="border:none;border-top:1px solid var(--rule);margin:4px 6px;">
+            <div class="item" style="padding:6px 12px;color:var(--lobster);">Show Pet</div>
+            <hr style="border:none;border-top:1px solid var(--rule);margin:4px 6px;">
+            <div class="item" style="padding:6px 12px;color:var(--berry);">Quit ClawBar</div>
+          </div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. VI · Pet window + right-click menu + tray menu</span>
+    </div>
+  </article>
+
+  <article class="plate flip">
+    <div class="plate-no">VII<span class="small">THEME</span></div>
+    <div class="copy">
+      <h2>Two surfaces, one <em>quiet warmth.</em></h2>
+      <p>Light cream + lobster red by day; charcoal + lobster red by night. Either follows the OS, or you pin it. Both palettes share the same accent so muscle memory survives the switch.</p>
+    </div>
+    <div class="stage" style="padding:32px 24px 56px;">
+      <div class="duo">
+        <div>
+          <div class="window small">
+            <div class="titlebar">
+              <div class="left">
+                <span class="dot"></span>
+                <span class="lobster-icon"></span>
+                <span class="name">ClawBar</span>
+              </div>
+              <div class="right"><span class="iconbtn">⌘</span><span class="iconbtn">⚙</span></div>
+            </div>
+            <div class="body">
+              <div class="dock">
+                <div class="dock-icon active"><span class="lobster-glyph"></span></div>
+                <div class="dock-icon">✈️</div>
+                <div class="dock-icon">💬</div>
+              </div>
+              <div class="content">
+                <div class="content-head"><span class="crumb">Main · ▾</span></div>
+                <div class="messages" style="padding:12px 10px 6px;">
+                  <div class="row"><div class="avatar">🦞</div><div class="bubble assist">Welcome aboard.</div></div>
+                  <div class="row user"><div class="bubble user">Set up daily standup cron.</div></div>
+                  <div class="row"><div class="avatar">🦞</div><div class="bubble assist">Done — every weekday at 09:30.</div></div>
+                </div>
+                <div class="composer"><div class="input">Message…</div><div class="send on">↑</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="label">Light</div>
+        </div>
+        <div>
+          <div class="window small dark">
+            <div class="titlebar">
+              <div class="left">
+                <span class="dot"></span>
+                <span class="lobster-icon"></span>
+                <span class="name">ClawBar</span>
+              </div>
+              <div class="right"><span class="iconbtn">⌘</span><span class="iconbtn">⚙</span></div>
+            </div>
+            <div class="body">
+              <div class="dock">
+                <div class="dock-icon active"><span class="lobster-glyph"></span></div>
+                <div class="dock-icon">✈️</div>
+                <div class="dock-icon">💬</div>
+              </div>
+              <div class="content">
+                <div class="content-head"><span class="crumb">Main · ▾</span></div>
+                <div class="messages" style="padding:12px 10px 6px;">
+                  <div class="row"><div class="avatar" style="background:#30302e;">🦞</div><div class="bubble assist">Welcome aboard.</div></div>
+                  <div class="row user"><div class="bubble user">Set up daily standup cron.</div></div>
+                  <div class="row"><div class="avatar" style="background:#30302e;">🦞</div><div class="bubble assist">Done — every weekday at 09:30.</div></div>
+                </div>
+                <div class="composer"><div class="input">Message…</div><div class="send on">↑</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="label">Dark</div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. VII · Light vs dark</span>
+    </div>
+  </article>
+
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="install" id="install">
+  <div class="container">
+    <div class="grid">
+      <div>
+        <h2>Get it running in <em>30 seconds.</em></h2>
+        <p>One DMG, one drag, one right-click to bypass Gatekeeper. No package manager, no homebrew tap, no signing dance.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest/download/ClawBar-1.0.0-arm64.dmg">
+            Download .dmg
+            <span class="meta">≈ 100 MB</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/june9593/clawbar/releases">
+            All releases
+            <span class="arrow">→</span>
+          </a>
+        </div>
+      </div>
+      <div class="panels">
+        <div class="panel">
+          <h4>Install — pre-built DMG</h4>
+          <div class="step"><span class="num">1</span><span>Download the <code>.dmg</code> from the button above.</span></div>
+          <div class="step"><span class="num">2</span><span>Open it and drag <strong>ClawBar</strong> into <code>/Applications</code>.</span></div>
+          <div class="step"><span class="num">3</span><span>First launch — <strong>right-click → Open</strong>, then click "Open" in the warning dialog. The app isn't code-signed, so Gatekeeper blocks it once.</span></div>
+          <div class="step"><span class="num">4</span><span>Or skip step 3 by running once: <pre>xattr -dr com.apple.quarantine /Applications/ClawBar.app</pre></span></div>
+        </div>
+        <div class="panel">
+          <h4>Build from source</h4>
+<pre><span class="comment"># clone, install, run</span>
+git clone https://github.com/june9593/clawbar.git
+cd clawbar
+npm install
+npm run dev:electron
+
+<span class="comment"># package your own DMG</span>
+npm run pack:mac:dmg:arm64</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<section class="faq container" id="faq">
+  <div class="head">
+    <div class="eyebrow">Frequently asked</div>
+    <h2>Sensible <em>questions,</em> short answers.</h2>
+  </div>
+  <div class="list">
+    <details open>
+      <summary>Why isn't the DMG signed?</summary>
+      <p>Code signing requires an Apple Developer account ($99/yr) plus a notarisation flow. ClawBar is a free side-project — for now you bypass Gatekeeper once with right-click → Open, or with <code>xattr -dr com.apple.quarantine /Applications/ClawBar.app</code>. Both are one-time and safe.</p>
+    </details>
+    <details>
+      <summary>Does it work on Intel Macs?</summary>
+      <p>Not yet — releases ship arm64 only. The build pipeline can produce x64 (run <code>npm run pack:mac:dmg:x64</code> from source), it's just not part of the GitHub Actions release. PRs welcome.</p>
+    </details>
+    <details>
+      <summary>What's the OpenClaw connection like?</summary>
+      <p>ClawBar talks to your gateway over a single WebSocket from the Electron main process. Ed25519 device identity, generated and stored locally at <code>~/.clawbar/device-identity.json</code> — the private key never leaves the main process. Tokens never reach the renderer either.</p>
+    </details>
+    <details>
+      <summary>Does it phone home?</summary>
+      <p>No. No analytics, no error reporting, no auto-update check. The only network calls are the ones you make: the WebSocket to your OpenClaw gateway, and whatever each <code>&lt;webview&gt;</code> channel does on its own.</p>
+    </details>
+    <details>
+      <summary>Where are settings stored?</summary>
+      <p><code>~/.clawbar/settings.json</code> for app config (gateway URL, theme, channel list, pet visibility). <code>~/.clawbar/device-identity.json</code> for the Ed25519 keypair. Each channel's cookies and localStorage live in Electron partitions under your Electron user-data directory.</p>
+    </details>
+    <details>
+      <summary>Can I add a chat app that isn't built in?</summary>
+      <p>Yes — click <strong>+</strong> at the bottom of the dock, paste any URL. The favicon auto-loads as the icon and the hostname becomes the channel name. Right-click to rename, reorder, or delete. Works for Notion, Slack, your team's intranet, anything web-based.</p>
+    </details>
+    <details>
+      <summary>Is it open source?</summary>
+      <p>Yes — MIT licensed. Source at <a href="https://github.com/june9593/clawbar">github.com/june9593/clawbar</a>. Issues and PRs welcome.</p>
+    </details>
+  </div>
+</section>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<footer class="footer">
+  <div class="container">
+    <div class="grid">
+      <div>
+        <div class="brand-block">
+          <span class="brand-mark"></span>
+          <span>ClawBar</span>
+        </div>
+        <p>A macOS menu-bar hub for OpenClaw, every IM you actually use, and any URL you can paste.</p>
+        <p class="stamp">— made for the menu bar.</p>
+      </div>
+      <div>
+        <h5>Project</h5>
+        <a href="https://github.com/june9593/clawbar">GitHub</a>
+        <a href="https://github.com/june9593/clawbar/releases">Releases</a>
+        <a href="https://github.com/june9593/clawbar/issues">Issues</a>
+        <a href="https://github.com/june9593/clawbar/blob/main/LICENSE">MIT License</a>
+      </div>
+      <div>
+        <h5>Docs</h5>
+        <a href="https://github.com/june9593/clawbar/blob/main/README.md">README</a>
+        <a href="https://github.com/june9593/clawbar/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+        <a href="https://github.com/june9593/clawbar/blob/main/CLAUDE.md">CLAUDE.md</a>
+      </div>
+      <div>
+        <h5>Built with</h5>
+        <a href="https://www.electronjs.org/">Electron 35</a>
+        <a href="https://react.dev/">React 19</a>
+        <a href="https://vitejs.dev/">Vite 6</a>
+        <a href="https://github.com/nicepkg/openclaw">OpenClaw</a>
+      </div>
+    </div>
+    <div class="colophon">
+      © 2026 june9593 · MIT licensed · Set in Fraunces & Inter Tight · Last updated v0.2.3
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
