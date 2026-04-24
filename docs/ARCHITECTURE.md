@@ -1,10 +1,10 @@
 # ClawBar — Architecture
 
-> 版本: v2.2 — 2026-04-23
+> 版本: v2.3 — 2026-04-24
 
 ## 1. Overview
 
-ClawBar is a frameless macOS menu-bar Electron app **for OpenClaw**. The user's OpenClaw agent is reachable through several **channels** — its own web chat, IM bots (Telegram / Discord / Feishu / Lark), custom integrations — and ClawBar collects every one of those channels into a 48 px channel bar on the left edge of the popover. The first channel is OpenClaw's native WebSocket UI (or, alternatively, an embedded iframe of the gateway's own web client); the rest are Electron `<webview>` tags with persistent partitions.
+ClawBar is a frameless Electron app **for OpenClaw**, running on **macOS** (as a menu-bar popover) and **Windows** (as a system-tray popover). The user's OpenClaw agent is reachable through several **channels** — its own web chat, IM bots (Telegram / Discord / Feishu / Lark), custom integrations — and ClawBar collects every one of those channels into a 48 px channel bar on the left edge of the popover. The first channel is OpenClaw's native WebSocket UI (or, alternatively, an embedded iframe of the gateway's own web client); the rest are Electron `<webview>` tags with persistent partitions.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -185,13 +185,17 @@ ChatView ──► useClawChat(gateway, token)
 
 ## 6. Window
 
-Frameless `BrowserWindow` with `vibrancy: 'popover'`. Position rules:
+Frameless `BrowserWindow`. Position rules:
 
-1. First open → place under the tray icon.
+1. First open → place near the tray icon.
 2. After drag/resize → persist to `~/.clawbar/window-bounds.json` and restore.
-3. If the saved position is off-screen (display config changed), fall back to under the tray.
+3. If the saved position is off-screen (display config changed), fall back to the tray anchor.
+
+`positionNearTray()` clamps the window inside the current display's `workArea` and flips above the tray when there's not enough room below — on Windows the tray usually sits at the bottom of the screen, so the popover is rendered **above** the tray rather than below it.
 
 `webPreferences`: `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`.
+
+macOS-only knobs (`vibrancy: 'popover'`, `visualEffectState: 'active'`, `app.dock?.hide()`) are applied only when `process.platform === 'darwin'`. On Windows the window has a standard opaque background and gets an `icon` option so alt-tab / task-manager show the lobster.
 
 ## 7. Build
 
@@ -199,7 +203,9 @@ Frameless `BrowserWindow` with `vibrancy: 'popover'`. Position rules:
 |------------------|---------------------|-------------------------------------------|
 | Vite             | `index.html`        | `dist/`                                   |
 | `tsc -p tsconfig.node.json` | `electron/*.ts`        | `dist-electron/` (CommonJS)               |
-| electron-builder | `dist/`, `dist-electron/`, `resources/` | `release-artifacts/*.dmg` |
+| electron-builder | `dist/`, `dist-electron/`, `resources/` | `release-artifacts/*.dmg` (macOS), `release-artifacts/*.exe` (Windows NSIS + portable) |
+
+Release CI (`.github/workflows/release.yml`) runs two parallel jobs — macOS arm64 on `macos-14`, Windows x64 on `windows-latest` — then a final `release` job downloads both artifacts and publishes them to a single GitHub Release. Triggered by pushing a `v*` tag, or manually via `workflow_dispatch`.
 
 ## 8. Channels
 
@@ -220,3 +226,17 @@ Clicking the OpenClaw channel icon while OpenClaw is the active channel toggles 
 - `settings:set` whitelists the keys it accepts.
 - Auth tokens travel in the URL fragment when embedding the OpenClaw UI — fragments aren't sent to servers.
 - Ed25519 private key never leaves the main process.
+
+## 11. Platform notes
+
+**Tray icon.** macOS uses a 18 px template (monochrome) PNG so it auto-adapts to light / dark menu bars. Windows uses the colored `resources/icon.png` at 16 px — Windows tray doesn't honour `setTemplateImage`, so a black silhouette would be invisible on a dark taskbar.
+
+**Tray tooltip / menu.** Same code path on both platforms (`tray.setToolTip`, `tray.on('right-click', …)`). Windows 11 hides new tray icons inside the overflow flyout by default; users drag the icon onto the main taskbar to pin it.
+
+**Popover positioning.** On macOS the tray is at the top of the screen so the popover drops **below** the tray icon. On Windows the tray is at the bottom, so `positionNearTray()` flips the popover **above** the tray and clamps it inside the screen's `workArea`.
+
+**Window chrome.** `vibrancy` is macOS-only; on Windows the popover is a plain opaque window. Frameless + custom titlebar is the same on both.
+
+**Pet window.** `transparent: true + frameless + alwaysOnTop` works on both platforms; `focusable: false` keeps it out of alt-tab / Mission Control.
+
+**Packaging.** macOS produces a `.dmg` via electron-builder's `dmg` target; Windows produces an NSIS installer (`.exe`) and a self-extracting portable (`.exe`) via the `nsis` and `portable` targets. Neither is code-signed — macOS users bypass Gatekeeper with right-click → Open, Windows users bypass SmartScreen with "More info → Run anyway".

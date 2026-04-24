@@ -38,8 +38,29 @@ function positionNearTray() {
   if (!tray || !mainWindow) return;
   const trayBounds = tray.getBounds();
   const windowBounds = mainWindow.getBounds();
-  const x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
-  const y = trayBounds.y + trayBounds.height + 4;
+  const display = screen.getDisplayNearestPoint({
+    x: trayBounds.x + Math.round(trayBounds.width / 2),
+    y: trayBounds.y + Math.round(trayBounds.height / 2),
+  });
+  const workArea = display.workArea;
+
+  let x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
+  let y = trayBounds.y + trayBounds.height + 4;
+
+  // On Windows the tray usually sits at the bottom of the screen, so dropping
+  // the window below the tray places it off-screen. Flip above the tray when
+  // there isn't enough room below.
+  if (y + windowBounds.height > workArea.y + workArea.height) {
+    y = trayBounds.y - windowBounds.height - 4;
+  }
+
+  // Clamp horizontally inside the work area so the popover stays fully visible.
+  const minX = workArea.x + 4;
+  const maxX = workArea.x + workArea.width - windowBounds.width - 4;
+  if (x < minX) x = minX;
+  if (x > maxX) x = maxX;
+  if (y < workArea.y + 4) y = workArea.y + 4;
+
   mainWindow.setPosition(x, y);
 }
 
@@ -76,6 +97,7 @@ function loadWindowBounds(): Electron.Rectangle | null {
 
 function createWindow() {
   const savedBounds = loadWindowBounds();
+  const isMac = process.platform === 'darwin';
   mainWindow = new BrowserWindow({
     width: savedBounds?.width ?? 390,
     height: savedBounds?.height ?? 720,
@@ -90,8 +112,10 @@ function createWindow() {
     alwaysOnTop: false,
     skipTaskbar: true,
     show: false,
-    vibrancy: 'popover',
-    visualEffectState: 'active',
+    // Vibrancy is macOS-only; on Windows these are ignored but we leave them
+    // off to avoid any platform-specific surprises.
+    ...(isMac ? { vibrancy: 'popover' as const, visualEffectState: 'active' as const } : {}),
+    icon: isMac ? undefined : path.join(__dirname, '../resources/icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -150,11 +174,27 @@ function createWindow() {
 }
 
 function createTray() {
-  // 🦞 Apple Color Emoji → black silhouette 32x32 PNG, lobster shifted +2px down for visual centering.
-  const lobsterPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAESElEQVR4AeyWWYhWZRjHnzNpm06lLeCUZRFjCxVlC0bLV9mi0AozEAYtFxpUA0FFRMSxmyCCKIj6ClqIimYuojKCsvQqL8qLsKTIJqVmKlMMt3Hcf7/Dd8aPOefMfArijcPz//7Pu//f533e90xbHOa/IwLGjcDeiAmc0lxwN5hEOYGrLKG9jcZzwNOgE4xpdq7skEa0JRE30uE9UAN3UD6fRSBKRWun4SaqxaPwi2A6qLTxBJzJyKfAqWAy6AKXLavVjoLL7AQqbwfXgS3gTjA/jdqxcKlVCkgjtW02o9wNm45L8K8GU9s7OxM4jBCYEPv/HKPo66maArR70lh2sk4ZHFBWHwg4LiIuArldgHMa2DirXt8NT2bxSbACTnr13DgGfyvYDAz7VFg7m58DjwCD3KWT4oa+gjZQGEiS5Dy4G1yOiFPgeT2rw0R1oX7KmsJydrx+AZUR6O3qHaL3T6DZtlMwGU+H54DXGngWVtQV8ExghKDM1vI7DEqtUkB3X7eTfM+olSC3nTi/g+/AP8BFb4OngZ/BCrAeNC/4LeX/QalVCrB32tFhOL/Qb8AFvsL3rBUojqZsknoz/sT/GAwCbRM/n9PojcAt2tgCBge3MWQxcNdQmN21x2d3mQ/XUuGiUJiM3hCv4X1UnAE0x64kAdBgsYgxBdid27Ac7gG/At+DJ15e3vcwvq8dc+NFKEQBiyg9ACaCt8FzwCOByq1SwNIZYUbfjICHGOq1+hoWM+DnQX7NcDMBV+IobA3cC/4CPkj3wyeCUqsU4CyMMJkM38X4vgOe6Q/43pCysb/R9iM4Hnhb/BbY11yhqmhlk2S91q4J23x4vHKKMCLeea+iYd2Tddz/4w3ZSNH88Kjs59EYMROVpqK5SLGWGh4Yz9HJvAnuwMnlhGYXUxTuiNlmxHyAbDeBFWECWz/SsdmpFEAnw204r8L3zg/APkx9sNltaHFH7G+8j8Bn4BdgH8V6fAcegXpHuPtLmcjs/wS2/D4svoHdHTRi6+v1um/A69QsAe3gLbALmBNQ0aojMC0M4xKO4g2GGV6PIn9QfIhGH8HW4enDu+nvEfhBcvfyK0sj/mWOUqsUsHBFJmCACXex0mpG5yF14j8oG3IoM8X298x9bAf93a3H9wEtPsGbbogwChSLVimgueuiNPsaWpXvfB0F7zna8CIT2x9JsvediB3UKEDO26kqt5YEpGl4nk64ob4gdYePMN2FwGhA2f8Ct+Jc82CEueFne8qCWeFNorraWhLAcO+8b9O2hW+m91J+BpwFcvO++214gYqZPIP/wUNzhiIXSLHcWhJAHE0+w4obfniMyOjJ3a0P1UT+UzEZ13WvCnOjfOVGbUsCWMmFG0PCu+634FMqvgQfAr8R78JPphGr4ICNWvO4KPtrScCogYb3JeruAvPAfHAL4PhjcWNhiq3ZwQhobeYWex0RcMgjMN5J7AMAAP//U56jygAAAAZJREFUAwC7xPZBqYqrVAAAAABJRU5ErkJggg==';
-  let icon = nativeImage.createFromDataURL(lobsterPng);
-  icon = icon.resize({ width: 18, height: 18, quality: 'best' });
-  icon.setTemplateImage(true);
+  const isMac = process.platform === 'darwin';
+  let icon: Electron.NativeImage;
+
+  if (isMac) {
+    // 🦞 Apple Color Emoji → black silhouette 32x32 PNG, lobster shifted +2px down for visual centering.
+    const lobsterPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAESElEQVR4AeyWWYhWZRjHnzNpm06lLeCUZRFjCxVlC0bLV9mi0AozEAYtFxpUA0FFRMSxmyCCKIj6ClqIimYuojKCsvQqL8qLsKTIJqVmKlMMt3Hcf7/Dd8aPOefMfArijcPz//7Pu//f533e90xbHOa/IwLGjcDeiAmc0lxwN5hEOYGrLKG9jcZzwNOgE4xpdq7skEa0JRE30uE9UAN3UD6fRSBKRWun4SaqxaPwi2A6qLTxBJzJyKfAqWAy6AKXLavVjoLL7AQqbwfXgS3gTjA/jdqxcKlVCkgjtW02o9wNm45L8K8GU9s7OxM4jBCYEPv/HKPo66maArR70lh2sk4ZHFBWHwg4LiIuArldgHMa2DirXt8NT2bxSbACTnr13DgGfyvYDAz7VFg7m58DjwCD3KWT4oa+gjZQGEiS5Dy4G1yOiFPgeT2rw0R1oX7KmsJydrx+AZUR6O3qHaL3T6DZtlMwGU+H54DXGngWVtQV8ExghKDM1vI7DEqtUkB3X7eTfM+olSC3nTi/g+/AP8BFb4OngZ/BCrAeNC/4LeX/QalVCrB32tFhOL/Qb8AFvsL3rBUojqZsknoz/sT/GAwCbRM/n9PojcAt2tgCBge3MWQxcNdQmN21x2d3mQ/XUuGiUJiM3hCv4X1UnAE0x64kAdBgsYgxBdid27Ac7gG/At+DJ15e3vcwvq8dc+NFKEQBiyg9ACaCt8FzwCOByq1SwNIZYUbfjICHGOq1+hoWM+DnQX7NcDMBV+IobA3cC/4CPkj3wyeCUqsU4CyMMJkM38X4vgOe6Q/43pCysb/R9iM4Hnhb/BbY11yhqmhlk2S91q4J23x4vHKKMCLeea+iYd2Tddz/4w3ZSNH88Kjs59EYMROVpqK5SLGWGh4Yz9HJvAnuwMnlhGYXUxTuiNlmxHyAbDeBFWECWz/SsdmpFEAnw204r8L3zg/APkx9sNltaHFH7G+8j8Bn4BdgH8V6fAcegXpHuPtLmcjs/wS2/D4svoHdHTRi6+v1um/A69QsAe3gLbALmBNQ0aojMC0M4xKO4g2GGV6PIn9QfIhGH8HW4enDu+nvEfhBcvfyK0sj/mWOUqsUsHBFJmCACXex0mpG5yF14j8oG3IoM8X298x9bAf93a3H9wEtPsGbbogwChSLVimgueuiNPsaWpXvfB0F7zna8CIT2x9JsvediB3UKEDO26kqt5YEpGl4nk64ob4gdYePMN2FwGhA2f8Ct+Jc82CEueFne8qCWeFNorraWhLAcO+8b9O2hW+m91J+BpwFcvO++214gYqZPIP/wUNzhiIXSLHcWhJAHE0+w4obfniMyOjJ3a0P1UT+UzEZ13WvCnOjfOVGbUsCWMmFG0PCu+634FMqvgQfAr8R78JPphGr4ICNWvO4KPtrScCogYb3JeruAvPAfHAL4PhjcWNhiq3ZwQhobeYWex0RcMgjMN5J7AMAAP//U56jygAAAAZJREFUAwC7xPZBqYqrVAAAAABJRU5ErkJggg==';
+    icon = nativeImage.createFromDataURL(lobsterPng);
+    icon = icon.resize({ width: 18, height: 18, quality: 'best' });
+    icon.setTemplateImage(true);
+  } else {
+    // Windows: use the colored lobster icon from resources/ so it's visible on
+    // both light and dark taskbars. Template images are macOS-only.
+    const iconPath = path.join(__dirname, '../resources/icon.png');
+    icon = nativeImage.createFromPath(iconPath);
+    if (icon.isEmpty()) {
+      // Fallback: use a 1x1 transparent icon so tray() doesn't throw.
+      icon = nativeImage.createEmpty();
+    } else {
+      icon = icon.resize({ width: 16, height: 16, quality: 'best' });
+    }
+  }
 
   tray = new Tray(icon);
   tray.setToolTip('ClawBar');

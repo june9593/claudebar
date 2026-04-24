@@ -19,7 +19,10 @@
     "preview": "vite preview",
     "pack:mac:dmg:arm64": "npm run build && electron-builder --mac dmg --arm64",
     "pack:mac:dmg:x64": "npm run build && electron-builder --mac dmg --x64",
-    "clean": "rm -rf dist dist-electron release-artifacts"
+    "pack:win": "npm run build && electron-builder --win --x64",
+    "pack:win:nsis": "npm run build && electron-builder --win nsis --x64",
+    "pack:win:portable": "npm run build && electron-builder --win portable --x64",
+    "clean": "node -e \"const fs=require('fs');for(const d of ['dist','dist-electron','release-artifacts'])fs.rmSync(d,{recursive:true,force:true});\""
   },
   "keywords": [
     "openclaw",

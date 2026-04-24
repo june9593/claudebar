@@ -1,6 +1,6 @@
 # 🦞 ClawBar
 
-A macOS menu-bar app for [OpenClaw](https://github.com/nicepkg/openclaw). Your agent reaches you through many channels — Telegram, Discord, Feishu, Lark, its own web chat, custom integrations — and ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar. **A bar in a bar.**
+A menu-bar / system-tray app for [OpenClaw](https://github.com/nicepkg/openclaw), on **macOS** and **Windows**. Your agent reaches you through many channels — Telegram, Discord, Feishu, Lark, its own web chat, custom integrations — and ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar or the Windows system tray. **A bar in a bar.**
 
 ## Features
 
@@ -16,23 +16,36 @@ A macOS menu-bar app for [OpenClaw](https://github.com/nicepkg/openclaw). Your a
 - **Light / dark theme** — follows macOS or override per app.
 - **No telemetry** — no analytics, no phone-home. The OpenClaw bridge only talks to the gateway URL you configure.
 
-## Install (pre-built DMG)
+## Install (pre-built)
 
-Grab the latest `.dmg` from the [Releases page](https://github.com/june9593/clawbar/releases), open it, and drag **ClawBar** into `/Applications`.
+Head to the [Releases page](https://github.com/june9593/clawbar/releases) and grab the file for your OS.
 
-> **The app isn't code-signed**, so macOS Gatekeeper will block the first launch. Pick one:
->
-> - In Finder, **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog (one time only).
-> - Or paste this once in Terminal:
->   ```bash
->   xattr -dr com.apple.quarantine /Applications/ClawBar.app
->   ```
+### macOS (Apple Silicon)
+
+1. Download `ClawBar-<version>.dmg`.
+2. Open it and drag **ClawBar** into `/Applications`.
+3. **First launch** — the app isn't code-signed, so Gatekeeper will block it once. Pick one:
+   - Finder → **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog.
+   - Or run once in Terminal:
+     ```bash
+     xattr -dr com.apple.quarantine /Applications/ClawBar.app
+     ```
+
+The lobster icon appears in the **macOS menu bar**. Click it to toggle the popover.
+
+### Windows (x64)
+
+1. Download `ClawBar-<version>-x64.exe` (NSIS installer).
+2. Double-click to install. **SmartScreen** warns because the installer is **not code-signed** — click **More info → Run anyway**.
+3. Launch from the Start Menu or desktop shortcut.
+
+The lobster icon appears in the **Windows system tray** (notification area). Left-click to toggle the popover, right-click for Settings / Show Pet / Quit. On Windows 11 the icon may start hidden in the overflow flyout — drag it onto the main taskbar to pin it.
 
 ## Quick Start (from source)
 
 ### Prerequisites
 
-- macOS 12+ (Monterey or later)
+- **macOS 12+** (Monterey or later) or **Windows 10 / 11**
 - Node.js 20+
 - (Optional) A reachable [OpenClaw](https://github.com/nicepkg/openclaw) gateway, default `http://localhost:18789`
 
@@ -56,9 +69,17 @@ npm run build             # Production build (vite + tsc)
 npx tsc --noEmit                          # renderer
 npx tsc -p tsconfig.node.json --noEmit    # main process
 
-# Package as DMG (Apple Silicon)
-npm run pack:mac:dmg:arm64
+# Packaging — macOS
+npm run pack:mac:dmg:arm64     # Apple Silicon DMG
+npm run pack:mac:dmg:x64       # Intel DMG
+
+# Packaging — Windows (run on a Windows host)
+npm run pack:win               # NSIS installer + portable exe
+npm run pack:win:nsis          # NSIS installer only
+npm run pack:win:portable      # portable exe only
 ```
+
+> Cross-compiling a Windows build from macOS / Linux isn't supported here — run `pack:win*` on a Windows machine (or use the Windows job in the GitHub Actions release workflow).
 
 ## Channels
 

@@ -11,11 +11,11 @@ on:
         required: false
 
 jobs:
-  build:
-    name: Build & release (macOS arm64)
+  build-macos:
+    name: Build (macOS arm64)
     runs-on: macos-14  # Apple Silicon runner
     permissions:
-      contents: write   # needed to create the GitHub Release
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
@@ -34,9 +34,8 @@ jobs:
 
       - name: Package DMG (arm64)
         env:
-          # GitHub Releases publishing — auto-provided
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ─── To enable code signing + notarization later, populate these:
+          # ─── To enable macOS code signing + notarization later, populate:
           # CSC_LINK: ${{ secrets.MAC_CERTS }}              # base64 .p12
           # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTS_PASSWORD }}
           # APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -51,8 +50,65 @@ jobs:
           path: release-artifacts/*.dmg
           if-no-files-found: error
 
+  build-windows:
+    name: Build (Windows x64, NSIS)
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer + main process
+        run: npm run build
+
+      - name: Package NSIS installer (x64)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ─── To enable Windows code signing later, populate:
+          # CSC_LINK: ${{ secrets.WIN_CERTS }}              # base64 .pfx
+          # CSC_KEY_PASSWORD: ${{ secrets.WIN_CERTS_PASSWORD }}
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Upload NSIS installer as workflow artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: clawbar-windows-x64
+          path: |
+            release-artifacts/*.exe
+            release-artifacts/*.exe.blockmap
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-macos, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: clawbar-macos-arm64
+          path: release-assets
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: clawbar-windows-x64
+          path: release-assets
+
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag != ''
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
@@ -63,6 +119,8 @@ jobs:
           body: |
             ## Install
 
+            ### macOS (Apple Silicon)
+
             1. Download the `.dmg` below.
             2. Open it and drag **ClawBar** to **Applications**.
             3. **First launch** — because the app is **not code-signed**, macOS Gatekeeper will block it. Pick one:
@@ -72,5 +130,13 @@ jobs:
                  xattr -dr com.apple.quarantine /Applications/ClawBar.app
                  ```
 
+            ### Windows (x64)
+
+            1. Download the `ClawBar-*-x64.exe` installer below.
+            2. Double-click to install. **SmartScreen** will warn because the installer is **not code-signed** — click **More info → Run anyway**.
+            3. Launch from the Start Menu or desktop shortcut. The lobster icon appears in the **system tray** (you may need to drag it out of the overflow area on Windows 11).
+
             ---
-          files: release-artifacts/*.dmg
+          files: |
+            release-assets/*.dmg
+            release-assets/*.exe

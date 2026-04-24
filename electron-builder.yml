@@ -11,6 +11,29 @@ mac:
   icon: resources/icon.png
   darkModeSupport: true
 
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  icon: resources/icon.png
+  # Not code-signed — users will see SmartScreen warning on first launch.
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ClawBar
+
+portable:
+  artifactName: ${productName}-${version}-portable-${arch}.${ext}
+
 dmg:
   title: ClawBar ${version}
   iconSize: 100

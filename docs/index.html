@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ClawBar — Every channel to your OpenClaw, in the menu bar</title>
-<meta name="description" content="Talk to your OpenClaw from Telegram, Discord, Feishu, Lark, or its own web chat — all reachable through one macOS menu-bar app. Open-source, MIT.">
+<meta name="description" content="Talk to your OpenClaw from Telegram, Discord, Feishu, Lark, or its own web chat — all reachable through one menu-bar / system-tray app on macOS and Windows. Open-source, MIT.">
 <meta property="og:title" content="ClawBar — Every channel to your OpenClaw, in the menu bar">
-<meta property="og:description" content="One menu-bar bar for every OpenClaw channel: Telegram, Discord, Feishu, Lark, and the web client.">
+<meta property="og:description" content="One bar for every OpenClaw channel: Telegram, Discord, Feishu, Lark, and the web client. macOS + Windows.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://june9593.github.io/clawbar/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1144,13 +1144,17 @@
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <header class="hero container" id="top">
-  <div class="eyebrow">A macOS menu-bar app for OpenClaw</div>
+  <div class="eyebrow">A menu-bar / system-tray app for OpenClaw</div>
   <h1>Every <em>channel</em><br>to your OpenClaw,<br>in <em>one</em> bar.</h1>
-  <p class="lede">Your OpenClaw agent reaches you through Telegram, Discord, Feishu, Lark, its own web chat — and anywhere else you've wired it up. ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar. <em>Bar in a bar.</em></p>
+  <p class="lede">Your OpenClaw agent reaches you through Telegram, Discord, Feishu, Lark, its own web chat — and anywhere else you've wired it up. ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar or the Windows system tray. <em>Bar in a bar.</em></p>
   <div class="actions">
-    <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest/download/ClawBar-1.0.0-arm64.dmg">
+    <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest">
       Download for macOS
-      <span class="meta">v0.2.3 · arm64</span>
+      <span class="meta">arm64 · .dmg</span>
+    </a>
+    <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest">
+      Download for Windows
+      <span class="meta">x64 · .exe</span>
     </a>
     <a class="btn btn-ghost" href="https://github.com/june9593/clawbar">
       View source
@@ -1158,7 +1162,7 @@
     </a>
   </div>
   <div class="install-note">
-    <strong>For OpenClaw users.</strong> Apple Silicon (M-series) · macOS 12+ · Unsigned DMG, see install note below.
+    <strong>For OpenClaw users.</strong> macOS 12+ (Apple Silicon) · Windows 10 / 11 (x64) · Not code-signed, see install note below.
   </div>
 
   <div class="stats">
@@ -1543,11 +1547,11 @@
     <div class="grid">
       <div>
         <h2>Get your OpenClaw in the menu bar in <em>30 seconds.</em></h2>
-        <p>One DMG, one drag, one right-click to bypass Gatekeeper. Point it at your gateway URL and you're in.</p>
+        <p>One download, one drag (or one Next-Next-Install). Point it at your gateway URL and you're in — on macOS or Windows.</p>
         <div class="actions">
-          <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest/download/ClawBar-1.0.0-arm64.dmg">
-            Download .dmg
-            <span class="meta">≈ 100 MB</span>
+          <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/latest">
+            Latest release
+            <span class="arrow">→</span>
           </a>
           <a class="btn btn-ghost" href="https://github.com/june9593/clawbar/releases">
             All releases
@@ -1557,22 +1561,29 @@
       </div>
       <div class="panels">
         <div class="panel">
-          <h4>Install — pre-built DMG</h4>
-          <div class="step"><span class="num">1</span><span>Download the <code>.dmg</code> from the button above.</span></div>
+          <h4>Install — macOS (Apple Silicon)</h4>
+          <div class="step"><span class="num">1</span><span>Download <code>ClawBar-&lt;version&gt;.dmg</code> from the Releases page.</span></div>
           <div class="step"><span class="num">2</span><span>Open it and drag <strong>ClawBar</strong> into <code>/Applications</code>.</span></div>
-          <div class="step"><span class="num">3</span><span>First launch — <strong>right-click → Open</strong>, then click "Open" in the warning dialog. The app isn't code-signed, so Gatekeeper blocks it once.</span></div>
-          <div class="step"><span class="num">4</span><span>Or skip step 3 by running once: <pre>xattr -dr com.apple.quarantine /Applications/ClawBar.app</pre></span></div>
+          <div class="step"><span class="num">3</span><span>First launch — <strong>right-click → Open</strong>, then "Open" in the Gatekeeper dialog. The app isn't code-signed.</span></div>
+          <div class="step"><span class="num">4</span><span>Or skip step 3: <pre>xattr -dr com.apple.quarantine /Applications/ClawBar.app</pre></span></div>
+        </div>
+        <div class="panel">
+          <h4>Install — Windows (x64)</h4>
+          <div class="step"><span class="num">1</span><span>Download <code>ClawBar-&lt;version&gt;-x64.exe</code> from the Releases page.</span></div>
+          <div class="step"><span class="num">2</span><span>Double-click to install. <strong>SmartScreen</strong> warns (installer isn't signed) — click <strong>More info → Run anyway</strong>.</span></div>
+          <div class="step"><span class="num">3</span><span>Launch from Start Menu or desktop shortcut. The lobster appears in the <strong>system tray</strong> — on Windows 11, drag it out of the overflow flyout to pin it.</span></div>
         </div>
         <div class="panel">
           <h4>Build from source</h4>
-<pre><span class="comment"># clone, install, run</span>
+<pre><span class="comment"># clone, install, run (macOS or Windows)</span>
 git clone https://github.com/june9593/clawbar.git
 cd clawbar
 npm install
 npm run dev:electron
 
-<span class="comment"># package your own DMG</span>
-npm run pack:mac:dmg:arm64</pre>
+<span class="comment"># package your own build</span>
+npm run pack:mac:dmg:arm64    <span class="comment"># macOS</span>
+npm run pack:win              <span class="comment"># Windows (NSIS + portable)</span></pre>
         </div>
       </div>
     </div>
@@ -1587,12 +1598,16 @@ npm run pack:mac:dmg:arm64</pre>
   </div>
   <div class="list">
     <details open>
-      <summary>Why isn't the DMG signed?</summary>
-      <p>Code signing requires an Apple Developer account ($99/yr) plus a notarisation flow. ClawBar is a free side-project — for now you bypass Gatekeeper once with right-click → Open, or with <code>xattr -dr com.apple.quarantine /Applications/ClawBar.app</code>. Both are one-time and safe.</p>
+      <summary>Why isn't the build signed?</summary>
+      <p>Code signing costs money on both platforms — Apple Developer is $99/yr plus notarisation, and Windows EV / OV certs are $200–$500/yr. ClawBar is a free side-project, so the DMG and the NSIS installer are both unsigned. On macOS you bypass Gatekeeper once with right-click → Open (or <code>xattr -dr com.apple.quarantine</code>); on Windows you click <strong>More info → Run anyway</strong> in the SmartScreen dialog. Both are one-time.</p>
     </details>
     <details>
       <summary>Does it work on Intel Macs?</summary>
-      <p>Not yet — releases ship arm64 only. The build pipeline can produce x64 (run <code>npm run pack:mac:dmg:x64</code> from source), it's just not part of the GitHub Actions release. PRs welcome.</p>
+      <p>Not in releases — we ship macOS arm64 only. The build pipeline can produce x64 (run <code>npm run pack:mac:dmg:x64</code> from source), it's just not part of the GitHub Actions release. PRs welcome.</p>
+    </details>
+    <details>
+      <summary>Does the Windows build work on Windows 10 / ARM?</summary>
+      <p>Releases ship <strong>Windows x64</strong>, which covers Windows 10 22H2 and Windows 11 on Intel/AMD. ARM64 Windows and 32-bit Windows aren't built by the release pipeline — you can produce them from source by editing <code>electron-builder.yml</code>'s <code>win.target.arch</code>. On Windows 11, the tray icon often starts hidden in the overflow flyout — drag it onto the main taskbar to pin it.</p>
     </details>
     <details>
       <summary>What's the OpenClaw connection like?</summary>
