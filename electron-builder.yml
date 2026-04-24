@@ -11,6 +11,13 @@ mac:
   icon: resources/icon.png
   darkModeSupport: true
   artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # Notarization is opt-in per script: pack:mac:dmg:*:release overrides this to true
+  # via -c.mac.notarize=true. Local dev (pack:mac:dmg:*) skips notarization.
+  notarize: false
 
 win:
   target:

@@ -1,6 +1,6 @@
 {
   "name": "clawbar",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "macOS menu bar multi-IM hub for OpenClaw + Telegram + Discord + Feishu + Lark",
   "main": "dist-electron/main.js",
   "homepage": "https://github.com/june9593/clawbar",
@@ -18,7 +18,9 @@
     "build:electron": "tsc -p tsconfig.node.json",
     "preview": "vite preview",
     "pack:mac:dmg:arm64": "npm run build && electron-builder --mac dmg --arm64",
+    "pack:mac:dmg:arm64:release": "npm run build && electron-builder --mac dmg --arm64 -c.mac.notarize=true && node scripts/notarize-dmg.mjs",
     "pack:mac:dmg:x64": "npm run build && electron-builder --mac dmg --x64",
+    "pack:mac:dmg:x64:release": "npm run build && electron-builder --mac dmg --x64 -c.mac.notarize=true && node scripts/notarize-dmg.mjs",
     "pack:win": "npm run build && electron-builder --win --x64",
     "pack:win:nsis": "npm run build && electron-builder --win nsis --x64",
     "pack:win:portable": "npm run build && electron-builder --win portable --x64",
