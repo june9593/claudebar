@@ -72,7 +72,9 @@ function bumpActivity(s: ActiveSession) {
  *  `session-started` event. */
 function closeQuery(s: ActiveSession) {
   try { s.queue?.close(); } catch { /* ignore */ }
-  try { s.q?.interrupt?.(); } catch { /* ignore */ }
+  // interrupt() returns a Promise; swallow async rejection too — same
+  // reasoning as in abortTurn. ProcessTransport may already be torn down.
+  try { s.q?.interrupt?.()?.catch(() => { /* swallow */ }); } catch { /* ignore */ }
   s.queue = null;
   s.q = null;
   // Reset abort controller for the next Query.
@@ -106,6 +108,14 @@ function destroySession(channelId: string) {
 function makeCanUseTool(s: ActiveSession): CanUseTool {
   return async (toolName, input, options) => {
     const signal = (options as { signal?: AbortSignal }).signal;
+    // DIAGNOSTIC: trace every canUseTool invocation
+    try {
+      const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
+      fs.appendFileSync(traceFile, JSON.stringify({
+        t: Date.now(), channel: s.channelId, label: 'canUseTool',
+        toolName, input, allowed: s.allowedForSession.has(toolName),
+      }) + '\n');
+    } catch { /* ignore */ }
 
     // ── AskUserQuestion: surface to UI, wait for user-picked answers ──
     if (toolName === 'AskUserQuestion') {
@@ -216,10 +226,23 @@ function makeToolStartTracker() {
 
 async function runSession(s: ActiveSession, q: Query): Promise<void> {
   const tracker = makeToolStartTracker();
+  // ── DIAGNOSTIC: dump every SDK message to ~/.clawbar/sdk-trace.jsonl
+  // for T19 troubleshooting. Remove once flow is verified.
+  const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
+  try { fs.mkdirSync(path.dirname(traceFile), { recursive: true }); } catch { /* ignore */ }
+  const trace = (label: string, payload: unknown) => {
+    try {
+      fs.appendFileSync(traceFile, JSON.stringify({
+        t: Date.now(), channel: s.channelId, label, payload,
+      }) + '\n');
+    } catch { /* ignore */ }
+  };
+  trace('runSession-start', { sessionId: s.sessionId });
   try {
     for await (const raw of q as AsyncIterable<AnyMsg>) {
       const msg = raw as AnyMsg;
       bumpActivity(s);
+      trace('sdk-msg', msg);
 
       // ── system init: capture sessionId for future resume ──────────────
       if (msg.type === 'system' && (msg as AnyMsg).subtype === 'init') {
@@ -346,13 +369,19 @@ async function runSession(s: ActiveSession, q: Query): Promise<void> {
 /** Open a new SDK Query for this session, resuming if we have a sessionId. */
 function openQuery(s: ActiveSession): void {
   const queue = new MessageQueue();
-  const permissionMode: PermissionMode = 'default';
+  // bypassPermissions + allowDangerouslySkipPermissions makes canUseTool the
+  // SOLE gatekeeper. With permissionMode 'default', the SDK tries to "ask
+  // user" via TTY when a tool isn't pre-allowed — and since we have no TTY,
+  // it auto-denies and never invokes our canUseTool callback. Pattern lifted
+  // from lgtm-anywhere/.../session-manager.ts:209-228.
+  const permissionMode: PermissionMode = 'bypassPermissions';
   const q = query({
     prompt: queue,
     options: {
       cwd: s.projectDir,
       pathToClaudeCodeExecutable: s.cliPath,
       permissionMode,
+      allowDangerouslySkipPermissions: true,
       includePartialMessages: true,
       abortController: s.abortController,
       canUseTool: makeCanUseTool(s),
