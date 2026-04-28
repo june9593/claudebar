@@ -37,6 +37,9 @@ interface ChatViewProps {
    *  popover with these commands. Used by the Claude channel to surface
    *  Claude Code's built-in slash commands. */
   slashCommands?: SlashCommand[];
+  /** Optional inline status pill rendered just above the typing indicator
+   *  (e.g. "Thinking…" or "Running Bash"). Used by Claude channel. */
+  activity?: { kind: 'thinking' | 'tool'; label: string } | null;
 }
 
 export interface SlashCommand {
@@ -55,19 +58,43 @@ export function ChatView({
   sessions, currentSessionKey, switchSession, createSession, deleteSession,
   pendingApprovals, resolveApproval,
   assistantAvatar, emptyStateGlyph, onInterrupt,
-  slashCommands,
+  slashCommands, activity,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
   const [slashIdx, setSlashIdx] = useState(0);
 
   // Slash autocomplete: only triggers when channel provided commands AND
-  // the input starts with `/` and contains no whitespace yet.
+  // the input starts with `/` and contains no whitespace yet. Matching is
+  // fuzzy: a query is a *subsequence* of the command name in order, so
+  // typing "power" matches "/superpower" or "/superpowers:writing-plans".
   const slashMatches = (() => {
     if (!slashCommands || slashCommands.length === 0) return [];
     if (!input.startsWith('/')) return [];
     if (/\s/.test(input)) return [];
     const q = input.slice(1).toLowerCase();
-    return slashCommands.filter((c) => c.name.slice(1).toLowerCase().startsWith(q)).slice(0, 8);
+    if (q.length === 0) return slashCommands.slice(0, 12);
+    const scored = slashCommands
+      .map((c) => {
+        const name = c.name.slice(1).toLowerCase();
+        // Score: -∞ if not a subsequence; otherwise lower (better) for tighter
+        // matches (later last-match position penalised; prefix bonus).
+        let i = 0, j = 0, lastMatch = -1;
+        while (i < q.length && j < name.length) {
+          if (q[i] === name[j]) {
+            if (lastMatch === -1) lastMatch = j;
+            i++;
+          }
+          j++;
+        }
+        if (i < q.length) return { c, score: -1 };
+        const prefixBonus = name.startsWith(q) ? -1000 : 0;
+        return { c, score: prefixBonus + lastMatch + name.length * 0.1 };
+      })
+      .filter((x) => x.score >= 0 || x.score < -500)
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 12)
+      .map((x) => x.c);
+    return scored;
   })();
   const slashOpen = slashMatches.length > 0;
 
@@ -207,6 +234,28 @@ export function ChatView({
             {messages.map((msg) => (
               <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
             ))}
+            {activity && (
+              <div style={{
+                display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6,
+                padding: '4px 10px',
+                borderRadius: 12,
+                background: 'var(--color-bg-secondary)',
+                border: '0.5px solid var(--color-border-secondary)',
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--color-text-secondary)',
+                marginLeft: 34,
+              }}>
+                <span style={{
+                  display: 'inline-block',
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: activity.kind === 'thinking' ? 'var(--color-status-warning, #c96442)' : 'var(--color-accent)',
+                  animation: 'pulse 1.4s ease-in-out infinite',
+                }} />
+                <span>{activity.kind === 'thinking' ? 'Thinking…' : `Running ${activity.label}`}</span>
+                <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+              </div>
+            )}
             {isTyping && <TypingIndicator avatarOverride={assistantAvatar} />}
           </>
         )}

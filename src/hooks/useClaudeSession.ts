@@ -3,12 +3,21 @@ import type { ChatMessage, Session } from './useClawChat';
 import type { ApprovalRequest, ApprovalDecision } from '../components/ApprovalCard';
 import { useChannelStore } from '../stores/channelStore';
 
+export interface ClaudeActivity {
+  kind: 'thinking' | 'tool';
+  label: string;
+}
+
 export interface UseClaudeSession {
   messages: ChatMessage[];
   isConnected: boolean;
   isTyping: boolean;
   sendMessage: (text: string) => void;
   error: string | null;
+  /** What Claude is currently doing (between turns this is null). */
+  activity: ClaudeActivity | null;
+  /** Slash commands + skills the running CLI advertises (from system+init). */
+  availableCommands: string[];
   sessions: Session[];
   currentSessionKey: string;
   switchSession: (key: string) => void;
@@ -43,6 +52,8 @@ export function useClaudeSession(
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [availableCommands, setAvailableCommands] = useState<string[]>([]);
+  const [activity, setActivity] = useState<ClaudeActivity | null>(null);
   const initRef = useRef(false);
 
   const switchClaudeSession = useChannelStore((s) => s.switchClaudeSession);
@@ -94,8 +105,29 @@ export function useClaudeSession(
         setError(null);
         return;
       }
+      if (payload.type === 'init') {
+        const cmds = (payload.slashCommands as string[] | undefined) ?? [];
+        const skills = (payload.skills as string[] | undefined) ?? [];
+        // Skills become slash commands too — `/skill-name` invokes them.
+        const merged = Array.from(new Set([
+          ...cmds.map((c) => (c.startsWith('/') ? c : `/${c}`)),
+          ...skills.map((s) => `/${s}`),
+        ])).sort();
+        setAvailableCommands(merged);
+        return;
+      }
       if (payload.type === 'turn-end') {
         setIsTyping(false);
+        setActivity(null);
+        return;
+      }
+      if (payload.type === 'activity') {
+        const kind = payload.kind as string | undefined;
+        if (kind === 'end') {
+          setActivity(null);
+        } else if (kind === 'thinking' || kind === 'tool') {
+          setActivity({ kind, label: (payload.label as string) || '' });
+        }
         return;
       }
       if (payload.type === 'error') {
@@ -171,6 +203,8 @@ export function useClaudeSession(
 
   return {
     messages, isConnected, isTyping, sendMessage, error,
+    activity,
+    availableCommands,
     sessions,
     currentSessionKey: sessionId,
     switchSession,

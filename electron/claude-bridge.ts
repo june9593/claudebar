@@ -42,13 +42,42 @@ function translate(ev: Record<string, unknown>): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
   const type = ev.type as string | undefined;
 
+  // Surface the CLI's init event so the renderer can populate slash-command
+  // autocomplete with the user's actual installed commands and skills.
+  if (type === 'system' && ev.subtype === 'init') {
+    const slashCommands = Array.isArray(ev.slash_commands) ? ev.slash_commands as string[] : [];
+    const skills = Array.isArray(ev.skills) ? ev.skills as string[] : [];
+    out.push({ type: 'init', slashCommands, skills });
+    return out;
+  }
+
   if (type === 'stream_event') {
     const inner = ev.event as Record<string, unknown> | undefined;
-    if (inner && inner.type === 'content_block_delta') {
+    if (!inner) return out;
+    // Tool / thinking activity — surface as compact status events the UI can
+    // render as inline pills above the streaming bubble.
+    if (inner.type === 'content_block_start') {
+      const block = inner.content_block as { type?: string; name?: string } | undefined;
+      if (block?.type === 'thinking') {
+        out.push({ type: 'activity', kind: 'thinking', label: 'Thinking…' });
+      } else if (block?.type === 'tool_use') {
+        out.push({ type: 'activity', kind: 'tool', label: block.name ?? 'tool' });
+      }
+      return out;
+    }
+    if (inner.type === 'content_block_delta') {
       const delta = inner.delta as { type?: string; text?: string } | undefined;
       if (delta?.type === 'text_delta' && typeof delta.text === 'string' && delta.text.length > 0) {
         out.push({ state: 'delta', message: { role: 'assistant', content: delta.text } });
       }
+      // thinking_delta and input_json_delta are intentionally dropped at the
+      // bridge — the UI only needs the start signal to show "Thinking…" /
+      // "Running Bash" pills, not the full thinking text or tool input JSON.
+      return out;
+    }
+    if (inner.type === 'content_block_stop') {
+      out.push({ type: 'activity', kind: 'end' });
+      return out;
     }
     return out;
   }
@@ -109,6 +138,7 @@ function spawnTurn(channelId: string, message: string) {
     '--resume', state.sessionId,
     '--input-format', 'stream-json',
     '--output-format', 'stream-json',
+    '--include-partial-messages',
     '--verbose',
   ];
 
@@ -118,6 +148,10 @@ function spawnTurn(channelId: string, message: string) {
       cwd: state.projectDir,
       env: process.env,
       shell: false,
+      // Put the child in its own process group so we can kill the whole tree
+      // on interrupt — the Claude CLI may have spawned helpers / be blocked
+      // inside an HTTPS request that ignores a single SIGINT.
+      detached: true,
     });
   } catch (e) {
     emit(channelId, { type: 'error', message: `spawn failed: ${(e as Error).message}` });
@@ -147,12 +181,22 @@ function spawnTurn(channelId: string, message: string) {
   proc.stdin?.end();
 }
 
+function killProcessTree(proc: ChildProcess) {
+  const pid = proc.pid;
+  if (typeof pid === 'number') {
+    try { process.kill(-pid, 'SIGTERM'); }
+    catch {
+      try { proc.kill('SIGTERM'); } catch { /* ignore */ }
+    }
+  } else {
+    try { proc.kill('SIGTERM'); } catch { /* ignore */ }
+  }
+}
+
 function killChannel(channelId: string) {
   const state = channels.get(channelId);
   if (!state) return;
-  if (state.proc) {
-    try { state.proc.proc.kill('SIGTERM'); } catch { /* ignore */ }
-  }
+  if (state.proc) killProcessTree(state.proc.proc);
   channels.delete(channelId);
 }
 
@@ -160,18 +204,35 @@ function killChannel(channelId: string) {
  * Interrupt the in-flight turn for a channel without un-registering it. The
  * channel can immediately accept the next `claude:send` once the killed
  * process has exited.
+ *
+ * The CLI is spawned `detached: true` so it lives in its own process group;
+ * SIGTERM on the negative pid kills the whole tree (including the HTTPS
+ * request a single SIGINT to the parent might miss).
  */
 function interruptChannel(channelId: string) {
   const state = channels.get(channelId);
   if (!state || !state.proc) return;
-  try { state.proc.proc.kill('SIGINT'); } catch { /* ignore */ }
+  const proc = state.proc.proc;
+  killProcessTree(proc);
+  // Hard-kill follow-up if the tree refuses to exit within 2s.
+  const pid = proc.pid;
+  setTimeout(() => {
+    if (channels.get(channelId)?.proc?.proc === proc && !proc.killed) {
+      if (typeof pid === 'number') {
+        try { process.kill(-pid, 'SIGKILL'); } catch { /* ignore */ }
+      }
+      try { proc.kill('SIGKILL'); } catch { /* ignore */ }
+    }
+  }, 2000);
+  // Optimistically signal turn-end so the UI flips back to the send button —
+  // the real exit handler will fire shortly with proc.on('exit').
+  emit(channelId, { type: 'turn-end' });
+  emit(channelId, { type: 'error', message: 'Interrupted by user' });
 }
 
 export function killAllClaudeChannels() {
   for (const [, s] of channels) {
-    if (s.proc) {
-      try { s.proc.proc.kill('SIGTERM'); } catch { /* ignore */ }
-    }
+    if (s.proc) killProcessTree(s.proc.proc);
   }
   channels.clear();
 }

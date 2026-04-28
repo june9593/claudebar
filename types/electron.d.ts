@@ -52,6 +52,11 @@ export interface ElectronAPI {
       state?: 'delta' | 'final';
       message?: { role: 'assistant' | 'user'; content: string };
       code?: number | null;
+      // Optional fields populated by `init` and `activity` events.
+      slashCommands?: string[];
+      skills?: string[];
+      kind?: string;
+      label?: string;
     }) => void): () => void;
   };
 }
