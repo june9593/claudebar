@@ -59,12 +59,14 @@ function emit(channelId: string, event: ClaudeEvent) {
 function bumpActivity(s: ActiveSession) {
   s.lastActivityAt = Date.now();
   if (s.idleTimer) clearTimeout(s.idleTimer);
-  s.idleTimer = setTimeout(() => closeQuery(s, /* dueToIdle */ true), IDLE_CLOSE_MS);
+  s.idleTimer = setTimeout(() => closeQuery(s), IDLE_CLOSE_MS);
 }
 
 /** Tear down the live Query but KEEP the ActiveSession record so the next
- *  user message reopens with `resume: sessionId`. */
-function closeQuery(s: ActiveSession, dueToIdle: boolean) {
+ *  user message reopens with `resume: sessionId`. The renderer needs no
+ *  explicit signal here — the next user message produces a fresh
+ *  `session-started` event. */
+function closeQuery(s: ActiveSession) {
   try { s.queue?.close(); } catch { /* ignore */ }
   try { s.q?.interrupt?.(); } catch { /* ignore */ }
   s.queue = null;
@@ -78,17 +80,13 @@ function closeQuery(s: ActiveSession, dueToIdle: boolean) {
   s.pendingApprovals.clear();
   s.pendingAsks.clear();
   if (s.idleTimer) { clearTimeout(s.idleTimer); s.idleTimer = null; }
-  if (dueToIdle) {
-    // Soft signal to the renderer: idle but recoverable on next message.
-    // (No dedicated event kind — the next message will produce session-started.)
-  }
 }
 
 /** Tear down the session entirely — removes it from the map. */
 function destroySession(channelId: string) {
   const s = sessions.get(channelId);
   if (!s) return;
-  closeQuery(s, false);
+  closeQuery(s);
   s.abortController.abort();
   sessions.delete(channelId);
 }
@@ -124,8 +122,13 @@ function openQuery(s: ActiveSession): void {
   });
   s.queue = queue;
   s.q = q;
-  // Fire-and-forget; runSession handles its own errors.
-  void runSession(s, q);
+  // Fire-and-forget — but defensively catch any throw runSession misses,
+  // because an unhandled promise rejection on Node 15+ kills the main
+  // process by default. Surface as an error event the renderer can show.
+  runSession(s, q).catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    emit(s.channelId, { kind: 'error', message, recoverable: true });
+  });
   bumpActivity(s);
 }
 
@@ -171,13 +174,17 @@ function sendMessage(channelId: string, text: string): void {
     // Lazy-open or reopen after idle close.
     openQuery(s);
   }
-  s.queue!.push(text);
+  if (!s.queue) {
+    emit(channelId, { kind: 'error', message: 'failed to open query', recoverable: true });
+    return;
+  }
+  s.queue.push(text);
   bumpActivity(s);
 }
 
 function abortTurn(channelId: string): void {
   const s = sessions.get(channelId);
-  if (!s) return;
+  if (!s || !s.q) return;
   s.abortController.abort();
   // Replace the controller so the next turn has a fresh signal.
   s.abortController = new AbortController();
