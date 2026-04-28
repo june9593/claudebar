@@ -76,6 +76,18 @@ files:
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{appveyor.yml,.travis.yml,circle.yml}"
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  # ── BYO-CLI: drop the SDK's bundled Claude Code implementation; we drive
+  # the user's installed `claude` binary via `pathToClaudeCodeExecutable`.
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/cli.js"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/embed.js"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/embed.d.ts"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/extractFromBunfs.js"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/extractFromBunfs.d.ts"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/manifest.json"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/manifest.zst.json"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/*.wasm"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/vendor/**/*"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/bun.lock"
 
 asar: true
 compression: maximum
