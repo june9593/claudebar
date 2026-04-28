@@ -87,20 +87,38 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
   });
 }
 
-/** Resolve the absolute path of `claude` on the user's PATH. Uses a login
- *  shell so a `~/.zshrc` PATH update is picked up even when Electron is
- *  launched by Finder (which gives us a minimal PATH). */
+/** Resolve the absolute path of `claude` on the user's PATH. Uses an
+ *  interactive login shell so PATH set in either `~/.zshrc` (interactive
+ *  rc) or `~/.zprofile` (login rc — where Homebrew's `brew shellenv`
+ *  typically lives) is honoured even when Electron is launched by Finder
+ *  with a minimal PATH. */
 function resolveCliPath(): Promise<string | null> {
   return new Promise((resolve) => {
-    // -i -c forces interactive shell init so PATH from rc files is loaded.
-    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-ic', 'command -v claude'], { shell: false });
+    // -i interactive + -l login + -c "command" — sources both rc files
+    // (interactive: ~/.zshrc; login: ~/.zprofile / ~/.profile) before
+    // running `command -v`. Homebrew's PATH is usually set in the login
+    // rc, so omitting -l would miss it on stock macOS configurations.
+    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-ilc', 'command -v claude'], { shell: false });
     let out = '';
+    let settled = false;
+    const settle = (val: string | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(val);
+    };
+    // 5-second cap: a heavy or input-blocking shell init must not hang the
+    // app's CLI-detection forever.
+    const timer = setTimeout(() => {
+      try { proc.kill('SIGKILL'); } catch { /* ignore */ }
+      settle(null);
+    }, 5000);
     proc.stdout?.on('data', (c) => (out += c.toString()));
-    proc.on('error', () => resolve(null));
+    proc.on('error', () => { clearTimeout(timer); settle(null); });
     proc.on('exit', (code) => {
+      clearTimeout(timer);
       const trimmed = out.trim();
-      if (code === 0 && trimmed) resolve(trimmed);
-      else resolve(null);
+      if (code === 0 && trimmed) settle(trimmed);
+      else settle(null);
     });
   });
 }
