@@ -17,7 +17,7 @@ export function ChannelHost() {
             return <OpenClawChannel key={c.id} isActive={isActive} />;
           }
           if (c.kind === 'claude') {
-            return <ClaudeChannel key={c.id} channel={c} isActive={isActive} />;
+            return <ClaudeChannel key={`${c.id}-${c.sessionId}`} channel={c} isActive={isActive} />;
           }
           return <WebChannel key={c.id} channel={c} isActive={isActive} />;
         })

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatMessage, Session } from './useClawChat';
 import type { ApprovalRequest, ApprovalDecision } from '../components/ApprovalCard';
+import { useChannelStore } from '../stores/channelStore';
 
 export interface UseClaudeSession {
   messages: ChatMessage[];
@@ -8,7 +9,6 @@ export interface UseClaudeSession {
   isTyping: boolean;
   sendMessage: (text: string) => void;
   error: string | null;
-  // Stubs to satisfy ChatView's prop shape (Claude MVP doesn't expose these).
   sessions: Session[];
   currentSessionKey: string;
   switchSession: (key: string) => void;
@@ -21,6 +21,17 @@ export interface UseClaudeSession {
 
 const STREAM_ID = '__cl_stream__';
 
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
 export function useClaudeSession(
   channelId: string,
   projectDir: string,
@@ -31,7 +42,33 @@ export function useClaudeSession(
   const [isConnected, setIsConnected] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const initRef = useRef(false);
+
+  const switchClaudeSession = useChannelStore((s) => s.switchClaudeSession);
+
+  // Load sibling sessions in this project for the dropdown.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!window.electronAPI?.claude) return;
+      const list = await window.electronAPI.claude.listSessions(projectKey).catch(() => []);
+      if (cancelled) return;
+      const mapped: Session[] = list.map((s) => ({
+        key: s.sessionId,
+        displayName: s.preview || '(empty session)',
+        updatedAt: relativeTime(s.mtime),
+      }));
+      // If the current session isn't in the scan yet (e.g. brand-new session
+      // that hasn't been written to disk), inject a placeholder entry so the
+      // dropdown header shows something sensible instead of a UUID slice.
+      if (!mapped.find((m) => m.key === sessionId)) {
+        mapped.unshift({ key: sessionId, displayName: 'New session', updatedAt: 'now' });
+      }
+      setSessions(mapped);
+    })();
+    return () => { cancelled = true; };
+  }, [projectKey, sessionId]);
 
   useEffect(() => {
     if (!window.electronAPI?.claude || initRef.current) return;
@@ -102,8 +139,7 @@ export function useClaudeSession(
       }
     });
 
-    // 3. Register the channel with the bridge (does not actually spawn — the
-    //    CLI is spawned per turn by `claude:send`).
+    // 3. Register the channel with the bridge.
     window.electronAPI.claude.spawn(channelId, projectDir, sessionId).catch((e: Error) => {
       setError(`spawn failed: ${e.message}`);
     });
@@ -122,11 +158,23 @@ export function useClaudeSession(
     });
   };
 
+  const switchSession = (newSessionId: string) => {
+    if (newSessionId === sessionId) return;
+    const found = sessions.find((s) => s.key === newSessionId);
+    switchClaudeSession(channelId, newSessionId, found?.displayName ?? '');
+  };
+
+  const createSession = () => {
+    const newId = crypto.randomUUID();
+    switchClaudeSession(channelId, newId, '');
+  };
+
   return {
     messages, isConnected, isTyping, sendMessage, error,
-    sessions: [], currentSessionKey: '',
-    switchSession: () => {},
-    createSession: () => {},
+    sessions,
+    currentSessionKey: sessionId,
+    switchSession,
+    createSession,
     deleteSession: () => {},
     pendingApprovals: [],
     resolvedApprovals: [],

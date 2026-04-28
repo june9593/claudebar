@@ -93,7 +93,9 @@ export function AddChannelMenu({ x, y, onClose }: Props) {
         onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--color-surface-hover)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
-        <span style={{ fontSize: 18 }}>🦞</span>
+        <svg width="18" height="18" viewBox="0 0 32 32" fill="#cc785c" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M16 2 L19 13 L30 16 L19 19 L16 30 L13 19 L2 16 L13 13 Z" />
+        </svg>
         <span style={{ flex: 1 }}>Claude Code session</span>
         <span style={{ color: 'var(--color-text-tertiary)' }}>›</span>
       </button>

@@ -35,6 +35,12 @@ interface ChannelState {
     iconLetter: string;
     iconColor: string;
   }) => string;
+  /**
+   * Replace the sessionId of an existing claude channel in place. Kills the
+   * channel's current child process (if any) so the next `claude:send` will
+   * spawn against the new session id.
+   */
+  switchClaudeSession: (channelId: string, newSessionId: string, newPreview: string) => void;
   remove: (id: string) => void;
 
   // Common edits
@@ -158,6 +164,32 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
     set({ channels, activeChannelId: id });
     persist(channels, id);
     return id;
+  },
+
+  switchClaudeSession: (channelId, newSessionId, newPreview) => {
+    const list = get().channels;
+    const target = list.find((c) => c.id === channelId);
+    if (!target || target.kind !== 'claude') return;
+    if (target.sessionId === newSessionId) return;
+
+    // Kill the in-flight child for the old session, if any.
+    window.electronAPI?.claude?.kill(channelId).catch(() => { /* ignore */ });
+
+    const trimmedPreview = newPreview.length > 28
+      ? newPreview.slice(0, 28) + '…'
+      : newPreview || '(empty session)';
+    const projectShort = (() => {
+      const parts = target.projectDir.split('/').filter(Boolean);
+      return parts.length > 0 ? parts[parts.length - 1] : target.projectDir;
+    })();
+
+    const channels = list.map((c) =>
+      c.id === channelId && c.kind === 'claude'
+        ? { ...c, sessionId: newSessionId, preview: newPreview, name: `${projectShort} · ${trimmedPreview}` }
+        : c
+    );
+    set({ channels });
+    persist(channels, get().activeChannelId);
   },
 
   remove: (id) => {
