@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowUp, ChevronDown } from 'lucide-react';
+import { ArrowUp, ChevronDown, Square } from 'lucide-react';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
 import { LobsterIcon } from './LobsterIcon';
@@ -30,6 +30,18 @@ interface ChatViewProps {
   assistantAvatar?: React.ReactNode;
   /** Optional override for the empty-state badge; mirrors `assistantAvatar`. */
   emptyStateGlyph?: React.ReactNode;
+  /** When provided AND `isTyping` is true, the send button becomes a stop
+   *  button that calls this handler instead of sending. */
+  onInterrupt?: () => void;
+  /** When set, typing `/` at the start of the input shows an autocomplete
+   *  popover with these commands. Used by the Claude channel to surface
+   *  Claude Code's built-in slash commands. */
+  slashCommands?: SlashCommand[];
+}
+
+export interface SlashCommand {
+  name: string;       // e.g. "/context"
+  description: string;
 }
 
 function formatTime(ts: string): string {
@@ -42,9 +54,27 @@ export function ChatView({
   messages, isConnected, isTyping, sendMessage,
   sessions, currentSessionKey, switchSession, createSession, deleteSession,
   pendingApprovals, resolveApproval,
-  assistantAvatar, emptyStateGlyph,
+  assistantAvatar, emptyStateGlyph, onInterrupt,
+  slashCommands,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
+  const [slashIdx, setSlashIdx] = useState(0);
+
+  // Slash autocomplete: only triggers when channel provided commands AND
+  // the input starts with `/` and contains no whitespace yet.
+  const slashMatches = (() => {
+    if (!slashCommands || slashCommands.length === 0) return [];
+    if (!input.startsWith('/')) return [];
+    if (/\s/.test(input)) return [];
+    const q = input.slice(1).toLowerCase();
+    return slashCommands.filter((c) => c.name.slice(1).toLowerCase().startsWith(q)).slice(0, 8);
+  })();
+  const slashOpen = slashMatches.length > 0;
+
+  // Reset highlighted index when the match list changes shape.
+  useEffect(() => {
+    setSlashIdx(0);
+  }, [slashMatches.length, input.startsWith('/')]);
   const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -114,6 +144,29 @@ export function ChatView({
   }, [input, sendMessage]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (slashOpen) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashIdx((i) => Math.min(i + 1, slashMatches.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashIdx((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+        e.preventDefault();
+        const picked = slashMatches[slashIdx];
+        if (picked) setInput(picked.name);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setInput('');
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -181,7 +234,61 @@ export function ChatView({
         display: 'flex',
         alignItems: 'flex-end',
         gap: '8px',
+        position: 'relative',
       }}>
+        {slashOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              bottom: 'calc(100% + 4px)',
+              background: 'var(--color-bg-primary)',
+              border: '0.5px solid var(--color-border-primary)',
+              borderRadius: 8,
+              boxShadow: 'var(--shadow-card)',
+              padding: 4,
+              zIndex: 50,
+              maxHeight: 220,
+              overflowY: 'auto',
+            }}
+          >
+            {slashMatches.map((cmd, i) => (
+              <button
+                key={cmd.name}
+                onMouseDown={(e) => { e.preventDefault(); setInput(cmd.name); textareaRef.current?.focus(); }}
+                style={{
+                  display: 'flex', alignItems: 'baseline', gap: 8,
+                  width: '100%', padding: '6px 10px', borderRadius: 5,
+                  border: 'none',
+                  background: i === slashIdx ? 'var(--color-surface-active)' : 'transparent',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  color: 'var(--color-accent)',
+                  fontWeight: 500,
+                }}>{cmd.name}</span>
+                <span style={{
+                  fontSize: 11,
+                  color: 'var(--color-text-tertiary)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                }}>{cmd.description}</span>
+              </button>
+            ))}
+            <div style={{
+              padding: '4px 10px 2px',
+              fontSize: 10,
+              color: 'var(--color-text-tertiary)',
+              fontFamily: 'var(--font-mono)',
+              letterSpacing: 0.04,
+            }}>
+              ↑↓ navigate · ⏎/⇥ select · esc cancel
+            </div>
+          </div>
+        )}
         <textarea
           ref={textareaRef}
           value={input}
@@ -206,30 +313,54 @@ export function ChatView({
           }}
         />
 
-        <button
-          onClick={handleSend}
-          disabled={!hasInput}
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            border: 'none',
-            background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
-            color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: hasInput ? 'pointer' : 'default',
-            flexShrink: 0,
-            marginBottom: '3px',
-            transition: 'background 0.2s, color 0.2s, transform 0.1s',
-            fontSize: '16px',
-            fontWeight: 600,
-          }}
-          title="Send"
-        >
-          <ArrowUp size={18} strokeWidth={2} />
-        </button>
+        {isTyping && onInterrupt ? (
+          <button
+            onClick={onInterrupt}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: 'var(--color-status-disconnected)',
+              color: 'var(--color-bubble-user-text)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              marginBottom: '3px',
+              transition: 'background 0.2s, color 0.2s, transform 0.1s',
+            }}
+            title="Stop"
+          >
+            <Square size={12} strokeWidth={0} fill="currentColor" />
+          </button>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={!hasInput}
+            style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              border: 'none',
+              background: hasInput ? 'var(--color-accent)' : 'var(--color-bg-tertiary)',
+              color: hasInput ? 'var(--color-bubble-user-text)' : 'var(--color-text-tertiary)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: hasInput ? 'pointer' : 'default',
+              flexShrink: 0,
+              marginBottom: '3px',
+              transition: 'background 0.2s, color 0.2s, transform 0.1s',
+              fontSize: '16px',
+              fontWeight: 600,
+            }}
+            title="Send"
+          >
+            <ArrowUp size={18} strokeWidth={2} />
+          </button>
+        )}
       </div>
 
       {showScrollBtn && (

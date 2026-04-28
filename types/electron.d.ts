@@ -40,6 +40,7 @@ export interface ElectronAPI {
     spawn(channelId: string, projectDir: string, sessionId: string | null): Promise<void>;
     send(channelId: string, message: string): Promise<void>;
     kill(channelId: string): Promise<void>;
+    interrupt(channelId: string): Promise<void>;
     loadHistory(projectKey: string, sessionId: string): Promise<Array<{
       role: 'user' | 'assistant';
       content: string;

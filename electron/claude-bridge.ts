@@ -156,6 +156,17 @@ function killChannel(channelId: string) {
   channels.delete(channelId);
 }
 
+/**
+ * Interrupt the in-flight turn for a channel without un-registering it. The
+ * channel can immediately accept the next `claude:send` once the killed
+ * process has exited.
+ */
+function interruptChannel(channelId: string) {
+  const state = channels.get(channelId);
+  if (!state || !state.proc) return;
+  try { state.proc.proc.kill('SIGINT'); } catch { /* ignore */ }
+}
+
 export function killAllClaudeChannels() {
   for (const [, s] of channels) {
     if (s.proc) {
@@ -271,6 +282,10 @@ export function setupClaudeBridge() {
 
   ipcMain.handle('claude:kill', (_e, channelId: string) => {
     killChannel(channelId);
+  });
+
+  ipcMain.handle('claude:interrupt', (_e, channelId: string) => {
+    interruptChannel(channelId);
   });
 
   ipcMain.handle('claude:load-history', async (_e, projectKey: string, sessionId: string) => {

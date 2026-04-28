@@ -70,6 +70,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     send: (channelId: string, message: string) =>
       ipcRenderer.invoke('claude:send', channelId, message),
     kill: (channelId: string) => ipcRenderer.invoke('claude:kill', channelId),
+    interrupt: (channelId: string) => ipcRenderer.invoke('claude:interrupt', channelId),
     loadHistory: (projectKey: string, sessionId: string) =>
       ipcRenderer.invoke('claude:load-history', projectKey, sessionId),
     onEvent: (cb: (payload: { channelId: string; [k: string]: unknown }) => void) => {
