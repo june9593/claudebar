@@ -172,8 +172,8 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
     if (!target || target.kind !== 'claude') return;
     if (target.sessionId === newSessionId) return;
 
-    // Kill the in-flight child for the old session, if any.
-    window.electronAPI?.claude?.kill(channelId).catch(() => { /* ignore */ });
+    // Tear down the SDK Query for the old session, if any.
+    window.electronAPI?.claude?.close(channelId).catch(() => { /* ignore */ });
 
     const trimmedPreview = newPreview.length > 28
       ? newPreview.slice(0, 28) + '…'
@@ -199,7 +199,7 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
     const target = list[idx];
     if (target.kind === 'openclaw' || target.builtin) return;
     if (target.kind === 'claude') {
-      window.electronAPI?.claude?.kill(id).catch(() => { /* ignore */ });
+      window.electronAPI?.claude?.close(id).catch(() => { /* ignore */ });
     }
     const channels = list.filter((c) => c.id !== id);
     let next = get().activeChannelId;
