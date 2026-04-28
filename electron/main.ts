@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { setupSettingsIPC } from './ipc/settings';
 import { setupWsBridge } from './ws-bridge';
+import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
+import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { createPetWindow, isPetVisible, showPet, hidePet } from './pet-window';
 
 let mainWindow: BrowserWindow | null = null;
@@ -296,12 +298,18 @@ app.whenReady().then(() => {
   setupWindowIPC();
   setupSettingsIPC();
   setupWsBridge();
+  setupClaudeSessionsIPC();
+  setupClaudeBridge();
   createPetWindow(
     showWindow,
     hideWindow,
     () => windowVisible,
     () => { mainWindow?.destroy(); app.quit(); },
   );
+});
+
+app.on('before-quit', () => {
+  killAllClaudeChannels();
 });
 
 app.on('window-all-closed', () => {
