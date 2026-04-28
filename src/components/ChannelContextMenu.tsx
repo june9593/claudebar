@@ -84,6 +84,9 @@ export function ChannelContextMenu({ channel, x, y, onClose }: Props) {
           {channel.kind === 'web' && !channel.builtin && (
             <Item label="Delete" danger onClick={() => { remove(channel.id); onClose(); }} />
           )}
+          {channel.kind === 'claude' && (
+            <Item label="Remove from bar" danger onClick={() => { remove(channel.id); onClose(); }} />
+          )}
           {isOpenClaw && (
             <div style={{ padding: '6px 10px', color: 'var(--color-text-tertiary)' }}>
               OpenClaw cannot be removed

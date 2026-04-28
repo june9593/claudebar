@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Channel } from '../types';
 import { LobsterIcon } from './LobsterIcon';
+import { identiconFromKey } from '../utils/claude-icon';
 
 interface Props {
   channel: Channel;
@@ -17,18 +18,16 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
       return <LobsterIcon size={26} />;
     }
     if (channel.kind === 'claude') {
+      const ident = identiconFromKey(channel.projectKey + ':' + channel.sessionId);
+      const cell = 4; // px per cell — 5*4 = 20 px
       return (
-        <div style={{
-          width: 22, height: 22, borderRadius: 5,
-          background: channel.iconColor,
-          color: 'white',
-          fontFamily: 'var(--font-display)',
-          fontWeight: 600, fontSize: 13,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          lineHeight: 1,
-        }}>
-          {channel.iconLetter}
-        </div>
+        <svg width="22" height="22" viewBox="0 0 20 20" style={{ borderRadius: 4, background: 'rgba(0,0,0,0.04)' }}>
+          {ident.cells.map((row, r) =>
+            row.map((on, c) => on ? (
+              <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill={ident.color} />
+            ) : null)
+          )}
+        </svg>
       );
     }
     // kind === 'web'

@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function ClaudeChannel({ channel, isActive }: Props) {
-  const chat = useClaudeSession(channel.id, channel.projectDir, channel.sessionId);
+  const chat = useClaudeSession(channel.id, channel.projectDir, channel.sessionId, channel.projectKey);
 
   return (
     <div style={{
