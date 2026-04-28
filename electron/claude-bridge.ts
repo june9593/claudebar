@@ -95,7 +95,11 @@ function destroySession(channelId: string) {
   sessions.delete(channelId);
 }
 
-/** Build the `canUseTool` callback for this session (filled in by Task 9). */
+/** Build the `canUseTool` callback for this session. AskUserQuestion is
+ *  surfaced to the renderer as `ask-question` and resolves with the
+ *  user-picked answers. Other tools either fast-path through
+ *  `allowedForSession` or surface as `approval-request`. Both paths
+ *  reject (and translate to `deny`) on SDK abort. */
 function makeCanUseTool(s: ActiveSession): CanUseTool {
   return async (toolName, input, options) => {
     const signal = (options as { signal?: AbortSignal }).signal;
@@ -127,11 +131,14 @@ function makeCanUseTool(s: ActiveSession): CanUseTool {
         return { behavior: 'deny', message: 'Aborted while awaiting AskUserQuestion answers' };
       }
 
-      // SDK expects per-question answer keyed by the question's header.
+      // SDK expects per-question answer keyed by the question text (NOT
+      // the header — header is the short chip label). Multi-select picks
+      // are joined comma-separated per the SDK's documented contract:
+      // sdk-tools.d.ts AskUserQuestionOutput.answers
       const answerMap: Record<string, string> = {};
       questions.forEach((q, i) => {
         const picked = answers[i] ?? [];
-        answerMap[q.header] = picked.join(', ');
+        answerMap[q.question] = picked.join(', ');
       });
 
       return {
