@@ -14,7 +14,7 @@ export interface Settings {
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 export type ViewState = 'chat' | 'settings';
 
-export type ChannelKind = 'openclaw' | 'web';
+export type ChannelKind = 'openclaw' | 'web' | 'claude';
 
 interface BaseChannel {
   id: string;
@@ -35,4 +35,16 @@ export interface WebChannelDef extends BaseChannel {
   icon: string;
 }
 
-export type Channel = OpenClawChannelDef | WebChannelDef;
+export interface ClaudeChannelDef extends BaseChannel {
+  kind: 'claude';
+  builtin: false;
+  enabled: true;
+  projectDir: string;
+  projectKey: string;
+  sessionId: string;
+  preview: string;
+  iconLetter: string;
+  iconColor: string;
+}
+
+export type Channel = OpenClawChannelDef | WebChannelDef | ClaudeChannelDef;
