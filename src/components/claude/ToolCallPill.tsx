@@ -88,6 +88,9 @@ export function ToolCallPill({ tool }: Props) {
   const out = jsonOrText(tool.output);
   const truncated = out.length > MAX_OUTPUT_PREVIEW;
   const shown = truncated ? out.slice(0, MAX_OUTPUT_PREVIEW) : out;
+  // T19 DIAG: confirm we have what we need to render
+  // eslint-disable-next-line no-console
+  console.log('[ToolCallPill]', tool.name, 'summary:', JSON.stringify(summary), 'tail:', JSON.stringify(t), 'input type:', typeof tool.input, 'input:', tool.input);
 
   return (
     <div style={{
