@@ -188,15 +188,38 @@ export function useClaudeSession(
           return;
         case 'thinking-delta':
           setIsTyping(true);
+          // Render thinking as a tool-style pill that auto-grows the
+          // 'thinking' content. The pill uses ToolCallPill via tool meta
+          // with synthetic name 'Thinking'; click toggles to read full.
           setMessages((prev) => {
-            const think = prev.find((m) => m.id === THINK_ID);
-            const rest = prev.filter((m) => m.id !== THINK_ID);
-            return [...rest, {
-              id: THINK_ID,
-              role: 'assistant',
-              content: (think?.content ?? '') + ev.text,
-              timestamp: new Date().toISOString(),
-            }];
+            const idx = prev.findIndex((m) => m.id === THINK_ID);
+            if (idx === -1) {
+              return [...prev, {
+                id: THINK_ID,
+                role: 'tool' as const,
+                content: '',
+                timestamp: new Date().toISOString(),
+                tool: {
+                  callId: THINK_ID,
+                  name: 'Thinking',
+                  input: { thinking: ev.text },
+                  output: ev.text,  // also as output so expanded view shows it
+                  startedAt: Date.now(),
+                },
+              }];
+            }
+            const existing = prev[idx];
+            const accumulated = ((existing.tool?.input as { thinking?: string } | undefined)?.thinking ?? '') + ev.text;
+            const next = [...prev];
+            next[idx] = {
+              ...existing,
+              tool: {
+                ...existing.tool!,
+                input: { thinking: accumulated },
+                output: accumulated,
+              },
+            };
+            return next;
           });
           return;
         case 'tool-call':
@@ -229,17 +252,29 @@ export function useClaudeSession(
           return;
         case 'turn-end':
           setIsTyping(false);
-          // Promote the streaming bubble to a stable message, drop thinking.
+          // Promote both the streaming bubble AND the thinking pill to
+          // stable per-turn ids so they survive into history.
           setMessages((prev) => {
             const stream = prev.find((m) => m.id === STREAM_ID);
+            const think = prev.find((m) => m.id === THINK_ID);
             const rest = prev.filter((m) => m.id !== STREAM_ID && m.id !== THINK_ID);
-            if (!stream || !stream.content.trim()) return rest;
-            return [...rest, {
-              id: `cl-a-${Date.now()}`,
-              role: 'assistant',
-              content: stream.content,
-              timestamp: new Date().toISOString(),
-            }];
+            const out = [...rest];
+            if (think) {
+              out.push({
+                ...think,
+                id: `cl-think-${Date.now()}`,
+                tool: think.tool ? { ...think.tool, callId: `cl-think-${Date.now()}` } : think.tool,
+              });
+            }
+            if (stream && stream.content.trim()) {
+              out.push({
+                id: `cl-a-${Date.now()}`,
+                role: 'assistant',
+                content: stream.content,
+                timestamp: new Date().toISOString(),
+              });
+            }
+            return out;
           });
           return;
         case 'approval-request':

@@ -32,6 +32,12 @@ function summarize(tool: ToolMeta): string {
       return typeof input.pattern === 'string' ? input.pattern : '';
     case 'Grep':
       return typeof input.pattern === 'string' ? input.pattern : '';
+    case 'Thinking': {
+      // Show first ~60 chars of thinking text as a preview
+      const t = (input.thinking ?? '') as string;
+      const oneLine = t.replace(/\s+/g, ' ').trim();
+      return oneLine.length > 60 ? oneLine.slice(0, 60) + '…' : oneLine;
+    }
     default:
       return '';
   }
@@ -101,7 +107,12 @@ export function ToolCallPill({ tool }: Props) {
       minHeight: 28,
       overflow: 'hidden',
     }}>      <button
-        onClick={() => setExpanded((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          // eslint-disable-next-line no-console
+          console.log('[ToolCallPill] click, expanded:', !expanded);
+          setExpanded((v) => !v);
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',
