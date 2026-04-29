@@ -369,19 +369,20 @@ async function runSession(s: ActiveSession, q: Query): Promise<void> {
 /** Open a new SDK Query for this session, resuming if we have a sessionId. */
 function openQuery(s: ActiveSession): void {
   const queue = new MessageQueue();
-  // bypassPermissions + allowDangerouslySkipPermissions makes canUseTool the
-  // SOLE gatekeeper. With permissionMode 'default', the SDK tries to "ask
-  // user" via TTY when a tool isn't pre-allowed — and since we have no TTY,
-  // it auto-denies and never invokes our canUseTool callback. Pattern lifted
-  // from lgtm-anywhere/.../session-manager.ts:209-228.
-  const permissionMode: PermissionMode = 'bypassPermissions';
+  // permissionMode 'default' is what makes the binary forward each tool
+  // permission check via the stdio protocol (--permission-prompt-tool stdio,
+  // which the SDK auto-adds when canUseTool is set). 'bypassPermissions'
+  // ironically SKIPS canUseTool — bypass means "don't ask anyone", and the
+  // binary's safety policy is to deny rather than allow when no human is
+  // available. So 'default' + canUseTool is the correct combination for
+  // an Electron app driving a non-TTY claude binary.
+  const permissionMode: PermissionMode = 'default';
   const q = query({
     prompt: queue,
     options: {
       cwd: s.projectDir,
       pathToClaudeCodeExecutable: s.cliPath,
       permissionMode,
-      allowDangerouslySkipPermissions: true,
       includePartialMessages: true,
       abortController: s.abortController,
       canUseTool: makeCanUseTool(s),
