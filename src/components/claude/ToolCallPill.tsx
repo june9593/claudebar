@@ -104,8 +104,12 @@ export function ToolCallPill({ tool }: Props) {
       border: '1px solid var(--color-border-primary)',
       borderRadius: 10,
       background: 'var(--color-bg-tertiary)',
-      minHeight: 28,
-      overflow: 'hidden',
+      // No minHeight when expanded — let the panel grow. Keep a small
+      // floor only when collapsed so an empty-summary pill stays visible.
+      minHeight: expanded ? undefined : 28,
+      // overflow hidden so border-radius clips children, but only when
+      // collapsed; expanded panel might exceed the floor and get clipped.
+      overflow: 'visible',
     }}>      <button
         onClick={(e) => {
           e.stopPropagation();
