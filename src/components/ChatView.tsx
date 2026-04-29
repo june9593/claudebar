@@ -245,7 +245,6 @@ export function ChatView({
           <EmptyState glyph={emptyStateGlyph} />
         ) : (
           <>
-            {(() => { console.log('[ChatView] rendering messages', messages.map(m => ({id:m.id, role:m.role, hasTool:!!m.tool, content:m.content.slice(0,40)}))); return null; })()}
             {messages.map((msg) => (
               msg.role === 'tool' && msg.tool ? (
                 <ToolCallPill key={msg.id} tool={msg.tool} />

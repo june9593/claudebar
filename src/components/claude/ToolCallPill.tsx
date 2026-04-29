@@ -94,13 +94,11 @@ export function ToolCallPill({ tool }: Props) {
       alignSelf: 'flex-start',
       maxWidth: '100%',
       marginLeft: 34,
-      border: '2px solid red',  // T19 DIAG: make obvious
+      border: '0.5px solid var(--color-border-primary)',
       borderRadius: 10,
-      background: 'yellow',     // T19 DIAG
+      background: 'var(--color-surface-card)',
       overflow: 'hidden',
-      minHeight: 30,            // T19 DIAG: ensure visible even if button is collapsed
-    }}>
-      {(() => { console.log('[ToolCallPill] rendering', tool.name, tool.callId, 'output?', tool.output !== undefined); return null; })()}      <button
+    }}>      <button
         onClick={() => setExpanded((v) => !v)}
         style={{
           display: 'flex',

@@ -108,14 +108,16 @@ function destroySession(channelId: string) {
 function makeCanUseTool(s: ActiveSession): CanUseTool {
   return async (toolName, input, options) => {
     const signal = (options as { signal?: AbortSignal }).signal;
-    // DIAGNOSTIC: trace every canUseTool invocation
-    try {
-      const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
-      fs.appendFileSync(traceFile, JSON.stringify({
-        t: Date.now(), channel: s.channelId, label: 'canUseTool',
-        toolName, input, allowed: s.allowedForSession.has(toolName),
-      }) + '\n');
-    } catch { /* ignore */ }
+    // Optional debug trace (gated by CLAWBAR_TRACE=1 in env).
+    if (process.env.CLAWBAR_TRACE === '1') {
+      try {
+        const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
+        fs.appendFileSync(traceFile, JSON.stringify({
+          t: Date.now(), channel: s.channelId, label: 'canUseTool',
+          toolName, input, allowed: s.allowedForSession.has(toolName),
+        }) + '\n');
+      } catch { /* ignore */ }
+    }
 
     // ── AskUserQuestion: surface to UI, wait for user-picked answers ──
     if (toolName === 'AskUserQuestion') {
@@ -226,11 +228,16 @@ function makeToolStartTracker() {
 
 async function runSession(s: ActiveSession, q: Query): Promise<void> {
   const tracker = makeToolStartTracker();
-  // ── DIAGNOSTIC: dump every SDK message to ~/.clawbar/sdk-trace.jsonl
-  // for T19 troubleshooting. Remove once flow is verified.
+  // Optional debug trace: set CLAWBAR_TRACE=1 to dump every SDK message
+  // to ~/.clawbar/sdk-trace.jsonl. Off by default to avoid disk writes
+  // and PII leakage. Useful for diagnosing SDK protocol issues.
+  const traceEnabled = process.env.CLAWBAR_TRACE === '1';
   const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
-  try { fs.mkdirSync(path.dirname(traceFile), { recursive: true }); } catch { /* ignore */ }
+  if (traceEnabled) {
+    try { fs.mkdirSync(path.dirname(traceFile), { recursive: true }); } catch { /* ignore */ }
+  }
   const trace = (label: string, payload: unknown) => {
+    if (!traceEnabled) return;
     try {
       fs.appendFileSync(traceFile, JSON.stringify({
         t: Date.now(), channel: s.channelId, label, payload,
