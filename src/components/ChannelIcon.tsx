@@ -1,13 +1,51 @@
 import { useState } from 'react';
 import type { Channel } from '../types';
 import { LobsterIcon } from './LobsterIcon';
-import { identiconFromKey } from '../utils/claude-icon';
+import { claudePetVariant, type ClaudePetVariant } from '../utils/claude-icon';
 
 interface Props {
   channel: Channel;
   active: boolean;
   onClick: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
+}
+
+/** Tiny version of the Claude pet, parametrised by per-session variant.
+ *  Same silhouette as src/pet/ClaudePet.tsx but smaller, no animation
+ *  groups, and using the variant's body / hand / eye colour + eye style. */
+function ClaudePetIcon({ v }: { v: ClaudePetVariant }) {
+  const eye = v.eyeColor;
+  const renderEye = (cx: number, cy: number) => {
+    switch (v.eyeStyle) {
+      case 'square':
+        return <rect x={cx - 4} y={cy - 4} width="8" height="8" fill={eye} />;
+      case 'round':
+        return <circle cx={cx} cy={cy} r="4" fill={eye} />;
+      case 'sleepy':
+        return <rect x={cx - 5} y={cy - 1} width="10" height="2" fill={eye} />;
+      case 'sparkle':
+        return (
+          <g fill={eye}>
+            <rect x={cx - 1} y={cy - 5} width="2" height="10" />
+            <rect x={cx - 5} y={cy - 1} width="10" height="2" />
+          </g>
+        );
+    }
+  };
+  return (
+    <svg width="22" height="22" viewBox="0 0 100 100" shapeRendering="crispEdges">
+      {/* Body */}
+      <rect x="22" y="32" width="56" height="40" fill={v.bodyColor} rx="2" />
+      {/* Inner shadow on the right edge */}
+      <rect x="72" y="36" width="6" height="32" fill={v.shadowColor} opacity="0.5" />
+      {/* Hands */}
+      <rect x="14" y="48" width="10" height="10" fill={v.handColor} />
+      <rect x="76" y="48" width="10" height="10" fill={v.handColor} />
+      {/* Eyes */}
+      {renderEye(40, 50)}
+      {renderEye(60, 50)}
+    </svg>
+  );
 }
 
 export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) {
@@ -18,17 +56,8 @@ export function ChannelIcon({ channel, active, onClick, onContextMenu }: Props) 
       return <LobsterIcon size={26} />;
     }
     if (channel.kind === 'claude') {
-      const ident = identiconFromKey(channel.projectKey + ':' + channel.sessionId);
-      const cell = 4; // px per cell — 5*4 = 20 px
-      return (
-        <svg width="22" height="22" viewBox="0 0 20 20" style={{ borderRadius: 4, background: 'rgba(0,0,0,0.04)' }}>
-          {ident.cells.map((row, r) =>
-            row.map((on, c) => on ? (
-              <rect key={`${r}-${c}`} x={c * cell} y={r * cell} width={cell} height={cell} fill={ident.color} />
-            ) : null)
-          )}
-        </svg>
-      );
+      const v = claudePetVariant(channel.projectKey + ':' + channel.sessionId);
+      return <ClaudePetIcon v={v} />;
     }
     // kind === 'web'
     const icon = channel.icon;

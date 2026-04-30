@@ -1,18 +1,19 @@
 import React from 'react';
 
 /**
- * Claude pet mascot — a chunky pixel-art critter inspired by Anthropic's
- * pixel-art lobster sticker style: square orange body, two black square
- * eyes, two stubby white legs underneath. Uses the same .left-claw /
- * .right-claw / .lobster-svg group hooks the LobsterPet exposes so the
- * existing pet.css idle / wave / squish / bounce animations apply.
+ * Claude pet mascot — chunky pixel-art critter, after Anthropic's Claude
+ * pixel sticker. Square orange body, two black square eyes, and two small
+ * red/orange "hand" squares poking out the left and right sides.
+ *
+ * The hand rectangles live inside .left-claw / .right-claw groups so the
+ * existing pet.css idle / wave-claw / squish / bounce animations apply
+ * just like LobsterPet's claws.
  */
 const ClaudePet: React.FC = () => {
-  // Palette: Claude orange + body shadow + black eyes + white legs.
+  // Palette
   const orange = '#cc785c';
   const orangeShadow = '#a04e30';
   const eye = '#0a0a0a';
-  const leg = '#fafafa';
 
   return (
     <svg
@@ -22,32 +23,34 @@ const ClaudePet: React.FC = () => {
       style={{ width: '100%', height: '100%' }}
       shapeRendering="crispEdges"
     >
-      {/* Body — chunky rounded-square block. Notched corners give the
-          pixel-art look without manually placing 100+ rects. */}
-      <path
-        d="M 30 35 H 90 V 40 H 95 V 70 H 90 V 80 H 80 V 70 H 75 V 80 H 65 V 70 H 60 V 80 H 50 V 70 H 45 V 80 H 35 V 70 H 30 V 70 H 25 V 40 H 30 Z"
-        fill={orange}
-      />
+      {/* Body — chunky rounded square block. */}
+      <rect x="28" y="38" width="64" height="46" fill={orange} />
+
+      {/* Top notches give the pixel-rounded silhouette */}
+      <rect x="28" y="38" width="6" height="6" fill="transparent" />
+      <rect x="86" y="38" width="6" height="6" fill="transparent" />
+      {/* Bottom notches */}
+      <rect x="28" y="78" width="6" height="6" fill="transparent" />
+      <rect x="86" y="78" width="6" height="6" fill="transparent" />
 
       {/* Subtle inner shadow on the right edge for chunky depth */}
-      <path
-        d="M 88 40 H 95 V 70 H 88 Z"
-        fill={orangeShadow}
-        opacity="0.18"
-      />
+      <rect x="84" y="44" width="8" height="34" fill={orangeShadow} opacity="0.20" />
 
-      {/* Two stubby legs — kept in the .left-claw / .right-claw groups
-          so the pet.css squish / wave animations attach. */}
-      <g className="left-claw" style={{ transformOrigin: '42px 78px' }}>
-        <rect x="38" y="78" width="9" height="14" fill={leg} stroke={eye} strokeWidth="2" />
+      {/* Hands — small red/orange squares poking out the sides. Wrapped
+          in .left-claw / .right-claw so the existing wave / squish CSS
+          animations attach. */}
+      <g className="left-claw" style={{ transformOrigin: '24px 60px' }}>
+        <rect x="20" y="56" width="10" height="10" fill={orange} />
+        <rect x="22" y="58" width="6" height="6" fill={orangeShadow} opacity="0.25" />
       </g>
-      <g className="right-claw" style={{ transformOrigin: '78px 78px' }}>
-        <rect x="73" y="78" width="9" height="14" fill={leg} stroke={eye} strokeWidth="2" />
+      <g className="right-claw" style={{ transformOrigin: '96px 60px' }}>
+        <rect x="90" y="56" width="10" height="10" fill={orange} />
+        <rect x="92" y="58" width="6" height="6" fill={orangeShadow} opacity="0.25" />
       </g>
 
-      {/* Eyes — two black squares (pixel-art style) */}
-      <rect x="42" y="48" width="9" height="9" fill={eye} />
-      <rect x="69" y="48" width="9" height="9" fill={eye} />
+      {/* Eyes — two black square pixels */}
+      <rect x="44" y="52" width="9" height="9" fill={eye} />
+      <rect x="67" y="52" width="9" height="9" fill={eye} />
     </svg>
   );
 };
