@@ -1,5 +1,8 @@
 import { ChatView, type SlashCommand } from './ChatView';
 import { useClaudeSession } from '../hooks/useClaudeSession';
+import { ClaudeInstallGuide } from './claude/ClaudeInstallGuide';
+import { ToolApprovalPrompt } from './claude/ToolApprovalPrompt';
+import { AskUserQuestionPrompt } from './claude/AskUserQuestionPrompt';
 import type { ClaudeChannelDef } from '../types';
 
 interface Props {
@@ -7,8 +10,6 @@ interface Props {
   isActive: boolean;
 }
 
-// Friendly descriptions for the well-known built-in commands. Anything not
-// in this map (custom skills, plugin commands) shows the bare command name.
 const BUILTIN_DESCRIPTIONS: Record<string, string> = {
   '/clear':           'Start a new conversation',
   '/compact':         'Summarise + truncate conversation history',
@@ -24,7 +25,6 @@ const BUILTIN_DESCRIPTIONS: Record<string, string> = {
   '/heapdump':        'Capture a V8 heap dump',
 };
 
-// Anthropic / Claude brand mark — eight-pointed asterisk in Claude orange.
 function ClaudeMark({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="#cc785c" aria-hidden="true">
@@ -36,9 +36,6 @@ function ClaudeMark({ size = 16 }: { size?: number }) {
 export function ClaudeChannel({ channel, isActive }: Props) {
   const chat = useClaudeSession(channel.id, channel.projectDir, channel.sessionId, channel.projectKey);
 
-  // Build the SlashCommand list from whatever the CLI advertised in its init
-  // event; falls back to a small hard-coded set so the popover isn't empty
-  // before the first turn has run.
   const slashCommands: SlashCommand[] = (chat.availableCommands.length > 0
     ? chat.availableCommands
     : Object.keys(BUILTIN_DESCRIPTIONS)
@@ -47,14 +44,37 @@ export function ClaudeChannel({ channel, isActive }: Props) {
     description: BUILTIN_DESCRIPTIONS[name] ?? '',
   }));
 
+  const containerStyle: React.CSSProperties = {
+    position: 'absolute', inset: 0,
+    visibility: isActive ? 'visible' : 'hidden',
+    pointerEvents: isActive ? 'auto' : 'none',
+    zIndex: isActive ? 1 : 0,
+    display: 'flex', flexDirection: 'column',
+  };
+
+  if (chat.cliMissing) {
+    return (
+      <div style={containerStyle}>
+        <ClaudeInstallGuide onRecheck={chat.recheckCli} />
+      </div>
+    );
+  }
+
+  const pendingPrompt = chat.pendingApproval ? (
+    <ToolApprovalPrompt
+      tool={chat.pendingApproval.tool}
+      input={chat.pendingApproval.input}
+      onResolve={chat.approve}
+    />
+  ) : chat.pendingAsk ? (
+    <AskUserQuestionPrompt
+      questions={chat.pendingAsk.questions}
+      onSubmit={chat.answer}
+    />
+  ) : null;
+
   return (
-    <div style={{
-      position: 'absolute', inset: 0,
-      visibility: isActive ? 'visible' : 'hidden',
-      pointerEvents: isActive ? 'auto' : 'none',
-      zIndex: isActive ? 1 : 0,
-      display: 'flex', flexDirection: 'column',
-    }}>
+    <div style={containerStyle}>
       <ChatView
         messages={chat.messages}
         isConnected={chat.isConnected}
@@ -65,15 +85,13 @@ export function ClaudeChannel({ channel, isActive }: Props) {
         switchSession={chat.switchSession}
         createSession={chat.createSession}
         deleteSession={chat.deleteSession}
-        pendingApprovals={chat.pendingApprovals}
-        resolveApproval={chat.resolveApproval}
+        pendingApprovals={[]}
+        resolveApproval={() => {}}
         assistantAvatar={<ClaudeMark size={16} />}
         emptyStateGlyph={<ClaudeMark size={36} />}
         slashCommands={slashCommands}
-        activity={chat.activity}
-        onInterrupt={() => {
-          window.electronAPI?.claude?.interrupt(channel.id).catch(() => { /* ignore */ });
-        }}
+        pendingPrompt={pendingPrompt}
+        onInterrupt={chat.abort}
       />
     </div>
   );

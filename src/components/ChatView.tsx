@@ -3,13 +3,23 @@ import { ArrowUp, ChevronDown, Square } from 'lucide-react';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
 import { LobsterIcon } from './LobsterIcon';
+import { ToolCallPill } from './claude/ToolCallPill';
 import type { Session } from '../hooks/useClawChat';
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   content: string;
   timestamp: string;
+  tool?: {
+    callId: string;
+    name: string;
+    input: unknown;
+    output?: unknown;
+    isError?: boolean;
+    durationMs?: number;
+    startedAt: number;
+  };
 }
 
 interface ChatViewProps {
@@ -40,6 +50,10 @@ interface ChatViewProps {
   /** Optional inline status pill rendered just above the typing indicator
    *  (e.g. "Thinking…" or "Running Bash"). Used by Claude channel. */
   activity?: { kind: 'thinking' | 'tool'; label: string } | null;
+  /** Inline interactive prompt rendered above the composer. When set, the
+   *  composer is disabled. Used by the Claude channel for tool approval and
+   *  AskUserQuestion prompts. */
+  pendingPrompt?: React.ReactNode;
 }
 
 export interface SlashCommand {
@@ -58,7 +72,7 @@ export function ChatView({
   sessions, currentSessionKey, switchSession, createSession, deleteSession,
   pendingApprovals, resolveApproval,
   assistantAvatar, emptyStateGlyph, onInterrupt,
-  slashCommands, activity,
+  slashCommands, activity, pendingPrompt,
 }: ChatViewProps) {
   const [input, setInput] = useState('');
   const [slashIdx, setSlashIdx] = useState(0);
@@ -232,7 +246,11 @@ export function ChatView({
         ) : (
           <>
             {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
+              msg.role === 'tool' && msg.tool ? (
+                <ToolCallPill key={msg.id} tool={msg.tool} />
+              ) : (
+                <MessageBubble key={msg.id} message={msg} agentEmoji={agentEmoji} avatarOverride={assistantAvatar} />
+              )
             ))}
             {activity && (
               <div style={{
@@ -273,6 +291,15 @@ export function ChatView({
           {pendingApprovals.map(a => (
             <ApprovalCard key={a.id} approval={a} onResolve={resolveApproval} />
           ))}
+        </div>
+      )}
+
+      {pendingPrompt && (
+        <div style={{
+          padding: '8px 14px 0',
+          borderTop: '0.5px solid var(--color-border-primary)',
+        }}>
+          {pendingPrompt}
         </div>
       )}
 
@@ -345,6 +372,7 @@ export function ChatView({
           onKeyDown={handleKeyDown}
           placeholder="Message..."
           rows={1}
+          disabled={!!pendingPrompt}
           style={{
             flex: 1,
             resize: 'none',
@@ -355,6 +383,7 @@ export function ChatView({
             fontFamily: 'var(--font-sans)',
             color: 'var(--color-text-primary)',
             background: 'var(--color-bg-input)',
+            opacity: pendingPrompt ? 0.5 : 1,
             outline: 'none',
             lineHeight: 1.47,
             overflow: 'hidden',
@@ -500,6 +529,7 @@ function MessageBubble({ message, agentEmoji, avatarOverride }: {
   agentEmoji?: string;
   avatarOverride?: React.ReactNode;
 }) {
+  if (message.role === 'tool') return null; // rendered by ToolCallPill instead
   const isUser = message.role === 'user';
 
   return (

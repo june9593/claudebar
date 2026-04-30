@@ -22,7 +22,7 @@ Head to the [Releases page](https://github.com/june9593/clawbar/releases) and gr
 
 ### macOS (Apple Silicon)
 
-1. Download [`ClawBar-0.2.5-mac-arm64.dmg`](https://github.com/june9593/clawbar/releases/download/v0.2.5/ClawBar-0.2.5-mac-arm64.dmg).
+1. Download [`ClawBar-0.4.0-mac-arm64.dmg`](https://github.com/june9593/clawbar/releases/download/v0.4.0/ClawBar-0.4.0-mac-arm64.dmg).
 2. Open it and drag **ClawBar** into `/Applications`.
 3. **First launch** — the app isn't code-signed, so Gatekeeper will block it once. Pick one:
    - Finder → **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog.
@@ -35,7 +35,7 @@ The lobster icon appears in the **macOS menu bar**. Click it to toggle the popov
 
 ### Windows (x64)
 
-1. Download [`ClawBar-0.2.5-win-x64.exe`](https://github.com/june9593/clawbar/releases/download/v0.2.5/ClawBar-0.2.5-win-x64.exe) (NSIS installer).
+1. Download [`ClawBar-0.4.0-win-x64.exe`](https://github.com/june9593/clawbar/releases/download/v0.4.0/ClawBar-0.4.0-win-x64.exe) (NSIS installer).
 2. Double-click to install. **SmartScreen** warns because the installer is **not code-signed** — click **More info → Run anyway**.
 3. Launch from the Start Menu or desktop shortcut.
 
@@ -48,6 +48,11 @@ The lobster icon appears in the **Windows system tray** (notification area). Lef
 - **macOS 12+** (Monterey or later) or **Windows 10 / 11**
 - Node.js 20+
 - (Optional) A reachable [OpenClaw](https://github.com/nicepkg/openclaw) gateway, default `http://localhost:18789`
+- (Optional, only if you want to use Claude Code as a channel) The
+  [Claude Code CLI](https://docs.claude.com/en/docs/claude-code/cli-reference)
+  installed on your system. ClawBar runs your installed `claude` binary
+  via `pathToClaudeCodeExecutable` — it does NOT bundle one. If `claude`
+  is missing, the Claude channel shows an install guide.
 
 ### Install & run
 

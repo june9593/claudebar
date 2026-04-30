@@ -37,27 +37,18 @@ export interface ElectronAPI {
     checkCli(): Promise<{ found: boolean; version?: string; path?: string }>;
     scanProjects(): Promise<Array<{ key: string; decodedPath: string; sessionCount: number }>>;
     listSessions(projectKey: string): Promise<Array<{ sessionId: string; preview: string; mtime: number }>>;
-    spawn(channelId: string, projectDir: string, sessionId: string | null): Promise<void>;
-    send(channelId: string, message: string): Promise<void>;
-    kill(channelId: string): Promise<void>;
-    interrupt(channelId: string): Promise<void>;
+    start(channelId: string, projectDir: string, projectKey: string, sessionId: string | null, cliPath: string): Promise<void>;
+    send(channelId: string, text: string): Promise<void>;
+    abort(channelId: string): Promise<void>;
+    close(channelId: string): Promise<void>;
+    approve(channelId: string, requestId: string, decision: 'allow' | 'allow-session' | 'deny'): Promise<void>;
+    answer(channelId: string, requestId: string, answers: string[][]): Promise<void>;
     loadHistory(projectKey: string, sessionId: string): Promise<Array<{
       role: 'user' | 'assistant';
       content: string;
       timestamp: number;
     }>>;
-    onEvent(cb: (payload: {
-      channelId: string;
-      type?: string;
-      state?: 'delta' | 'final';
-      message?: { role: 'assistant' | 'user'; content: string };
-      code?: number | null;
-      // Optional fields populated by `init` and `activity` events.
-      slashCommands?: string[];
-      skills?: string[];
-      kind?: string;
-      label?: string;
-    }) => void): () => void;
+    onEvent(cb: (envelope: import('../shared/claude-events').ClaudeEventEnvelope) => void): () => void;
   };
 }
 

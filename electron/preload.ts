@@ -65,16 +65,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     checkCli: () => ipcRenderer.invoke('claude:check-cli'),
     scanProjects: () => ipcRenderer.invoke('claude:scan-projects'),
     listSessions: (projectKey: string) => ipcRenderer.invoke('claude:list-sessions', projectKey),
-    spawn: (channelId: string, projectDir: string, sessionId: string | null) =>
-      ipcRenderer.invoke('claude:spawn', channelId, projectDir, sessionId),
-    send: (channelId: string, message: string) =>
-      ipcRenderer.invoke('claude:send', channelId, message),
-    kill: (channelId: string) => ipcRenderer.invoke('claude:kill', channelId),
-    interrupt: (channelId: string) => ipcRenderer.invoke('claude:interrupt', channelId),
+    start: (channelId: string, projectDir: string, projectKey: string, sessionId: string | null, cliPath: string) =>
+      ipcRenderer.invoke('claude:start', channelId, projectDir, projectKey, sessionId, cliPath),
+    send: (channelId: string, text: string) =>
+      ipcRenderer.invoke('claude:send', channelId, text),
+    abort: (channelId: string) => ipcRenderer.invoke('claude:abort', channelId),
+    close: (channelId: string) => ipcRenderer.invoke('claude:close', channelId),
+    approve: (channelId: string, requestId: string, decision: 'allow' | 'allow-session' | 'deny') =>
+      ipcRenderer.invoke('claude:approve', channelId, requestId, decision),
+    answer: (channelId: string, requestId: string, answers: string[][]) =>
+      ipcRenderer.invoke('claude:answer', channelId, requestId, answers),
     loadHistory: (projectKey: string, sessionId: string) =>
       ipcRenderer.invoke('claude:load-history', projectKey, sessionId),
-    onEvent: (cb: (payload: { channelId: string; [k: string]: unknown }) => void) => {
-      const handler = (_e: unknown, payload: { channelId: string; [k: string]: unknown }) => cb(payload);
+    onEvent: (cb: (envelope: { channelId: string; event: unknown }) => void) => {
+      const handler = (_e: unknown, envelope: { channelId: string; event: unknown }) => cb(envelope);
       ipcRenderer.on('claude:event', handler);
       return () => ipcRenderer.removeListener('claude:event', handler);
     },

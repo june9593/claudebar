@@ -5,9 +5,19 @@ export type { ApprovalRequest };
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   content: string;
   timestamp: string;
+  // Tool-only fields, populated when role === 'tool'.
+  tool?: {
+    callId: string;
+    name: string;
+    input: unknown;
+    output?: unknown;
+    isError?: boolean;
+    durationMs?: number;
+    startedAt: number;
+  };
 }
 
 export interface Session {

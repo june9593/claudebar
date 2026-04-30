@@ -76,6 +76,22 @@ files:
   - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
   - "!**/{appveyor.yml,.travis.yml,circle.yml}"
   - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  # ── BYO-CLI: drop the SDK's bundled Claude Code implementation; we drive
+  # the user's installed `claude` binary via `pathToClaudeCodeExecutable`.
+  # SDK 0.2.121 layout: the 205 MB native `claude` binary lives in
+  # platform-specific optional packages (claude-agent-sdk-darwin-arm64 etc.);
+  # the SDK's main package only ships JS, of which we need just `sdk.mjs`
+  # + types — the bridge/assistant/browser entries are unused (sdk.mjs does
+  # not import them).
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/bridge.mjs"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/bridge.d.ts"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/assistant.mjs"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/assistant.d.ts"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/browser-sdk.js"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/browser-sdk.d.ts"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/manifest.json"
+  - "!**/node_modules/@anthropic-ai/claude-agent-sdk/manifest.zst.json"
 
 asar: true
 compression: maximum

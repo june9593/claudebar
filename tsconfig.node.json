@@ -7,10 +7,10 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist-electron",
-    "rootDir": "electron",
+    "rootDir": ".",
     "declaration": false,
     "sourceMap": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["electron"]
+  "include": ["electron", "shared"]
 }

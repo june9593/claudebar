@@ -75,7 +75,7 @@ function spawnPetWindow() {
   if (process.env.VITE_DEV_SERVER_URL) {
     petWindow.loadURL(`${process.env.VITE_DEV_SERVER_URL}pet.html`);
   } else {
-    petWindow.loadFile(path.join(__dirname, '../dist/pet.html'));
+    petWindow.loadFile(path.join(__dirname, '../../dist/pet.html'));
   }
 
   petWindow.on('closed', () => {

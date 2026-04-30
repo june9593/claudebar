@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "types"]
+  "include": ["src", "types", "shared"]
 }

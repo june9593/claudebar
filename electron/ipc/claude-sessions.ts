@@ -87,19 +87,67 @@ async function readFirstUserMessage(filePath: string): Promise<string> {
   });
 }
 
-/** Returns true if `claude` resolves on PATH. */
-function checkCli(): Promise<{ found: boolean; version?: string; path?: string }> {
+/** Resolve the absolute path of `claude` on the user's PATH. Uses a
+ *  login (non-interactive) shell so PATH set in `~/.zprofile` (where
+ *  Homebrew, npm-global, and the native installer typically live) is
+ *  honoured even when Electron is launched by Finder with a minimal
+ *  PATH. We deliberately omit `-i` because Node's spawn has no TTY,
+ *  and an interactive shell hangs forever waiting for one. */
+function resolveCliPath(): Promise<string | null> {
   return new Promise((resolve) => {
-    const proc = spawn('claude', ['--version'], { shell: false });
+    // -lc (login + command, NOT interactive). `-i` interactive without
+    // a TTY hangs indefinitely under Node's spawn — Electron's spawn is
+    // non-TTY, so -i would never return. Login shell still sources
+    // ~/.zprofile (where Homebrew / npm-global / native installers
+    // typically extend PATH), which is enough to find `claude`. PATH
+    // set only in `~/.zshrc` interactive rc would be missed, but that
+    // is rare for tools meant to be available outside interactive use.
+    const proc = spawn(process.env.SHELL || '/bin/zsh', ['-lc', 'command -v claude'], { shell: false });
+    let out = '';
+    let settled = false;
+    const settle = (val: string | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(val);
+    };
+    // 5-second cap: a heavy or input-blocking shell init must not hang the
+    // app's CLI-detection forever.
+    const timer = setTimeout(() => {
+      try { proc.kill('SIGKILL'); } catch { /* ignore */ }
+      settle(null);
+    }, 5000);
+    proc.stdout?.on('data', (c) => (out += c.toString()));
+    proc.on('error', () => { clearTimeout(timer); settle(null); });
+    proc.on('exit', (code) => {
+      clearTimeout(timer);
+      // zsh login shells print 'Restored session: ...' to stdout before
+      // command output; shell functions can print multiple lines too. We
+      // want only `command -v`'s real output, which is the LAST non-empty
+      // line of stdout. Then sanity-check it's an absolute path before
+      // trusting it (anything else — function body, alias, builtin name —
+      // would fail later when we try to spawn it).
+      const lines = out.split('\n').map((l) => l.trim()).filter(Boolean);
+      const last = lines[lines.length - 1] ?? '';
+      if (code === 0 && last.startsWith('/')) settle(last);
+      else settle(null);
+    });
+  });
+}
+
+/** Returns whether the user has `claude` installed, plus its absolute path
+ *  and reported version. The path is what the SDK needs as
+ *  `pathToClaudeCodeExecutable`. */
+async function checkCli(): Promise<{ found: boolean; version?: string; path?: string }> {
+  const cliPath = await resolveCliPath();
+  if (!cliPath) return { found: false };
+  return new Promise((resolve) => {
+    const proc = spawn(cliPath, ['--version'], { shell: false });
     let out = '';
     proc.stdout?.on('data', (c) => (out += c.toString()));
     proc.on('error', () => resolve({ found: false }));
     proc.on('exit', (code) => {
-      if (code === 0) {
-        resolve({ found: true, version: out.trim() });
-      } else {
-        resolve({ found: false });
-      }
+      if (code === 0) resolve({ found: true, version: out.trim(), path: cliPath });
+      else resolve({ found: false });
     });
   });
 }
