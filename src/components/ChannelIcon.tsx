@@ -41,6 +41,11 @@ function ClaudePetIcon({ v }: { v: ClaudePetVariant }) {
       {/* Hands */}
       <rect x="14" y="48" width="10" height="10" fill={v.handColor} />
       <rect x="76" y="48" width="10" height="10" fill={v.handColor} />
+      {/* Four legs */}
+      <rect x="26" y="72" width="9" height="14" fill={v.legColor} />
+      <rect x="38" y="72" width="9" height="14" fill={v.legColor} />
+      <rect x="53" y="72" width="9" height="14" fill={v.legColor} />
+      <rect x="65" y="72" width="9" height="14" fill={v.legColor} />
       {/* Eyes */}
       {renderEye(40, 50)}
       {renderEye(60, 50)}

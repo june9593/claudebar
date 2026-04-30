@@ -76,6 +76,8 @@ export function identiconFromKey(key: string): Identicon {
  * Hashed dimensions:
  *  - body hue   — 6 buckets in ±36° around Claude orange (hue ~18°)
  *  - body shade — 3 buckets (lighter / base / deeper)
+ *  - hand colour — sibling shade of body
+ *  - leg colour — independent shade of body (different bits)
  *  - eye style  — square / round / sleepy line / sparkle
  *  - eye colour — black / very dark blue / very dark red
  */
@@ -83,6 +85,7 @@ export interface ClaudePetVariant {
   bodyColor: string;
   shadowColor: string;
   handColor: string;
+  legColor: string;
   eyeColor: string;
   eyeStyle: 'square' | 'round' | 'sleepy' | 'sparkle';
 }
@@ -92,20 +95,32 @@ export function claudePetVariant(key: string): ClaudePetVariant {
 
   // Body hue: 6 buckets across 18° ± 36° (so 342° → 54°), keeps it in
   // the warm-orange / red-orange / amber band.
-  const hueBucket = h & 0x7;       // 3 bits, 0..7 → mod 6
-  const hueOffset = ((hueBucket % 6) - 3) * 12; // -36, -24, -12, 0, 12, 24
+  const hueBucket = h & 0x7;
+  const hueOffset = ((hueBucket % 6) - 3) * 12;
   const baseHue = (18 + hueOffset + 360) % 360;
 
   // Body lightness shade: 3 buckets.
-  const lightBucket = (h >> 3) & 0x3; // 0..3 → mod 3
+  const lightBucket = (h >> 3) & 0x3;
   const lightness = [40, 48, 56][lightBucket % 3];
 
   // Compose body / shadow / hand from the same hue.
   const bodyColor = `hsl(${baseHue}, 50%, ${lightness}%)`;
   const shadowColor = `hsl(${baseHue}, 50%, ${Math.max(20, lightness - 18)}%)`;
+
   // Hands: shift hue slightly + go a touch redder for contrast.
   const handHue = (baseHue + 350) % 360;
   const handColor = `hsl(${handHue}, 55%, ${Math.max(30, lightness - 6)}%)`;
+
+  // Legs: independent hue/shade pick. Use bits 9..11 for a separate
+  // 8-bucket hue offset around the same warm band, and bits 12..13 for
+  // lightness. Keeps legs visually consistent with the rest but lets
+  // them be a distinct identifying signal.
+  const legHueBucket = (h >> 9) & 0x7;
+  const legHueOffset = ((legHueBucket % 6) - 3) * 12;
+  const legHue = (18 + legHueOffset + 360) % 360;
+  const legLightBucket = (h >> 12) & 0x3;
+  const legLightness = [36, 46, 56][legLightBucket % 3];
+  const legColor = `hsl(${legHue}, 55%, ${legLightness}%)`;
 
   // Eye style: 4 buckets.
   const eyeStyles: ClaudePetVariant['eyeStyle'][] = ['square', 'round', 'sleepy', 'sparkle'];
@@ -115,7 +130,7 @@ export function claudePetVariant(key: string): ClaudePetVariant {
   const eyeColors = ['#0a0a0a', '#0a1a3a', '#3a0a0a'];
   const eyeColor = eyeColors[((h >> 7) & 0x3) % 3];
 
-  return { bodyColor, shadowColor, handColor, eyeColor, eyeStyle };
+  return { bodyColor, shadowColor, handColor, legColor, eyeColor, eyeStyle };
 }
 
 // Smoke checks (dev only). console.assert never throws — safe even when assertions fail.

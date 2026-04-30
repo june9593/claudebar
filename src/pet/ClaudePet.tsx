@@ -2,12 +2,12 @@ import React from 'react';
 
 /**
  * Claude pet mascot — chunky pixel-art critter, after Anthropic's Claude
- * pixel sticker. Square orange body, two black square eyes, and two small
- * red/orange "hand" squares poking out the left and right sides.
+ * pixel sticker. Square orange body, two black square eyes, two side
+ * "hand" squares, and four chunky legs poking down from the bottom.
  *
- * The hand rectangles live inside .left-claw / .right-claw groups so the
- * existing pet.css idle / wave-claw / squish / bounce animations apply
- * just like LobsterPet's claws.
+ * The hand + leg rectangles live inside .left-claw / .right-claw groups
+ * so the existing pet.css idle / wave-claw / squish / bounce animations
+ * apply just like LobsterPet's claws.
  */
 const ClaudePet: React.FC = () => {
   // Palette
@@ -26,19 +26,12 @@ const ClaudePet: React.FC = () => {
       {/* Body — chunky rounded square block. */}
       <rect x="28" y="38" width="64" height="46" fill={orange} />
 
-      {/* Top notches give the pixel-rounded silhouette */}
-      <rect x="28" y="38" width="6" height="6" fill="transparent" />
-      <rect x="86" y="38" width="6" height="6" fill="transparent" />
-      {/* Bottom notches */}
-      <rect x="28" y="78" width="6" height="6" fill="transparent" />
-      <rect x="86" y="78" width="6" height="6" fill="transparent" />
-
       {/* Subtle inner shadow on the right edge for chunky depth */}
       <rect x="84" y="44" width="8" height="34" fill={orangeShadow} opacity="0.20" />
 
-      {/* Hands — small red/orange squares poking out the sides. Wrapped
-          in .left-claw / .right-claw so the existing wave / squish CSS
-          animations attach. */}
+      {/* Hands — small squares poking out the sides. Wrapped in
+          .left-claw / .right-claw so the wave / squish CSS animations
+          attach. */}
       <g className="left-claw" style={{ transformOrigin: '24px 60px' }}>
         <rect x="20" y="56" width="10" height="10" fill={orange} />
         <rect x="22" y="58" width="6" height="6" fill={orangeShadow} opacity="0.25" />
@@ -47,6 +40,13 @@ const ClaudePet: React.FC = () => {
         <rect x="90" y="56" width="10" height="10" fill={orange} />
         <rect x="92" y="58" width="6" height="6" fill={orangeShadow} opacity="0.25" />
       </g>
+
+      {/* Four legs poking down from the bottom of the body. Same
+          orange as body so the silhouette reads as one creature. */}
+      <rect x="34" y="84" width="9" height="14" fill={orange} />
+      <rect x="48" y="84" width="9" height="14" fill={orange} />
+      <rect x="63" y="84" width="9" height="14" fill={orange} />
+      <rect x="77" y="84" width="9" height="14" fill={orange} />
 
       {/* Eyes — two black square pixels */}
       <rect x="44" y="52" width="9" height="9" fill={eye} />
