@@ -22,7 +22,7 @@ Head to the [Releases page](https://github.com/june9593/clawbar/releases) and gr
 
 ### macOS (Apple Silicon)
 
-1. Download [`ClawBar-0.4.1-mac-arm64.dmg`](https://github.com/june9593/clawbar/releases/download/v0.4.1/ClawBar-0.4.1-mac-arm64.dmg).
+1. Download [`ClawBar-0.4.2-mac-arm64.dmg`](https://github.com/june9593/clawbar/releases/download/v0.4.2/ClawBar-0.4.2-mac-arm64.dmg).
 2. Open it and drag **ClawBar** into `/Applications`.
 3. **First launch** — the app isn't code-signed, so Gatekeeper will block it once. Pick one:
    - Finder → **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog.
@@ -35,7 +35,7 @@ The lobster icon appears in the **macOS menu bar**. Click it to toggle the popov
 
 ### Windows (x64)
 
-1. Download [`ClawBar-0.4.1-win-x64.exe`](https://github.com/june9593/clawbar/releases/download/v0.4.1/ClawBar-0.4.1-win-x64.exe) (NSIS installer).
+1. Download [`ClawBar-0.4.2-win-x64.exe`](https://github.com/june9593/clawbar/releases/download/v0.4.2/ClawBar-0.4.2-win-x64.exe) (NSIS installer).
 2. Double-click to install. **SmartScreen** warns because the installer is **not code-signed** — click **More info → Run anyway**.
 3. Launch from the Start Menu or desktop shortcut.
 
