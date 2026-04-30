@@ -1146,7 +1146,7 @@
 <header class="hero container" id="top">
   <div class="eyebrow">A menu-bar / system-tray app for OpenClaw</div>
   <h1>Every <em>channel</em><br>to your OpenClaw,<br>in <em>one</em> bar.</h1>
-  <p class="lede">Your OpenClaw agent reaches you through Telegram, Discord, Feishu, Lark, its own web chat — and anywhere else you've wired it up. ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar or the Windows system tray. <em>Bar in a bar.</em></p>
+  <p class="lede">Your OpenClaw agent reaches you through Telegram, Discord, Feishu, Lark, its own web chat — and anywhere else you've wired it up. Plus your local <strong>Claude Code</strong> sessions, with tool approvals, expandable tool pills, and AskUserQuestion cards. ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar or the Windows system tray. <em>Bar in a bar.</em></p>
   <div class="actions">
     <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/download/v0.4.0/ClawBar-0.4.0-mac-arm64.dmg">
       Download for macOS
@@ -1171,8 +1171,8 @@
       <div class="label">agent, your OpenClaw</div>
     </div>
     <div>
-      <div class="num">5+</div>
-      <div class="label">channels in the bar</div>
+      <div class="num">6+</div>
+      <div class="label">channel kinds</div>
     </div>
     <div>
       <div class="num">10</div>
@@ -1539,6 +1539,77 @@
     </div>
   </article>
 
+  <article class="plate">
+    <div class="plate-no">VIII<span class="small">CLAUDE&nbsp;CODE</span></div>
+    <div class="copy">
+      <h2>Your local <em>Claude Code</em> sessions, in the bar.</h2>
+      <p>Pick a project from <code>~/.claude/projects</code>, resume any past session — or start a new one. The conversation lands in the bar like any other channel, with streaming, thinking pills, tool-call cards, and inline approval prompts. Powered by the <a href="https://docs.claude.com/en/docs/claude-code/sdk">Claude Agent SDK</a>; drives your installed <code>claude</code> binary (BYO-CLI), no bundled fork.</p>
+      <ul>
+        <li><span class="marker">A</span><span><strong>Tool approval cards</strong> — Bash / Edit / Write surface inline above the composer. <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> digits, <kbd>↑</kbd><kbd>↓</kbd><kbd>⏎</kbd>, <kbd>Esc</kbd> = deny.</span></li>
+        <li><span class="marker">B</span><span><strong>Expandable tool pills</strong> — Bash, Edit, Read, Glob, Grep, Thinking — all collapse to one line; click to see input + output.</span></li>
+        <li><span class="marker">C</span><span><strong>AskUserQuestion lists</strong> — model-asked option cards with the same keyboard model.</span></li>
+        <li><span class="marker">⏹</span><span><strong>Real Esc abort</strong> — Stop cancels the current turn via <code>Query.interrupt()</code>; the SDK process stays alive for your next message.</span></li>
+      </ul>
+    </div>
+    <div class="stage">
+      <div class="window">
+        <div class="titlebar">
+          <div class="left">
+            <span class="dot"></span>
+            <span class="lobster-icon"></span>
+            <span class="name">ClawBar</span>
+          </div>
+          <div class="right">
+            <span class="iconbtn">⌘</span>
+            <span class="iconbtn">⚙</span>
+          </div>
+        </div>
+        <div class="body">
+          <div class="dock">
+            <div class="dock-icon"><span class="lobster-glyph"></span></div>
+            <div class="dock-icon">✈️</div>
+            <div class="dock-icon active" style="position:relative;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#c96442" aria-hidden="true">
+                <path d="M12 2 L13.2 9 L19.5 5.5 L16 11.8 L23 12 L16 12.2 L19.5 18.5 L13.2 15 L12 22 L10.8 15 L4.5 18.5 L8 12.2 L1 12 L8 11.8 L4.5 5.5 L10.8 9 Z"/>
+              </svg>
+            </div>
+            <div class="dock-spacer"></div>
+            <div class="dock-icon plus">+</div>
+          </div>
+          <div class="content">
+            <div class="content-head">
+              <span class="crumb">claw-in-menu-bar · ▾</span>
+              <span style="font-size:14px;color:var(--ink-mute);">+</span>
+            </div>
+            <div class="messages" style="padding:12px 12px 6px;">
+              <div class="row user"><div class="bubble user">run echo hello in bash</div></div>
+
+              <div style="margin-left:34px;border:1px solid var(--rule);border-radius:10px;background:var(--paper-deep);padding:7px 10px;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--ink-mute);min-width:240px;max-width:100%;">
+                <span style="color:var(--ink);">▸</span>
+                <strong style="color:var(--ink);">Bash</strong>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">$ echo hello</span>
+                <span style="color:#5a8c52;font-weight:700;">✓</span>
+                <span>1.2s</span>
+              </div>
+
+              <div style="margin-left:34px;border:1px solid var(--rule);border-radius:12px;background:var(--paper-light);padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 3px rgba(0,0,0,.05);max-width:340px;">
+                <div style="font-size:12px;font-weight:600;color:var(--ink);">Allow Bash?</div>
+                <div style="padding:5px 8px;background:var(--paper-deep);border-radius:6px;font-family:var(--mono);font-size:11px;color:var(--ink);">$ rm -rf /tmp/scratch</div>
+                <div style="display:flex;flex-direction:column;gap:1px;font-size:12px;">
+                  <div style="display:flex;gap:8px;padding:4px 8px;background:rgba(201,100,66,.12);border-radius:6px;color:var(--ink);"><span style="color:var(--lobster);font-family:var(--mono);">❯ 1.</span><span>Yes, once</span></div>
+                  <div style="display:flex;gap:8px;padding:4px 8px;color:var(--ink);"><span style="color:var(--ink-mute);font-family:var(--mono);">&nbsp;&nbsp;&nbsp;2.</span><span>Yes, allow Bash for this session</span></div>
+                  <div style="display:flex;gap:8px;padding:4px 8px;color:var(--ink);"><span style="color:var(--ink-mute);font-family:var(--mono);">&nbsp;&nbsp;&nbsp;3.</span><span>No (esc)</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="composer"><div class="input" style="opacity:.5;">Message…</div><div class="send">↑</div></div>
+          </div>
+        </div>
+      </div>
+      <span class="stage-label">FIG. VIII · Bash tool pill (top) + inline approval card (below)</span>
+    </div>
+  </article>
+
 </section>
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -1632,6 +1703,10 @@ npm run pack:win              <span class="comment"># Windows (NSIS + portable)<
     <details>
       <summary>Do I need OpenClaw to use ClawBar?</summary>
       <p>The first channel (the lobster) is the OpenClaw native chat — that part assumes you have an OpenClaw gateway running and reachable. The other channels (Telegram / Discord / Feishu / Lark / custom URLs) are just web wrappers, so they work standalone too. But the project is built around OpenClaw — that's the agent on the other end of all these channels.</p>
+    </details>
+    <details>
+      <summary>What does the Claude Code channel need?</summary>
+      <p>An installed <code>claude</code> binary on your <code>PATH</code> — install via <code>npm install -g @anthropic-ai/claude-code</code> or the official native installer. ClawBar drives <em>your</em> CLI via the <a href="https://docs.claude.com/en/docs/claude-code/sdk">Claude Agent SDK's</a> <code>pathToClaudeCodeExecutable</code> option; the SDK's own bundled fork (~205 MB native binary) is excluded from the DMG. If <code>claude</code> isn't found, the channel shows an install guide. Tool permissions still go through your existing <code>~/.claude/settings.json</code> allow / deny lists, with anything not pre-approved surfacing as an inline approval card.</p>
     </details>
     <details>
       <summary>Is it open source?</summary>
