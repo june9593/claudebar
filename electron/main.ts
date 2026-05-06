@@ -5,6 +5,7 @@ import { setupSettingsIPC, getSettings, setSetting } from './ipc/settings';
 import { setupWsBridge } from './ws-bridge';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
+import { hydrateShellEnv } from './shell-env';
 import { createPetWindow, isPetVisible, showPet, hidePet } from './pet-window';
 
 let mainWindow: BrowserWindow | null = null;
@@ -310,7 +311,13 @@ if (!gotLock) {
 // Hide from Dock
 app.dock?.hide();
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Hydrate the user's shell auth env BEFORE the Claude bridge starts
+  // taking IPC calls — when launched from Finder/Dock on macOS, launchd
+  // does not source ~/.zshrc, so without this the spawned `claude` binary
+  // sees no ANTHROPIC_AUTH_TOKEN and reports "Not logged in".
+  await hydrateShellEnv();
+
   createWindow();
   createTray();
   setupWindowIPC();

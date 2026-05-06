@@ -6,6 +6,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as readline from 'readline';
 import { MessageQueue } from './claude-message-queue';
+import { getShellAuthEnv } from './shell-env';
 import type { ClaudeEvent, ApprovalDecision, AskQuestion } from '../shared/claude-events';
 
 interface PendingApproval {
@@ -410,6 +411,13 @@ function openQuery(s: ActiveSession): void {
       includePartialMessages: true,
       abortController: s.abortController,
       canUseTool: makeCanUseTool(s),
+      // Forward the user's shell auth env to the spawned `claude` binary.
+      // Critical when ClawBar is launched from Finder/Dock — launchd does
+      // not source ~/.zshrc, so process.env has no ANTHROPIC_AUTH_TOKEN.
+      // hydrateShellEnv() ran at app boot and cached the relevant vars;
+      // we layer them on top of process.env so explicit env (CLAWBAR_TRACE
+      // etc.) still wins.
+      env: { ...process.env, ...getShellAuthEnv() },
       ...(resumeId ? { resume: resumeId } : {}),
     },
   });
