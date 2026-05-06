@@ -1,6 +1,6 @@
 # ClawBar — Architecture
 
-> 版本: v3.0 — 2026-04-30 (Sprint 2: Claude SDK integration shipped in v0.4.x)
+> 版本: v3.1 — 2026-05-06 (v0.4.8: shell-env hydration + new-session resume guard)
 
 ## 1. Overview
 
@@ -52,6 +52,8 @@ clawbar/
 │   ├── ws-bridge.ts             # OpenClaw WebSocket bridge + Ed25519 auth
 │   ├── claude-bridge.ts         # Claude SDK bridge: ActiveSession map + Query loop + canUseTool
 │   ├── claude-message-queue.ts  # AsyncIterable<SDKUserMessage> for streaming-input mode
+│   ├── shell-env.ts             # Parses ~/.zshrc etc. directly for ANTHROPIC_*/CLAUDE_* vars
+│                                #   (launchd-launched apps don't get shell env; never spawn a shell here)
 │   └── ipc/
 │       ├── settings.ts          # settings:get / settings:set
 │       └── claude-sessions.ts   # claude:check-cli / scan-projects / list-sessions
@@ -271,6 +273,50 @@ bundled claude wants to call Bash
 2. Fall back to `zsh -lc 'command -v claude'` (login non-interactive shell — `-i` would hang under Node spawn without a TTY) with a 5 s timeout.
 
 Take the last non-empty line of stdout (login shells print "Restored session: …" before command output) and require it to start with `/` before trusting it.
+
+### 5.5 Auth env hydration (`electron/shell-env.ts`)
+
+macOS launchd starts GUI apps with a minimal env — it does NOT source `~/.zshrc`, `~/.zprofile`, or `~/.bash_profile`. So `process.env.ANTHROPIC_AUTH_TOKEN` is missing for any user who exports tokens in shell rc files, and the spawned `claude` reports "Not logged in" even though it works fine from a terminal.
+
+Fix: at app boot (`hydrateShellEnv()` awaited in `main.ts` `whenReady` before `setupClaudeBridge()`), parse `.profile` / `.bash_profile` / `.bashrc` / `.zshenv` / `.zprofile` / `.zshrc` DIRECTLY with a regex against `export KEY=VALUE` lines on the `ANTHROPIC_*` / `CLAUDE_*` allowlist. Cache the result. The Claude bridge merges the cache onto `process.env` when calling SDK `query()`:
+
+```ts
+env: { ...process.env, ...getShellAuthEnv() }
+```
+
+**Do not try to spawn a shell to do this.** History of failed approaches (documented in the file header):
+1. `zsh -lc 'env'` — `-l` does NOT source `.zshrc` (interactive-only), only `.zshenv`/`.zprofile`/`.zlogin`.
+2. `zsh -ilc 'env'` — `-i` requires a TTY; under Node `spawn` it hangs forever.
+3. `zsh -c 'source ~/.zshrc; env'` — hangs >5 s when launchd's clean env is the parent (compinit / nvm hooks / brew completion behave differently with `SHLVL=0` and minimal `PATH`).
+
+Direct parsing sidesteps all three. Doesn't expand `$VAR` / handle `eval`, but values for these keys are almost always literal (URLs, tokens, model names, "true").
+
+A diagnostic log lives at `~/.clawbar/auth-debug.log` — only key NAMES + counts, never values. Ask users to send this when env-related auth bugs recur.
+
+Windows: skipped entirely. GUI launches inherit the user env on Windows.
+
+### 5.6 New-session id mirroring
+
+The renderer mints a placeholder `crypto.randomUUID()` for every "new session" (so the channel has a stable identity in the dock from the moment the user clicks). The bridge MUST NOT pass that placeholder as SDK `resume:` — the SDK silently fails to load a non-existent `.jsonl` and the turn hangs.
+
+`openQuery` guards the resume:
+
+```ts
+let resumeId: string | undefined;
+if (s.sessionId) {
+  const sessionFile = path.join(os.homedir(), '.claude', 'projects', s.projectKey, `${s.sessionId}.jsonl`);
+  if (fs.existsSync(sessionFile)) resumeId = s.sessionId;
+}
+```
+
+For new sessions `resumeId` stays undefined → SDK creates a fresh session → `system/init` reports the canonical id → bridge emits `session-started` → renderer's `useClaudeSession` calls `channelStore.setRealSessionId(channelId, realId)`.
+
+`setRealSessionId` is a SOFT setter: it swaps the channel's sessionId in place and persists, but does NOT call `claude.close`. To prevent the resulting prop change from re-firing the hook's main effect (which would tear down the live SDK Query mid-turn), `useClaudeSession`:
+- drops `sessionId` from the main effect's deps (uses a ref for initial start)
+- handles the soft echo via an `acceptedRealIdRef` guard
+- handles user-initiated session switches via a separate "hard switch" effect that calls `checkAndStart()` to re-init the bridge
+
+`ChannelHost` keys `ClaudeChannel` by `c.id` only (NOT `${c.id}-${c.sessionId}`) — the hook owns the in-place re-init.
 
 ## 6. Renderer
 
