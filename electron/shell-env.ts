@@ -12,11 +12,26 @@
 // full env so we don't accidentally leak unrelated user state into spawned
 // child processes.
 import { spawn } from 'child_process';
-import os from 'os';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 let cached: Record<string, string> | null = null;
 
 const ALLOW_PREFIXES = ['ANTHROPIC_', 'CLAUDE_'];
+
+const DIAG_DIR = path.join(os.homedir(), '.clawbar');
+const DIAG_FILE = path.join(DIAG_DIR, 'auth-debug.log');
+
+/** Write a single diagnostic line to ~/.clawbar/auth-debug.log so we can
+ *  inspect what hydration actually did, even when stdout is swallowed by
+ *  launchd. Values are NEVER written — only key names + counts. */
+function diag(msg: string): void {
+  try {
+    fs.mkdirSync(DIAG_DIR, { recursive: true });
+    fs.appendFileSync(DIAG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch { /* ignore — diagnostics must never crash the app */ }
+}
 
 function isAllowedKey(key: string): boolean {
   return ALLOW_PREFIXES.some((p) => key.startsWith(p));
@@ -37,6 +52,7 @@ function isAllowedKey(key: string): boolean {
 async function readShellAuthEnv(): Promise<Record<string, string>> {
   return new Promise((resolve) => {
     const shell = process.env.SHELL || '/bin/zsh';
+    diag(`readShellAuthEnv: SHELL=${shell}, HOME=${process.env.HOME ?? '(unset)'}`);
     // Explicit source per shell. `[ -f X ]` guards against missing files
     // so a user who doesn't have a .zprofile doesn't trip the script.
     // `2>/dev/null` swallows rc-file warnings (some users have noisy rc
@@ -60,15 +76,17 @@ async function readShellAuthEnv(): Promise<Record<string, string>> {
       try { proc.kill(); } catch { /* ignore */ }
       // eslint-disable-next-line no-console
       console.warn('[shell-env] timed out reading shell env, continuing without');
+      diag('readShellAuthEnv: TIMED OUT after 5s');
       resolve({});
     }, 5000);
 
     proc.stdout.on('data', (b: Buffer) => { out += b.toString(); });
     proc.stderr.on('data', (b: Buffer) => { err += b.toString(); });
-    proc.on('error', () => {
+    proc.on('error', (e) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      diag(`readShellAuthEnv: spawn error ${e.message}`);
       resolve({});
     });
     proc.on('close', (code) => {
@@ -78,9 +96,11 @@ async function readShellAuthEnv(): Promise<Record<string, string>> {
       if (code !== 0) {
         // eslint-disable-next-line no-console
         console.warn(`[shell-env] ${shell} exited ${code}: ${err.trim()}`);
+        diag(`readShellAuthEnv: exit ${code}, stderr=${err.trim().slice(0, 200)}`);
         resolve({});
         return;
       }
+      diag(`readShellAuthEnv: exit 0, stdout ${out.length} bytes`);
       const parsed: Record<string, string> = {};
       for (const line of out.split('\n')) {
         const eq = line.indexOf('=');
@@ -89,6 +109,7 @@ async function readShellAuthEnv(): Promise<Record<string, string>> {
         if (!isAllowedKey(key)) continue;
         parsed[key] = line.slice(eq + 1);
       }
+      diag(`readShellAuthEnv: parsed ${Object.keys(parsed).length} keys: ${Object.keys(parsed).join(',') || '(none)'}`);
       resolve(parsed);
     });
   });
@@ -98,6 +119,9 @@ async function readShellAuthEnv(): Promise<Record<string, string>> {
  *  Safe to call repeatedly — only the first call does work. */
 export async function hydrateShellEnv(): Promise<void> {
   if (cached !== null) return;
+  diag(`hydrateShellEnv: starting (process.env keys with ANTHROPIC/CLAUDE: ${
+    Object.keys(process.env).filter(isAllowedKey).join(',') || '(none)'
+  })`);
   // Guard against running on Windows where `zsh -lc env` is meaningless;
   // on Windows the user's env is already inherited by the GUI process.
   if (os.platform() === 'win32') {
@@ -107,9 +131,20 @@ export async function hydrateShellEnv(): Promise<void> {
   cached = await readShellAuthEnv();
   // eslint-disable-next-line no-console
   console.log(`[shell-env] hydrated ${Object.keys(cached).length} auth/config vars from shell`);
+  diag(`hydrateShellEnv: done, cache size ${Object.keys(cached).length}`);
 }
 
 /** Returns the cached vars (empty object until hydrated). */
 export function getShellAuthEnv(): Record<string, string> {
   return cached ?? {};
+}
+
+/** Diagnostic: log what env will actually be passed to a child process.
+ *  Call right before spawning so the log captures whether the merge
+ *  retained ANTHROPIC_AUTH_TOKEN etc. Values are NEVER logged. */
+export function logChildEnvKeys(label: string, env: Record<string, string | undefined>): void {
+  const present = Object.keys(env)
+    .filter((k) => isAllowedKey(k) && env[k] !== undefined && env[k] !== '')
+    .sort();
+  diag(`childEnv[${label}]: ${present.length} keys: ${present.join(',') || '(none)'}`);
 }

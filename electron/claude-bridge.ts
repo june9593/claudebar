@@ -6,7 +6,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as readline from 'readline';
 import { MessageQueue } from './claude-message-queue';
-import { getShellAuthEnv } from './shell-env';
+import { getShellAuthEnv, logChildEnvKeys } from './shell-env';
 import type { ClaudeEvent, ApprovalDecision, AskQuestion } from '../shared/claude-events';
 
 interface PendingApproval {
@@ -417,7 +417,11 @@ function openQuery(s: ActiveSession): void {
       // hydrateShellEnv() ran at app boot and cached the relevant vars;
       // we layer them on top of process.env so explicit env (CLAWBAR_TRACE
       // etc.) still wins.
-      env: { ...process.env, ...getShellAuthEnv() },
+      env: (() => {
+        const merged = { ...process.env, ...getShellAuthEnv() } as Record<string, string | undefined>;
+        logChildEnvKeys(`channel:${s.channelId}`, merged);
+        return merged as { [k: string]: string };
+      })(),
       ...(resumeId ? { resume: resumeId } : {}),
     },
   });
