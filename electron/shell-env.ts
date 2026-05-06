@@ -1,17 +1,23 @@
-// Hydrates auth-related env vars from the user's interactive shell so the
+// Hydrates auth-related env vars from the user's shell rc files so the
 // SDK-spawned `claude` binary works when ClawBar is launched from Finder.
 //
 // Why this exists: macOS launchd starts GUI apps with a minimal env — it
 // does NOT source ~/.zshrc / ~/.zprofile / ~/.bash_profile. Users who put
 // `export ANTHROPIC_AUTH_TOKEN=...` (or similar) in their shell rc see
 // `claude` work fine from a terminal but get "Not logged in" from the
-// menu-bar app. Same root cause as VS Code, Cursor, Warp etc. all dealt
-// with — they all source the user's shell once at startup.
+// menu-bar app.
 //
-// We use an allowlist (ANTHROPIC_* / CLAUDE_*) rather than copying the
-// full env so we don't accidentally leak unrelated user state into spawned
-// child processes.
-import { spawn } from 'child_process';
+// We parse the rc files DIRECTLY rather than spawning a shell. Earlier
+// attempts to `zsh -c 'source ~/.zshrc; env'` worked from a terminal-
+// inherited env but hung indefinitely from launchd's clean env (compinit,
+// nvm hooks, brew completion, etc. behave differently when SHLVL=0 and
+// PATH is minimal — diagnostics on the actual failing machine showed a
+// 5+ second hang). The shell-spawn approach is also slow even when it
+// works.
+//
+// Direct parsing is bounded by an allowlist (ANTHROPIC_* / CLAUDE_*) so
+// we don't try to interpret arbitrary shell logic — only the simple
+// `export KEY=value` lines that 99% of rc files use for these keys.
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -23,96 +29,92 @@ const ALLOW_PREFIXES = ['ANTHROPIC_', 'CLAUDE_'];
 const DIAG_DIR = path.join(os.homedir(), '.clawbar');
 const DIAG_FILE = path.join(DIAG_DIR, 'auth-debug.log');
 
-/** Write a single diagnostic line to ~/.clawbar/auth-debug.log so we can
- *  inspect what hydration actually did, even when stdout is swallowed by
- *  launchd. Values are NEVER written — only key names + counts. */
+/** Append a diagnostic line to ~/.clawbar/auth-debug.log so we can inspect
+ *  what hydration actually did, even when stdout is swallowed by launchd.
+ *  Values are NEVER written — only key names and counts. */
 function diag(msg: string): void {
   try {
     fs.mkdirSync(DIAG_DIR, { recursive: true });
     fs.appendFileSync(DIAG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
-  } catch { /* ignore — diagnostics must never crash the app */ }
+  } catch { /* diagnostics must never crash the app */ }
 }
 
 function isAllowedKey(key: string): boolean {
   return ALLOW_PREFIXES.some((p) => key.startsWith(p));
 }
 
-/** Run the user's $SHELL with explicit rc-file sourcing, parse `env`,
- *  return only the auth/config keys we care about. Resolves to an empty
- *  object on any failure — we never want shell startup hiccups to block
- *  the app.
- *
- *  IMPORTANT zsh nuance: `zsh -l` (login) sources .zshenv/.zprofile/.zlogin
- *  but NOT .zshrc — and .zshrc is where most users put their `export
- *  ANTHROPIC_AUTH_TOKEN=...`. The naive `-l` flag therefore does nothing
- *  useful when launchd starts the GUI app with a clean env. We tried
- *  `zsh -ilc` (add interactive) but that hangs without a TTY under spawn.
- *  Solution: use `-c` and EXPLICITLY source the rc files we know about.
- *  Same for bash. */
-async function readShellAuthEnv(): Promise<Record<string, string>> {
-  return new Promise((resolve) => {
-    const shell = process.env.SHELL || '/bin/zsh';
-    diag(`readShellAuthEnv: SHELL=${shell}, HOME=${process.env.HOME ?? '(unset)'}`);
-    // Explicit source per shell. `[ -f X ]` guards against missing files
-    // so a user who doesn't have a .zprofile doesn't trip the script.
-    // `2>/dev/null` swallows rc-file warnings (some users have noisy rc
-    // files printing motd-style banners, which we don't want polluting
-    // the env output). Errors in rc files don't bail the script either —
-    // we still want partial env if half the rc was readable.
-    const sourceCmd = shell.endsWith('zsh')
-      ? '[ -f ~/.zshenv ] && source ~/.zshenv 2>/dev/null; ' +
-        '[ -f ~/.zprofile ] && source ~/.zprofile 2>/dev/null; ' +
-        '[ -f ~/.zshrc ] && source ~/.zshrc 2>/dev/null; '
-      : '[ -f ~/.profile ] && source ~/.profile 2>/dev/null; ' +
-        '[ -f ~/.bash_profile ] && source ~/.bash_profile 2>/dev/null; ' +
-        '[ -f ~/.bashrc ] && source ~/.bashrc 2>/dev/null; ';
-    const proc = spawn(shell, ['-c', sourceCmd + 'env'], { shell: false });
-    let out = '';
-    let err = '';
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      try { proc.kill(); } catch { /* ignore */ }
-      // eslint-disable-next-line no-console
-      console.warn('[shell-env] timed out reading shell env, continuing without');
-      diag('readShellAuthEnv: TIMED OUT after 5s');
-      resolve({});
-    }, 5000);
+/** rc files we'll scan, in source order (later wins, mirroring shell semantics).
+ *  zsh and bash both end up reading these on a normal interactive setup. */
+const RC_FILES = [
+  '.profile',
+  '.bash_profile',
+  '.bashrc',
+  '.zshenv',
+  '.zprofile',
+  '.zshrc',
+];
 
-    proc.stdout.on('data', (b: Buffer) => { out += b.toString(); });
-    proc.stderr.on('data', (b: Buffer) => { err += b.toString(); });
-    proc.on('error', (e) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      diag(`readShellAuthEnv: spawn error ${e.message}`);
-      resolve({});
-    });
-    proc.on('close', (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      if (code !== 0) {
-        // eslint-disable-next-line no-console
-        console.warn(`[shell-env] ${shell} exited ${code}: ${err.trim()}`);
-        diag(`readShellAuthEnv: exit ${code}, stderr=${err.trim().slice(0, 200)}`);
-        resolve({});
-        return;
+/** Parse a single rc file for `export KEY=VALUE` lines on our allowlist.
+ *  Handles:
+ *    - comments (`# ...`)
+ *    - surrounding double or single quotes
+ *    - lines like `[[ -f ... ]] && export FOO=bar` (we only key off the
+ *      `export FOO=...` tail; the guard is ignored)
+ *  Does NOT handle:
+ *    - `$VAR` / `${VAR}` expansion
+ *    - heredocs / multi-line strings
+ *    - dynamic exports via `eval`
+ *  Acceptable trade-off: ANTHROPIC_* / CLAUDE_* values are almost always
+ *  literal strings (URLs, tokens, model names, "true"). */
+function parseRcFile(filePath: string): Record<string, string> {
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return {};
+  }
+  const result: Record<string, string> = {};
+  // Match `export KEY=VAL` anywhere on a line (so `... && export X=y` works).
+  // VAL is one of: "double-quoted", 'single-quoted', or non-whitespace.
+  const re = /\bexport\s+([A-Z_][A-Z0-9_]*)\s*=\s*("(?:\\.|[^"\\])*"|'[^']*'|[^\s;#]+)/g;
+  for (const rawLine of content.split('\n')) {
+    // Strip line comments (but not `#` inside quoted strings — naïve, but
+    // good enough for typical rc files).
+    const codePart = rawLine.replace(/(^|\s)#.*$/, '$1');
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(codePart)) !== null) {
+      const key = m[1];
+      if (!isAllowedKey(key)) continue;
+      let value = m[2];
+      if ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+        if (m[2].startsWith('"')) {
+          // Unescape the standard backslash sequences inside double quotes.
+          value = value.replace(/\\(["\\$`])/g, '$1');
+        }
       }
-      diag(`readShellAuthEnv: exit 0, stdout ${out.length} bytes`);
-      const parsed: Record<string, string> = {};
-      for (const line of out.split('\n')) {
-        const eq = line.indexOf('=');
-        if (eq <= 0) continue;
-        const key = line.slice(0, eq);
-        if (!isAllowedKey(key)) continue;
-        parsed[key] = line.slice(eq + 1);
-      }
-      diag(`readShellAuthEnv: parsed ${Object.keys(parsed).length} keys: ${Object.keys(parsed).join(',') || '(none)'}`);
-      resolve(parsed);
-    });
-  });
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+function readRcFilesAuthEnv(): Record<string, string> {
+  const home = os.homedir();
+  const merged: Record<string, string> = {};
+  const stats: string[] = [];
+  for (const name of RC_FILES) {
+    const p = path.join(home, name);
+    if (!fs.existsSync(p)) continue;
+    const parsed = parseRcFile(p);
+    const keys = Object.keys(parsed);
+    stats.push(`${name}=${keys.length}`);
+    Object.assign(merged, parsed); // later files override earlier
+  }
+  diag(`readRcFilesAuthEnv: scanned [${stats.join(', ') || '(none)'}], total=${Object.keys(merged).length}`);
+  return merged;
 }
 
 /** Populate the cache. Call once at app boot, before any claude:start.
@@ -122,16 +124,15 @@ export async function hydrateShellEnv(): Promise<void> {
   diag(`hydrateShellEnv: starting (process.env keys with ANTHROPIC/CLAUDE: ${
     Object.keys(process.env).filter(isAllowedKey).join(',') || '(none)'
   })`);
-  // Guard against running on Windows where `zsh -lc env` is meaningless;
-  // on Windows the user's env is already inherited by the GUI process.
+  // Windows: GUI launches inherit the user env, no rc-file mining needed.
   if (os.platform() === 'win32') {
     cached = {};
     return;
   }
-  cached = await readShellAuthEnv();
+  cached = readRcFilesAuthEnv();
   // eslint-disable-next-line no-console
-  console.log(`[shell-env] hydrated ${Object.keys(cached).length} auth/config vars from shell`);
-  diag(`hydrateShellEnv: done, cache size ${Object.keys(cached).length}`);
+  console.log(`[shell-env] hydrated ${Object.keys(cached).length} auth/config vars from rc files`);
+  diag(`hydrateShellEnv: done, cache size ${Object.keys(cached).length}, keys=${Object.keys(cached).sort().join(',') || '(none)'}`);
 }
 
 /** Returns the cached vars (empty object until hydrated). */
