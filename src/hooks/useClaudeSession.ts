@@ -74,13 +74,25 @@ export function useClaudeSession(
   // run without guarding.)
 
   const switchClaudeSession = useChannelStore((s) => s.switchClaudeSession);
+  const setRealSessionId = useChannelStore((s) => s.setRealSessionId);
+
+  // Track the real sessionId we accepted from the bridge's `session-started`
+  // event. The renderer mints a placeholder UUID when the user clicks "new
+  // session" so the channel has a stable identity in the dock; the SDK
+  // later reports the canonical id via system/init. We mirror that real id
+  // back into the channel store so the next idle reopen passes a `resume:`
+  // that actually exists on disk. The store update echoes back as a
+  // sessionId prop change — but we MUST NOT tear down the live SDK Query
+  // that just emitted the init event. The ref below lets the init effect
+  // recognize that echo and skip teardown/restart.
+  const acceptedRealIdRef = useRef<string | null>(null);
 
   // Shared "resolve CLI then start the bridge session". Used by both the
-  // init effect and recheckCli (the install-guide retry button).
-  // We use useCallback with primitive deps; a useRef indirection lets the
-  // init effect read the latest version without including this callback
-  // in its deps array (which would re-fire the effect on every render
-  // where ChannelHost re-creates the props object).
+  // init effect and recheckCli (the install-guide retry button), and by
+  // the "user switched session" effect below. Reads sessionId via ref so
+  // it isn't stale when called from outside its own dep window.
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
   const checkAndStart = useCallback(async () => {
     if (!window.electronAPI?.claude) return;
     const r = await window.electronAPI.claude.checkCli();
@@ -92,11 +104,11 @@ export function useClaudeSession(
     // failed-checkCli view (e.g. flaky `zsh -ilc` first invocation).
     setCliMissing(false);
     try {
-      await window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionId, r.path);
+      await window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionIdRef.current, r.path);
     } catch (e) {
       setError(`start failed: ${(e as Error).message}`);
     }
-  }, [channelId, projectDir, projectKey, sessionId]);
+  }, [channelId, projectDir, projectKey]);
   const checkAndStartRef = useRef(checkAndStart);
   checkAndStartRef.current = checkAndStart;
 
@@ -127,17 +139,25 @@ export function useClaudeSession(
   }, [checkAndStart]);
 
   // ── Init: load history, check CLI, start session, subscribe to events ──
-  // We deliberately let this effect re-run if any dep changes (channel,
-  // project, session). The bridge's startSession is idempotent (calls
-  // destroySession internally first), so re-running is safe. ChannelHost
-  // keys ClaudeChannel by `${c.id}-${c.sessionId}` so deps never change
-  // in practice within one mount lifetime — but the contract holds even
-  // if a future caller passes mutable props.
+  // We deliberately drop `sessionId` from this effect's deps. After mount,
+  // the bridge owns the canonical session id (it captures it from the SDK's
+  // system/init message). The renderer-side sessionId can change for two
+  // distinct reasons:
+  //   1. SOFT echo — `setRealSessionId` mirrored the bridge's real id back
+  //      into the channel store. The live SDK Query MUST stay alive; if we
+  //      tore it down here, we'd kill the very turn that produced the id.
+  //   2. HARD switch — the user picked a different existing session from
+  //      the dropdown. That path lives in a separate effect below, which
+  //      explicitly calls checkAndStart so the bridge re-registers with
+  //      the new id. (We can't conflate them in one effect because React
+  //      always runs cleanup on dep change, and cleanup kills the Query.)
+  // History load reads the initial sessionId at mount time only; after a
+  // hard switch the second effect re-loads it.
   useEffect(() => {
     if (!window.electronAPI?.claude) return;
 
     // Load .jsonl history for instant context.
-    window.electronAPI.claude.loadHistory(projectKey, sessionId).then((turns) => {
+    window.electronAPI.claude.loadHistory(projectKey, sessionIdRef.current).then((turns) => {
       const seeded: ChatMessage[] = turns.map((t, i) => ({
         id: `cl-h-${i}`,
         role: t.role,
@@ -172,6 +192,17 @@ export function useClaudeSession(
           return;
         case 'session-started':
           setIsConnected(true);
+          // Mirror the SDK's canonical session id back into the channel
+          // store. The renderer minted a placeholder UUID for new sessions
+          // (so the channel had a stable identity in the dock); now we
+          // know the real id, persist it so the next idle reopen passes a
+          // `resume:` that exists on disk. We mark it as "accepted" so the
+          // hard-switch effect below recognizes the resulting prop change
+          // as our own echo and skips re-init.
+          if (ev.sessionId && ev.sessionId !== sessionIdRef.current) {
+            acceptedRealIdRef.current = ev.sessionId;
+            setRealSessionId(channelId, ev.sessionId);
+          }
           return;
         case 'message-delta':
           setIsTyping(true);
@@ -319,7 +350,37 @@ export function useClaudeSession(
       // handles double-close gracefully.
       window.electronAPI.claude.close(channelId).catch(() => { /* ignore */ });
     };
-  }, [channelId, projectDir, projectKey, sessionId]);
+  }, [channelId, projectDir, projectKey]);
+
+  // ── Hard-switch effect: user picked a different existing session from
+  // the dropdown, or kicked off a "new session" while another was active.
+  // Soft echoes from `setRealSessionId` are filtered out via the ref. We
+  // skip the very first run (init effect already started the bridge with
+  // the initial sessionId).
+  const isInitialSessionRef = useRef(true);
+  useEffect(() => {
+    if (isInitialSessionRef.current) {
+      isInitialSessionRef.current = false;
+      return;
+    }
+    if (sessionId === acceptedRealIdRef.current) return; // soft echo
+    // Hard switch — bridge needs a fresh start with the new id, plus we
+    // must reload history from the new .jsonl. acceptedRealIdRef must be
+    // cleared so the next system/init from the new session is mirrored.
+    acceptedRealIdRef.current = null;
+    setMessages([]);
+    if (window.electronAPI?.claude) {
+      window.electronAPI.claude.loadHistory(projectKey, sessionId).then((turns) => {
+        setMessages(turns.map((t, i) => ({
+          id: `cl-h-${i}`,
+          role: t.role,
+          content: t.content,
+          timestamp: new Date(t.timestamp).toISOString(),
+        })));
+      }).catch(() => { /* non-fatal */ });
+    }
+    void checkAndStartRef.current();
+  }, [sessionId, projectKey]);
 
   const sendMessage = (text: string) => {
     if (!window.electronAPI?.claude) return;

@@ -373,7 +373,14 @@ async function runSession(s: ActiveSession, q: Query): Promise<void> {
   }
 }
 
-/** Open a new SDK Query for this session, resuming if we have a sessionId. */
+/** Open a new SDK Query for this session, resuming if we have a sessionId
+ *  that points to an actual session file on disk. The renderer mints a
+ *  random UUID for "new session" entries so the channel has a stable
+ *  identity in the dock — but we must NOT pass that UUID as `resume`,
+ *  because the SDK will try to load a non-existent session and silently
+ *  hang the turn. Resume only when the .jsonl exists; for new sessions,
+ *  let the SDK create a fresh one and runSession captures the real id
+ *  from the system/init message. */
 function openQuery(s: ActiveSession): void {
   const queue = new MessageQueue();
   // permissionMode 'default' is what makes the binary forward each tool
@@ -384,6 +391,16 @@ function openQuery(s: ActiveSession): void {
   // available. So 'default' + canUseTool is the correct combination for
   // an Electron app driving a non-TTY claude binary.
   const permissionMode: PermissionMode = 'default';
+
+  // Resume only when this session has a real .jsonl on disk.
+  let resumeId: string | undefined;
+  if (s.sessionId) {
+    const sessionFile = path.join(
+      os.homedir(), '.claude', 'projects', s.projectKey, `${s.sessionId}.jsonl`,
+    );
+    if (fs.existsSync(sessionFile)) resumeId = s.sessionId;
+  }
+
   const q = query({
     prompt: queue,
     options: {
@@ -393,7 +410,7 @@ function openQuery(s: ActiveSession): void {
       includePartialMessages: true,
       abortController: s.abortController,
       canUseTool: makeCanUseTool(s),
-      ...(s.sessionId ? { resume: s.sessionId } : {}),
+      ...(resumeId ? { resume: resumeId } : {}),
     },
   });
   s.queue = queue;

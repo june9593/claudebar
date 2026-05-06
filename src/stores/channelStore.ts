@@ -41,6 +41,15 @@ interface ChannelState {
    * spawn against the new session id.
    */
   switchClaudeSession: (channelId: string, newSessionId: string, newPreview: string) => void;
+  /**
+   * Soft variant: swap the sessionId in place WITHOUT calling `claude:close`.
+   * Used when the SDK reports back the real session id from system/init —
+   * the renderer mints a placeholder UUID at "new session" time so the
+   * channel has a stable identity in the dock, and the bridge later tells
+   * us what the real id is. We persist the real id so the next idle reopen
+   * passes a `resume:` that actually exists.
+   */
+  setRealSessionId: (channelId: string, realSessionId: string) => void;
   remove: (id: string) => void;
 
   // Common edits
@@ -186,6 +195,21 @@ export const useChannelStore = create<ChannelState>((set, get) => ({
     const channels = list.map((c) =>
       c.id === channelId && c.kind === 'claude'
         ? { ...c, sessionId: newSessionId, preview: newPreview, name: `${projectShort} · ${trimmedPreview}` }
+        : c
+    );
+    set({ channels });
+    persist(channels, get().activeChannelId);
+  },
+
+  setRealSessionId: (channelId, realSessionId) => {
+    const list = get().channels;
+    const target = list.find((c) => c.id === channelId);
+    if (!target || target.kind !== 'claude') return;
+    if (target.sessionId === realSessionId) return;
+
+    const channels = list.map((c) =>
+      c.id === channelId && c.kind === 'claude'
+        ? { ...c, sessionId: realSessionId }
         : c
     );
     set({ channels });
