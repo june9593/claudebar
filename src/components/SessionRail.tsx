@@ -10,7 +10,11 @@ interface Props {
 }
 
 export function SessionRail({ onOpenPanel, onOpenSettings, onNewSession, pendingApprovalsBySessionId }: Props) {
-  const sessions = useSessionStore((s) => s.sessions.filter((x) => x.enabled));
+  // Select the raw array, then filter in render. Filtering inside the
+  // selector returns a fresh array each call, which makes useSyncExternalStore
+  // believe the store changed and triggers an infinite render loop (React #185).
+  const allSessions = useSessionStore((s) => s.sessions);
+  const sessions = allSessions.filter((x) => x.enabled);
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const setActive = useSessionStore((s) => s.setActive);
 
