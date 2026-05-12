@@ -130,9 +130,6 @@ function createTray() {
   // not two click events. This makes rapid toggle impossible. Fix:
   tray.setIgnoreDoubleClickEvents(true);
 
-  // Toggle: track desired state to avoid async isVisible() race conditions
-  let wantVisible = false;
-
   tray.on('click', toggleWindow);
 
   tray.on('right-click', () => {
