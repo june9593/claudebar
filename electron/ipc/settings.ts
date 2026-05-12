@@ -32,6 +32,7 @@ interface AppSettings {
   alwaysOnTop?: boolean;
   windowSize?: { w: number; h: number };
   windowPosition?: { x: number; y: number } | null;
+  globalShortcut?: string;
 }
 
 const defaultChannels: Channel[] = [
@@ -86,10 +87,21 @@ export function getSettings(): AppSettings {
   return readStore();
 }
 
+type Listener = (value: unknown) => void;
+const listeners = new Map<string, Listener[]>();
+
+export function onSettingChanged(key: string, fn: Listener): void {
+  const arr = listeners.get(key) ?? [];
+  arr.push(fn);
+  listeners.set(key, arr);
+}
+
 export function setSetting(key: keyof AppSettings, value: unknown): void {
   const settings = readStore();
   (settings as unknown as Record<string, unknown>)[key as string] = value;
   writeStore(settings);
+  const arr = listeners.get(key as string) ?? [];
+  for (const fn of arr) fn(value);
 }
 
 export function setupSettingsIPC() {
@@ -104,11 +116,14 @@ export function setupSettingsIPC() {
       'gatewayUrl', 'authMode', 'authToken', 'authPassword',
       'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch',
       'channels', 'activeChannelId', 'petVisible', 'petKind',
+      'globalShortcut',
     ];
     if (!allowedKeys.includes(key)) return;
 
     const settings = readStore();
     (settings as unknown as Record<string, unknown>)[key] = value;
     writeStore(settings);
+    const arr = listeners.get(key) ?? [];
+    for (const fn of arr) fn(value);
   });
 }

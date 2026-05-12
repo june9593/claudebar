@@ -1,6 +1,6 @@
-import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain } from 'electron';
+import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, globalShortcut } from 'electron';
 import * as path from 'path';
-import { setupSettingsIPC, getSettings, setSetting } from './ipc/settings';
+import { setupSettingsIPC, getSettings, setSetting, onSettingChanged } from './ipc/settings';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
@@ -236,6 +236,25 @@ app.whenReady().then(async () => {
   await hydrateShellEnv();
 
   createWindow();
+
+  const shortcutSettings = getSettings() as { globalShortcut?: string };
+  const shortcut = shortcutSettings.globalShortcut ?? (process.platform === 'darwin' ? 'CommandOrControl+Shift+C' : 'Control+Shift+C');
+  const ok = globalShortcut.register(shortcut, toggleWindow);
+  if (!ok) {
+    // eslint-disable-next-line no-console
+    console.warn(`[shortcut] failed to register ${shortcut}`);
+  }
+
+  onSettingChanged('globalShortcut', (value) => {
+    if (typeof value !== 'string' || !value) return;
+    globalShortcut.unregisterAll();
+    const reok = globalShortcut.register(value, toggleWindow);
+    if (!reok) {
+      // eslint-disable-next-line no-console
+      console.warn(`[shortcut] failed to re-register ${value}`);
+    }
+  });
+
   createTray();
   setupWindowIPC();
   setupSettingsIPC();
@@ -252,6 +271,10 @@ app.whenReady().then(async () => {
 app.on('before-quit', () => {
   isQuitting = true;
   killAllClaudeChannels();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
