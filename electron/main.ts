@@ -2,7 +2,6 @@ import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen } f
 import * as path from 'path';
 import * as fs from 'fs';
 import { setupSettingsIPC, getSettings, setSetting } from './ipc/settings';
-import { setupWsBridge } from './ws-bridge';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
@@ -327,7 +326,6 @@ app.whenReady().then(async () => {
   createTray();
   setupWindowIPC();
   setupSettingsIPC();
-  setupWsBridge();
   setupClaudeSessionsIPC();
   setupClaudeBridge();
   createPetWindow(
