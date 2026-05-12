@@ -1,64 +1,40 @@
-import { useEffect, useRef } from 'react';
-import { TitleBar } from './components/TitleBar';
-import { SettingsPanel } from './components/SettingsPanel';
-import { ChannelDock } from './components/ChannelDock';
-import { ChannelHost } from './components/ChannelHost';
+import { useEffect } from 'react';
 import { useSettingsStore } from './stores/settingsStore';
-import { useChannelStore } from './stores/channelStore';
+import { useSessionStore } from './stores/sessionStore';
+import { TitleBar } from './components/TitleBar';
+import { ClaudeChannel } from './components/ClaudeChannel';
 
 export default function App() {
-  const view = useSettingsStore((s) => s.view);
-  const setView = useSettingsStore((s) => s.setView);
-  const loadSettings = useSettingsStore((s) => s.loadSettings);
   const hydrated = useSettingsStore((s) => s.hydrated);
-  const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
-  const syncFromSettings = useChannelStore((s) => s.syncFromSettings);
-  const rootRef = useRef<HTMLDivElement>(null);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const syncFromSettings = useSessionStore((s) => s.syncFromSettings);
 
-  useEffect(() => { loadSettings(); }, [loadSettings]);
+  const sessions = useSessionStore((s) => s.sessions);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
+
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', resolvedTheme);
-  }, [resolvedTheme]);
-
-  useEffect(() => {
-    const unsub = window.electronAPI?.window?.onNavigate?.((v: string) => {
-      if (v === 'settings') setView('settings');
-      else if (v === 'chat') setView('chat');
-    });
-    return () => unsub?.();
-  }, [setView]);
-
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const fix = () => { if (el.scrollTop !== 0) el.scrollTop = 0; };
-    fix();
-    el.addEventListener('scroll', fix, { passive: true });
-    return () => el.removeEventListener('scroll', fix);
-  }, []);
-
   return (
-    <div
-      ref={rootRef}
-      className="flex flex-col h-full"
-      style={{ borderRadius: '12px', overflow: 'clip' }}
-    >
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <TitleBar />
-      <div className="flex-1 min-h-0 relative" style={{ display: 'flex' }}>
-        <ChannelDock />
-        <ChannelHost />
-        {view === 'settings' && (
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'var(--color-bg-primary)',
-            zIndex: 200,
-          }}>
-            <SettingsPanel />
-          </div>
-        )}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        {activeSession
+          ? <ClaudeChannel channel={activeSession} isActive />
+          : <EmptyState />}
       </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div style={{
+      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'var(--color-text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center',
+    }}>
+      No session active. Phase 2 adds the session rail; for now use Settings to seed a session.
     </div>
   );
 }

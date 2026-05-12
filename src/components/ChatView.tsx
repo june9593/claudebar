@@ -4,7 +4,7 @@ import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
 import { LobsterIcon } from './LobsterIcon';
 import { ToolCallPill } from './claude/ToolCallPill';
-import type { Session } from '../hooks/useClawChat';
+import type { Session } from '../hooks/useClaudeSession';
 
 interface ChatMessage {
   id: string;
@@ -116,7 +116,7 @@ export function ChatView({
   useEffect(() => {
     setSlashIdx(0);
   }, [slashMatches.length, input.startsWith('/')]);
-  const [agentEmoji, setAgentEmoji] = useState<string>('🦞');
+  const agentEmoji = '🦞'; // static fallback; WS-based identity fetch removed
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -139,32 +139,9 @@ export function ChatView({
 
   // Fetch agent identity for avatar
   useEffect(() => {
-    // If the embedding channel supplied its own avatar (e.g. Claude), skip the
-    // OpenClaw-specific agent-identity WebSocket fetch entirely.
+    // If the embedding channel supplied its own avatar (e.g. Claude), skip entirely.
     if (assistantAvatar !== undefined) return;
-    const api = window.electronAPI?.ws;
-    if (!api || !isConnected) return;
-
-    let reqId = '';
-    const unsub = api.onResponse((resp) => {
-      if (resp.id !== reqId || !resp.ok) return;
-      const p = resp.payload as { avatar?: string; emoji?: string } | undefined;
-      if (p) {
-        if (p.emoji) setAgentEmoji(p.emoji);
-        else if (p.avatar && !p.avatar.startsWith('/')) setAgentEmoji(p.avatar);
-      }
-      unsub();
-    });
-
-    const parts = currentSessionKey.split(':');
-    const agentId = parts.length >= 2 ? parts[1] : 'daily';
-    api.send('agent.identity.get', { agentId }).then(r => {
-      if (r.ok && r.id) reqId = r.id;
-      else unsub();
-    }).catch(() => unsub());
-
-    const timer = setTimeout(unsub, 5000);
-    return () => { clearTimeout(timer); unsub(); };
+    // WS-based identity fetch removed (OpenClaw channel gone). Nothing to do.
   }, [isConnected, currentSessionKey, assistantAvatar]);
 
   const adjustTextarea = useCallback(() => {

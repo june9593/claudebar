@@ -3,10 +3,10 @@ import { useClaudeSession } from '../hooks/useClaudeSession';
 import { ClaudeInstallGuide } from './claude/ClaudeInstallGuide';
 import { ToolApprovalPrompt } from './claude/ToolApprovalPrompt';
 import { AskUserQuestionPrompt } from './claude/AskUserQuestionPrompt';
-import type { ClaudeChannelDef } from '../types';
+import type { ClaudeSession } from '../types';
 
 interface Props {
-  channel: ClaudeChannelDef;
+  channel: ClaudeSession;
   isActive: boolean;
 }
 

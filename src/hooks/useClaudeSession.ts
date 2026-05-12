@@ -1,7 +1,28 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { ChatMessage, Session } from './useClawChat';
 import type { ClaudeEvent, ClaudeEventEnvelope, ApprovalDecision, AskQuestion } from '../../shared/claude-events';
-import { useChannelStore } from '../stores/channelStore';
+import { useSessionStore } from '../stores/sessionStore';
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  timestamp: string;
+  tool?: {
+    callId: string;
+    name: string;
+    input: unknown;
+    output?: unknown;
+    isError?: boolean;
+    durationMs?: number;
+    startedAt: number;
+  };
+}
+
+export interface Session {
+  key: string;
+  displayName: string;
+  updatedAt: string;
+}
 
 export interface PendingApproval {
   requestId: string;
@@ -73,8 +94,8 @@ export function useClaudeSession(
   // destroySession internally before creating — so we can let the effect
   // run without guarding.)
 
-  const switchClaudeSession = useChannelStore((s) => s.switchClaudeSession);
-  const setRealSessionId = useChannelStore((s) => s.setRealSessionId);
+  const switchClaudeSession = useSessionStore((s) => s.switchClaudeSession);
+  const setRealSessionId = useSessionStore((s) => s.setRealSessionId);
 
   // Track the real sessionId we accepted from the bridge's `session-started`
   // event. The renderer mints a placeholder UUID when the user clicks "new
