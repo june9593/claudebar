@@ -38,7 +38,7 @@ export default function App() {
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
         <SessionRail
           onOpenPanel={() => setPanelOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenSettings={() => setSettingsOpen((v) => !v)}
           onNewSession={onNewSession}
           pendingApprovalsBySessionId={pendingApprovalsBySessionId}
         />
