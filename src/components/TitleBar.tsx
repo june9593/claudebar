@@ -1,6 +1,10 @@
 import * as React from 'react';
 
-const isMac = typeof process !== 'undefined' && process.platform === 'darwin';
+// `process` is not exposed in our sandboxed renderer (contextIsolation +
+// sandbox: true), so detect via the renderer's userAgentData / platform.
+const isMac = typeof navigator !== 'undefined' && /mac/i.test(
+  (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || navigator.userAgent
+);
 
 export function TitleBar() {
   return (

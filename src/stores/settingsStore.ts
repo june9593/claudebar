@@ -24,7 +24,7 @@ const defaults: Settings = {
   windowPosition: null,
   alwaysOnTop: false,
   hideOnClickOutside: false,
-  globalShortcut: typeof process !== 'undefined' && process.platform === 'darwin' ? 'Cmd+Shift+C' : 'Ctrl+Shift+C',
+  globalShortcut: typeof navigator !== 'undefined' && /mac/i.test((navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform || navigator.platform || navigator.userAgent) ? 'Cmd+Shift+C' : 'Ctrl+Shift+C',
   petVisible: true,
   petKind: 'claude',
 
