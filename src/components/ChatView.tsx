@@ -4,6 +4,7 @@ import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
 import { LobsterIcon } from './LobsterIcon';
 import { ToolCallPill } from './claude/ToolCallPill';
+import { Markdown } from './Markdown';
 import type { Session } from '../hooks/useClaudeSession';
 
 interface ChatMessage {
@@ -557,10 +558,10 @@ function MessageBubble({ message, agentEmoji, avatarOverride }: {
             lineHeight: 1.47,
             fontFamily: 'var(--font-sans)',
             wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
+            whiteSpace: isUser ? 'pre-wrap' : 'normal',
           }}
         >
-          {message.content}
+          {isUser ? message.content : <Markdown source={message.content} />}
         </div>
       </div>
 
