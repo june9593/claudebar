@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { ArrowUp, ChevronDown, Square } from 'lucide-react';
 import { ChatHistory } from './ChatHistory';
 import { ApprovalCard, type ApprovalRequest, type ApprovalDecision } from './ApprovalCard';
@@ -502,7 +502,7 @@ function EmptyState({ glyph }: { glyph?: React.ReactNode }) {
   );
 }
 
-function MessageBubble({ message, agentEmoji, avatarOverride }: {
+function MessageBubbleImpl({ message, agentEmoji, avatarOverride }: {
   message: ChatMessage;
   agentEmoji?: string;
   avatarOverride?: React.ReactNode;
@@ -578,6 +578,8 @@ function MessageBubble({ message, agentEmoji, avatarOverride }: {
     </div>
   );
 }
+
+const MessageBubble = memo(MessageBubbleImpl);
 
 function TypingIndicator({ avatarOverride }: { avatarOverride?: React.ReactNode }) {
   return (

@@ -4,12 +4,12 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useSettingsStore, selectResolvedTheme } from '../stores/settingsStore';
 
 interface Props { source: string; }
 
 export function Markdown({ source }: Props) {
-  const theme = useSettingsStore((s) => (s as unknown as { resolvedTheme?: 'light' | 'dark' }).resolvedTheme);
+  const theme = useSettingsStore(selectResolvedTheme);
   const isDark = theme === 'dark';
 
   return (

@@ -107,3 +107,5 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     } catch { /* ignore */ }
   },
 }));
+
+export const selectResolvedTheme = (s: SettingsState) => s.resolvedTheme;
