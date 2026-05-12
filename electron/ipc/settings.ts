@@ -29,6 +29,9 @@ interface AppSettings {
    *  Claude Code critter. Set via tray / pet right-click "Switch Pet"
    *  submenu; persisted across launches. */
   petKind: 'lobster' | 'claude';
+  alwaysOnTop?: boolean;
+  windowSize?: { w: number; h: number };
+  windowPosition?: { x: number; y: number } | null;
 }
 
 const defaultChannels: Channel[] = [

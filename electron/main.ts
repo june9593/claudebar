@@ -1,6 +1,5 @@
-import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
 import { setupSettingsIPC, getSettings, setSetting } from './ipc/settings';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
@@ -11,169 +10,95 @@ import { createPetWindow, isPetVisible, showPet, hidePet } from './pet-window';
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isPinned = false;
+let isQuitting = false;
 // Track window visibility via events (not isVisible() which races on macOS)
 let windowVisible = false;
 
 function showWindow() {
   if (!mainWindow) return;
-  const saved = loadWindowBounds();
-  if (saved) {
-    const displays = screen.getAllDisplays();
-    const isOnScreen = displays.some(d => {
-      const db = d.bounds;
-      return saved.x >= db.x && saved.x < db.x + db.width &&
-             saved.y >= db.y && saved.y < db.y + db.height;
-    });
-    if (isOnScreen) {
-      mainWindow.setBounds(saved);
-    } else {
-      positionNearTray();
-    }
-  } else {
-    positionNearTray();
-  }
   mainWindow.show();
   mainWindow.focus();
-  windowVisible = true;
-}
-
-function positionNearTray() {
-  if (!tray || !mainWindow) return;
-  const trayBounds = tray.getBounds();
-  const windowBounds = mainWindow.getBounds();
-  const display = screen.getDisplayNearestPoint({
-    x: trayBounds.x + Math.round(trayBounds.width / 2),
-    y: trayBounds.y + Math.round(trayBounds.height / 2),
-  });
-  const workArea = display.workArea;
-
-  let x = Math.round(trayBounds.x + trayBounds.width / 2 - windowBounds.width / 2);
-  let y = trayBounds.y + trayBounds.height + 4;
-
-  // On Windows the tray usually sits at the bottom of the screen, so dropping
-  // the window below the tray places it off-screen. Flip above the tray when
-  // there isn't enough room below.
-  if (y + windowBounds.height > workArea.y + workArea.height) {
-    y = trayBounds.y - windowBounds.height - 4;
-  }
-
-  // Clamp horizontally inside the work area so the popover stays fully visible.
-  const minX = workArea.x + 4;
-  const maxX = workArea.x + workArea.width - windowBounds.width - 4;
-  if (x < minX) x = minX;
-  if (x > maxX) x = maxX;
-  if (y < workArea.y + 4) y = workArea.y + 4;
-
-  mainWindow.setPosition(x, y);
 }
 
 function hideWindow() {
   mainWindow?.hide();
-  windowVisible = false;
 }
 
-function getWindowBoundsPath(): string {
-  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(homeDir, '.claudebar', 'window-bounds.json');
-}
-
-function saveWindowBounds() {
+function toggleWindow() {
   if (!mainWindow) return;
-  try {
-    const bounds = mainWindow.getBounds();
-    const boundsPath = getWindowBoundsPath();
-    const dir = path.dirname(boundsPath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(boundsPath, JSON.stringify(bounds), 'utf-8');
-  } catch { /* ignore */ }
-}
-
-function loadWindowBounds(): Electron.Rectangle | null {
-  try {
-    const boundsPath = getWindowBoundsPath();
-    if (fs.existsSync(boundsPath)) {
-      return JSON.parse(fs.readFileSync(boundsPath, 'utf-8'));
-    }
-  } catch { /* ignore */ }
-  return null;
+  if (windowVisible) hideWindow();
+  else showWindow();
 }
 
 function createWindow() {
-  const savedBounds = loadWindowBounds();
-  const isMac = process.platform === 'darwin';
+  const settings = getSettings() as {
+    windowSize?: { w: number; h: number };
+    windowPosition?: { x: number; y: number } | null;
+    alwaysOnTop?: boolean;
+    hideOnClickOutside?: boolean;
+  };
+  const size = settings.windowSize ?? { w: 400, h: 800 };
+  const pos = settings.windowPosition ?? null;
+
   mainWindow = new BrowserWindow({
-    width: savedBounds?.width ?? 390,
-    height: savedBounds?.height ?? 720,
+    width: size.w,
+    height: size.h,
     minWidth: 320,
-    minHeight: 400,
-    maxWidth: 800,
-    maxHeight: 900,
+    minHeight: 500,
+    x: pos?.x,
+    y: pos?.y,
     frame: false,
     transparent: false,
-    resizable: true,
-    movable: true,
-    alwaysOnTop: false,
-    skipTaskbar: true,
+    vibrancy: process.platform === 'darwin' ? 'sidebar' : undefined,
+    visualEffectState: 'active',
+    backgroundColor: process.platform === 'darwin' ? '#00000000' : '#1a1a1a',
+    titleBarStyle: 'hidden',
     show: false,
-    // Vibrancy is macOS-only; on Windows these are ignored but we leave them
-    // off to avoid any platform-specific surprises.
-    ...(isMac ? { vibrancy: 'popover' as const, visualEffectState: 'active' as const } : {}),
-    icon: isMac ? undefined : path.join(__dirname, '../resources/icon.png'),
+    skipTaskbar: false,
+    alwaysOnTop: settings.alwaysOnTop ?? false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false,
       sandbox: true,
-      webviewTag: true,
+      nodeIntegration: false,
+      webviewTag: false,
     },
   });
 
-  // --- Network interceptors (MUST be registered BEFORE loadURL) ---
-
-  // Strip frame-ancestors / X-Frame-Options from OpenClaw responses (for classic iframe mode)
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    const headers = details.responseHeaders || {};
-    delete headers['x-frame-options'];
-    delete headers['X-Frame-Options'];
-    const cspKeys = Object.keys(headers).filter(k => k.toLowerCase() === 'content-security-policy');
-    for (const key of cspKeys) {
-      if (headers[key]) {
-        headers[key] = headers[key].map(v =>
-          v.replace(/frame-ancestors\s+[^;]+;?/gi, '')
-           .replace(/script-src\s+/gi, "script-src 'unsafe-inline' ")
-        );
-      }
-    }
-    callback({ responseHeaders: headers });
-  });
-
-  // Load the app (after interceptors are ready)
+  // Load the app
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
-  mainWindow.webContents.on('before-input-event', (_event, input) => {
-    if (input.key === 'Escape' && !isPinned && mainWindow?.isVisible()) {
-      hideWindow();
-    }
-    if (input.key === 'w' && input.meta && !isPinned && mainWindow?.isVisible()) {
-      hideWindow();
-    }
-  });
-
-  mainWindow.on('blur', () => {
-    // No auto-hide on blur
-  });
-
+  // Track visibility for tray toggle
+  mainWindow.on('show', () => { windowVisible = true; });
+  mainWindow.on('hide', () => { windowVisible = false; });
   mainWindow.on('close', (e) => {
-    e.preventDefault();
-    hideWindow();
+    // Hide instead of quit; user must use tray Quit menu
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow?.hide();
+    }
   });
 
-  mainWindow.on('moved', saveWindowBounds);
-  mainWindow.on('resized', saveWindowBounds);
+  // Persist size + position on user resize/drag
+  const persistBounds = () => {
+    if (!mainWindow) return;
+    const [w, h] = mainWindow.getSize();
+    const [x, y] = mainWindow.getPosition();
+    setSetting('windowSize', { w, h });
+    setSetting('windowPosition', { x, y });
+  };
+  mainWindow.on('resized', persistBounds);
+  mainWindow.on('moved', persistBounds);
+
+  // Optional: hide on blur (off by default — float windows shouldn't auto-hide)
+  mainWindow.on('blur', () => {
+    const s = getSettings() as { hideOnClickOutside?: boolean };
+    if (s.hideOnClickOutside) mainWindow?.hide();
+  });
 }
 
 function createTray() {
@@ -200,7 +125,7 @@ function createTray() {
   }
 
   tray = new Tray(icon);
-  tray.setToolTip('ClawBar');
+  tray.setToolTip('ClaudeBar');
   // macOS treats rapid double-click on tray as a single double-click event,
   // not two click events. This makes rapid toggle impossible. Fix:
   tray.setIgnoreDoubleClickEvents(true);
@@ -208,15 +133,7 @@ function createTray() {
   // Toggle: track desired state to avoid async isVisible() race conditions
   let wantVisible = false;
 
-  tray.on('click', () => {
-    if (!mainWindow) return;
-    // Use event-tracked flag, not isVisible() (which races with blur on macOS)
-    if (windowVisible) {
-      hideWindow();
-    } else {
-      showWindow();
-    }
-  });
+  tray.on('click', toggleWindow);
 
   tray.on('right-click', () => {
     const { Menu } = require('electron');
@@ -256,9 +173,8 @@ function createTray() {
       },
       { type: 'separator' },
       {
-        label: 'Quit ClawBar',
+        label: 'Quit ClaudeBar',
         click: () => {
-          mainWindow?.destroy();
           app.quit();
         },
       },
@@ -337,6 +253,7 @@ app.whenReady().then(async () => {
 });
 
 app.on('before-quit', () => {
+  isQuitting = true;
   killAllClaudeChannels();
 });
 
