@@ -2220,8 +2220,1752 @@ git push origin main
 git push origin v0.6.0
 ```
 
-This is the first version that "feels like ClaudeBar". Worth a public release with DMG attached.
+## Phase 3 — Operator views (v0.7.0)
+
+Goal of phase: replace the operator overlay's stub body with a tabbed container hosting the 7 views from spec §5. Build the 5 fully-new IPC handlers (plugins, skills three-layer, commands, stats incremental cache) and wire each view to its data source. Ship as v0.7.0 = first feature-complete ClaudeBar.
+
+After Phase 3, the spec §14 success criteria are achievable end-to-end.
+
+### Task 19: Operator panel tabbed shell
+
+**Files:**
+- Create: `src/components/operator/OperatorPanel.tsx`
+- Modify: `src/App.tsx` (replace the inline stub overlay with `<OperatorPanel/>`)
+
+The panel hosts 7 view tabs (Overview / Sessions / Plugins / Skills / Commands / Stats / Settings). Tab strip on top, view content below. Default tab: Overview.
+
+- [ ] **Step 1: Create the panel shell**
+
+Create `src/components/operator/OperatorPanel.tsx`:
+
+```tsx
+import { useState } from 'react';
+import { LayoutGrid, MessageSquare, Package, Sparkles, Terminal, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+
+type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
+
+interface Props { onClose: () => void; }
+
+const TABS: Array<{ id: Tab; label: string; Icon: typeof LayoutGrid }> = [
+  { id: 'overview', label: 'Overview', Icon: LayoutGrid },
+  { id: 'sessions', label: 'Sessions', Icon: MessageSquare },
+  { id: 'plugins', label: 'Plugins', Icon: Package },
+  { id: 'skills', label: 'Skills', Icon: Sparkles },
+  { id: 'commands', label: 'Commands', Icon: Terminal },
+  { id: 'stats', label: 'Stats', Icon: BarChart3 },
+  { id: 'settings', label: 'Settings', Icon: SettingsIcon },
+];
+
+export function OperatorPanel({ onClose }: Props) {
+  const [tab, setTab] = useState<Tab>('overview');
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 50 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 320, height: '100%',
+          background: 'var(--color-bg-primary)',
+          borderRight: '0.5px solid var(--color-border-primary)',
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
+        <TabStrip tab={tab} setTab={setTab} />
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {tab === 'overview' && <OverviewTab />}
+          {tab === 'sessions' && <SessionsTab />}
+          {tab === 'plugins' && <PluginsTab />}
+          {tab === 'skills' && <SkillsTab />}
+          {tab === 'commands' && <CommandsTab />}
+          {tab === 'stats' && <StatsTab />}
+          {tab === 'settings' && <SettingsTab />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabStrip({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+  return (
+    <div style={{
+      display: 'flex',
+      borderBottom: '0.5px solid var(--color-border-primary)',
+      background: 'var(--color-bg-secondary)',
+      padding: '4px 8px',
+      gap: 2,
+      overflowX: 'auto',
+      flexShrink: 0,
+    }}>
+      {TABS.map(({ id, label, Icon }) => {
+        const active = id === tab;
+        return (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            title={label}
+            aria-label={label}
+            style={{
+              background: active ? 'var(--color-bg-hover)' : 'transparent',
+              border: 'none', cursor: 'pointer',
+              color: active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+              padding: '6px 8px', borderRadius: 6,
+              display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 11,
+            }}
+          >
+            <Icon size={14} strokeWidth={1.75} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Stub bodies — Tasks 20-26 fill these in.
+function OverviewTab() { return <Stub label="Overview" />; }
+function SessionsTab() { return <Stub label="Sessions" />; }
+function PluginsTab() { return <Stub label="Plugins" />; }
+function SkillsTab() { return <Stub label="Skills" />; }
+function CommandsTab() { return <Stub label="Commands" />; }
+function StatsTab() { return <Stub label="Stats" />; }
+function SettingsTab() { return <Stub label="Settings" />; }
+
+function Stub({ label }: { label: string }) {
+  return (
+    <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+      {label} — pending Phase 3 implementation.
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Mount in App.tsx**
+
+In `src/App.tsx`, delete the inline stub overlay and use `OperatorPanel`:
+
+```tsx
+import { OperatorPanel } from './components/operator/OperatorPanel';
+
+// In the chat-area render block, replace the previous inline overlay div:
+{panelOpen && <OperatorPanel onClose={() => setPanelOpen(false)} />}
+```
+
+Also: now that Settings has its own tab, remove the standalone Settings panel (the gear in TitleBar should open the operator panel directly to the Settings tab). Simplest:
+
+```tsx
+<TitleBar onOpenSettings={() => { setPanelOpen(true); /* default tab; user clicks Settings tab */ }} />
+```
+
+Or, to land directly on Settings, lift the initial tab into a prop:
+
+```tsx
+const [panelInitialTab, setPanelInitialTab] = useState<'overview' | 'settings'>('overview');
+
+const openPanel = () => { setPanelInitialTab('overview'); setPanelOpen(true); };
+const openSettings = () => { setPanelInitialTab('settings'); setPanelOpen(true); };
+
+// And pass initialTab into OperatorPanel:
+{panelOpen && <OperatorPanel initialTab={panelInitialTab} onClose={() => setPanelOpen(false)} />}
+```
+
+Update `OperatorPanel`'s `useState`:
+
+```tsx
+interface Props { onClose: () => void; initialTab?: Tab; }
+export function OperatorPanel({ onClose, initialTab = 'overview' }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
+  // ...
+}
+```
+
+Delete `SettingsPanel.tsx` (now redundant — the SettingsTab inside OperatorPanel will own this):
+
+```bash
+rm src/components/SettingsPanel.tsx
+```
+
+And remove the `SettingsPanel` import + render from `App.tsx`. Remove the `settingsOpen` state too — replaced by the panel mechanism.
+
+- [ ] **Step 3: Visual smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Click the panel-toggle on rail → tabbed panel slides in. All 7 tabs visible, all show their stub. Click Settings on rail → opens directly to Settings tab. Click backdrop → closes.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/operator/OperatorPanel.tsx src/App.tsx
+git rm src/components/SettingsPanel.tsx
+git commit -m "feat(operator): tabbed operator panel shell with 7 stub tabs
+
+Replaces the standalone SettingsPanel; gear button + rail panel button
+both open OperatorPanel, with Settings landing directly on the Settings
+tab. Tab bodies stubbed in Tasks 20-26."
+```
 
 ---
 
+### Task 20: Overview tab
+
+**Files:**
+- Modify: `src/components/operator/OperatorPanel.tsx` (replace `OverviewTab` body)
+
+Per spec §5 the Overview shows: CLI status (path + version), project count from `~/.claude/projects/`, active session count from sessionStore, today's tokens from cache, pending approval count.
+
+- [ ] **Step 1: Build the Overview body**
+
+In `src/components/operator/OperatorPanel.tsx`, replace the `OverviewTab` stub:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { useSessionStore } from '../../stores/sessionStore';
+import { useApprovalsStore } from '../../stores/approvalsStore';
+// (add to existing imports at top of file)
+
+interface CliStatus { found: boolean; path?: string; version?: string }
+
+function OverviewTab() {
+  const sessions = useSessionStore((s) => s.sessions);
+  const pending = useApprovalsStore((s) => Object.values(s.countBySession).reduce((a, b) => a + b, 0));
+
+  const [cli, setCli] = useState<CliStatus | null>(null);
+  const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [tokensToday, setTokensToday] = useState<{ input: number; output: number } | null>(null);
+
+  useEffect(() => {
+    void window.electronAPI?.claude?.checkCli().then((r: CliStatus) => setCli(r));
+    void window.electronAPI?.claude?.scanProjects?.().then((r: { projects: unknown[] }) => setProjectCount(r.projects.length)).catch(() => setProjectCount(null));
+    // Stats IPC added in Task 24 — try, gracefully skip if not yet wired
+    void (window.electronAPI as unknown as { stats?: { today: () => Promise<{ input: number; output: number }> } }).stats?.today?.()
+      .then(setTokensToday)
+      .catch(() => setTokensToday(null));
+  }, []);
+
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card title="Claude CLI">
+        {!cli && <Skel />}
+        {cli && cli.found && (
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+            <div>Path: <code style={{ fontSize: 11 }}>{cli.path}</code></div>
+            <div>Version: {cli.version || '(unknown)'}</div>
+          </div>
+        )}
+        {cli && !cli.found && (
+          <div style={{ fontSize: 12, color: 'var(--color-status-disconnected, #e53)' }}>
+            Not found. Install with <code>npm install -g @anthropic-ai/claude-code</code>.
+          </div>
+        )}
+      </Card>
+
+      <Card title="Workspace">
+        <Row label="Projects" value={projectCount ?? '…'} />
+        <Row label="Active sessions" value={sessions.length} />
+        <Row label="Pending approvals" value={pending} highlight={pending > 0} />
+      </Card>
+
+      <Card title="Today's tokens">
+        {!tokensToday && <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>(no usage data yet)</div>}
+        {tokensToday && (
+          <>
+            <Row label="Input" value={tokensToday.input.toLocaleString()} />
+            <Row label="Output" value={tokensToday.output.toLocaleString()} />
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      border: '0.5px solid var(--color-border-primary)',
+      borderRadius: 8,
+      padding: 10,
+      background: 'var(--color-bg-secondary)',
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, padding: '2px 0' }}>
+      <span style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+      <span style={{ color: highlight ? 'var(--color-status-disconnected, #e53)' : 'var(--color-text-primary)', fontWeight: highlight ? 600 : 400 }}>{value}</span>
+    </div>
+  );
+}
+
+function Skel() {
+  return <div style={{ height: 18, background: 'var(--color-bg-input)', borderRadius: 4, animation: 'cw-pulse 1.4s ease-in-out infinite' }} />;
+}
+```
+
+Add the keyframes once near the top of the file (or inline as a `<style>` tag inside `Skel`):
+
+```css
+@keyframes cw-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+```
+
+- [ ] **Step 2: Smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Open panel → Overview tab. Should show CLI path/version (already wired since Phase 1), project count, active session count, pending approvals. Today's tokens stays "(no usage data yet)" until Task 24.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/operator/OperatorPanel.tsx
+git commit -m "feat(view/overview): CLI status + workspace stats + tokens-today"
+```
+
+---
+
+### Task 21: Sessions tab
+
+**Files:**
+- Modify: `src/components/operator/OperatorPanel.tsx` (replace `SessionsTab` body)
+
+Lists all sessions on disk (across all projects), grouped by project, sorted by mtime. Click resumes (calls sessionStore.addClaude). "+ New" button per group jumps into the wizard with project pre-picked.
+
+- [ ] **Step 1: Reuse claudeSessionsStore + build the body**
+
+In `OperatorPanel.tsx`, replace `SessionsTab`:
+
+```tsx
+import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
+// (already imported at top — add if not)
+
+function SessionsTab() {
+  const projects = useClaudeSessionsStore((s) => s.projects);
+  const projectsState = useClaudeSessionsStore((s) => s.projectsState);
+  const sessionsByKey = useClaudeSessionsStore((s) => s.sessionsByKey);
+  const sessionsState = useClaudeSessionsStore((s) => s.sessionsState);
+  const loadProjects = useClaudeSessionsStore((s) => s.loadProjects);
+  const loadSessions = useClaudeSessionsStore((s) => s.loadSessions);
+  const addClaude = useSessionStore((s) => s.addClaude);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  if (projectsState === 'loading' || projectsState === 'idle') {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Scanning…</div>;
+  }
+  if (projects.length === 0) {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>No projects.</div>;
+  }
+
+  const onToggle = (key: string, decodedPath: string) => {
+    const newExpanded = !expanded[key];
+    setExpanded((s) => ({ ...s, [key]: newExpanded }));
+    if (newExpanded && !sessionsByKey[key]) void loadSessions(key);
+  };
+
+  const onResume = (projectKey: string, decodedPath: string, sessionId: string, preview: string) => {
+    addClaude({
+      projectDir: decodedPath,
+      projectKey,
+      sessionId,
+      preview,
+      iconLetter: ((decodedPath.split('/').filter(Boolean).pop() ?? '?').slice(0, 1).toUpperCase()),
+      iconColor: 'hsl(' + (Math.abs(projectKey.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 360) + ' 60% 50%)',
+    });
+  };
+
+  return (
+    <div style={{ padding: 8 }}>
+      {projects.map((p) => (
+        <div key={p.key} style={{ marginBottom: 4 }}>
+          <button
+            onClick={() => onToggle(p.key, p.decodedPath)}
+            style={{
+              width: '100%', textAlign: 'left',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              padding: '6px 8px', borderRadius: 6,
+              fontSize: 12, color: 'var(--color-text-primary)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {expanded[p.key] ? '▾ ' : '▸ '}{p.decodedPath.split('/').pop()}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{p.sessionCount}</span>
+          </button>
+          {expanded[p.key] && (
+            <div style={{ paddingLeft: 16 }}>
+              {sessionsState[p.key] === 'loading' && <div style={{ fontSize: 11, padding: 6, color: 'var(--color-text-tertiary)' }}>loading…</div>}
+              {(sessionsByKey[p.key] ?? []).map((s) => (
+                <button
+                  key={s.sessionId}
+                  onClick={() => onResume(p.key, p.decodedPath, s.sessionId, s.preview)}
+                  style={{
+                    display: 'block', width: '100%',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '4px 8px', borderRadius: 6,
+                    fontSize: 11, color: 'var(--color-text-secondary)',
+                    textAlign: 'left',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {s.preview || '(empty session)'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Open panel → Sessions tab. Expand a project, click a session — it should be added to the rail and become active. Resume should work end-to-end.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/operator/OperatorPanel.tsx
+git commit -m "feat(view/sessions): collapsible project tree, click-to-resume
+
+Reuses existing claudeSessionsStore (project scan + session list IPC).
+Click a session row → adds to rail via sessionStore.addClaude (which
+dedupes on sessionId so resume is idempotent)."
+```
+
+---
+
+### Task 22: Plugins tab + IPC
+
+**Files:**
+- Create: `electron/ipc/plugins.ts` (new IPC: read `~/.claude/plugins/installed_plugins.json` + marketplaces)
+- Modify: `electron/preload.ts` + `types/electron.d.ts` (expose `plugins:list`)
+- Modify: `electron/main.ts` (call `setupPluginsIPC()` in whenReady)
+- Modify: `src/components/operator/OperatorPanel.tsx` (replace `PluginsTab`)
+
+- [ ] **Step 1: Create the IPC handler**
+
+Create `electron/ipc/plugins.ts`:
+
+```ts
+import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+export interface PluginInstall {
+  name: string;          // e.g. "code-review@claude-plugins-official"
+  marketplace: string;   // "claude-plugins-official"
+  scope: 'user' | 'project';
+  version: string;
+  installedAt: string;
+  lastUpdated: string;
+  installPath: string;
+}
+
+interface InstalledPluginsFile {
+  version: number;
+  plugins: Record<string, Array<{
+    scope: 'user' | 'project';
+    installPath: string;
+    version: string;
+    installedAt: string;
+    lastUpdated: string;
+    gitCommitSha?: string;
+  }>>;
+}
+
+function readInstalled(): PluginInstall[] {
+  const file = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+  if (!fs.existsSync(file)) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(file, 'utf8')) as InstalledPluginsFile;
+    const result: PluginInstall[] = [];
+    for (const [name, installs] of Object.entries(data.plugins ?? {})) {
+      const marketplace = name.includes('@') ? name.split('@').slice(1).join('@') : '(unknown)';
+      for (const inst of installs) {
+        result.push({
+          name,
+          marketplace,
+          scope: inst.scope,
+          version: inst.version,
+          installedAt: inst.installedAt,
+          lastUpdated: inst.lastUpdated,
+          installPath: inst.installPath,
+        });
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+function readMarketplaces(): string[] {
+  const dir = path.join(os.homedir(), '.claude', 'plugins', 'marketplaces');
+  if (!fs.existsSync(dir)) return [];
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name);
+  } catch {
+    return [];
+  }
+}
+
+export function setupPluginsIPC(): void {
+  ipcMain.handle('plugins:list', () => ({
+    plugins: readInstalled(),
+    marketplaces: readMarketplaces(),
+  }));
+}
+```
+
+- [ ] **Step 2: Wire IPC in preload + main**
+
+In `electron/main.ts`:
+
+```ts
+import { setupPluginsIPC } from './ipc/plugins';
+
+// In whenReady, alongside other setup* calls:
+setupPluginsIPC();
+```
+
+In `electron/preload.ts`, add to the exposed `electronAPI` object:
+
+```ts
+plugins: {
+  list: () => ipcRenderer.invoke('plugins:list'),
+},
+```
+
+In `types/electron.d.ts`, extend the `electronAPI` interface:
+
+```ts
+interface ElectronAPI {
+  // ... existing fields ...
+  plugins: {
+    list: () => Promise<{
+      plugins: Array<{
+        name: string;
+        marketplace: string;
+        scope: 'user' | 'project';
+        version: string;
+        installedAt: string;
+        lastUpdated: string;
+        installPath: string;
+      }>;
+      marketplaces: string[];
+    }>;
+  };
+}
+```
+
+- [ ] **Step 3: Build the PluginsTab**
+
+In `src/components/operator/OperatorPanel.tsx`, replace `PluginsTab`:
+
+```tsx
+function PluginsTab() {
+  const [data, setData] = useState<{ plugins: Array<{ name: string; marketplace: string; scope: string; version: string; installedAt: string; lastUpdated: string; installPath: string }>; marketplaces: string[] } | null>(null);
+
+  useEffect(() => {
+    void (window.electronAPI as unknown as { plugins: { list: () => Promise<typeof data> } }).plugins.list().then(setData);
+  }, []);
+
+  if (!data) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+  if (data.plugins.length === 0) {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>No plugins installed.</div>;
+  }
+
+  // Group by marketplace
+  const byMarket: Record<string, typeof data.plugins> = {};
+  for (const p of data.plugins) {
+    (byMarket[p.marketplace] ??= []).push(p);
+  }
+
+  return (
+    <div style={{ padding: 12 }}>
+      {Object.entries(byMarket).map(([market, plugins]) => (
+        <div key={market} style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: 6, letterSpacing: 0.5 }}>
+            {market}
+          </div>
+          {plugins.map((p) => {
+            const shortName = p.name.split('@')[0];
+            return (
+              <div
+                key={p.name + ':' + p.installPath}
+                style={{
+                  padding: '8px 10px',
+                  background: 'var(--color-bg-secondary)',
+                  borderRadius: 6, marginBottom: 4,
+                  border: '0.5px solid var(--color-border-primary)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{shortName}</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>v{p.version}</span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+                  {p.scope} · installed {new Date(p.installedAt).toLocaleDateString()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Build + smoke test**
+
+```bash
+npm run build && npm run dev:electron
+```
+
+Open panel → Plugins tab. Should list your installed plugins grouped by marketplace.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add electron/ipc/plugins.ts electron/main.ts electron/preload.ts types/electron.d.ts src/components/operator/OperatorPanel.tsx
+git commit -m "feat(view/plugins): list installed plugins grouped by marketplace
+
+New IPC plugins:list reads ~/.claude/plugins/installed_plugins.json +
+marketplaces/. View groups by marketplace, shows version + scope +
+install date per plugin."
+```
+
+---
+
+### Task 23: Skills + Commands tabs + IPC (combined)
+
+**Files:**
+- Create: `electron/ipc/skills.ts` (three-layer SKILL.md walker)
+- Create: `electron/ipc/commands.ts` (three-layer command .md walker)
+- Modify: `electron/preload.ts`, `types/electron.d.ts`, `electron/main.ts`
+- Modify: `src/components/operator/OperatorPanel.tsx` (replace `SkillsTab` and `CommandsTab`)
+
+These two views are similar enough to do together: both walk three layers (user / project / plugin), both render a list with source badges + a click-to-preview detail pane.
+
+- [ ] **Step 1: Create skills IPC**
+
+Create `electron/ipc/skills.ts`:
+
+```ts
+import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+export interface SkillEntry {
+  name: string;          // skill slug (folder name)
+  description: string;   // pulled from SKILL.md frontmatter `description:` line
+  source: 'user' | 'project' | 'plugin';
+  pluginName?: string;   // when source === 'plugin'
+  skillMdPath: string;   // absolute
+}
+
+const FRONTMATTER_DESC = /^description:\s*(.+)$/m;
+
+function parseSkillMd(p: string): { description: string } {
+  try {
+    const head = fs.readFileSync(p, 'utf8').slice(0, 2000);
+    const m = FRONTMATTER_DESC.exec(head);
+    return { description: m ? m[1].trim().replace(/^["']|["']$/g, '') : '' };
+  } catch {
+    return { description: '' };
+  }
+}
+
+function walkSkillsDir(dir: string, source: SkillEntry['source'], pluginName?: string): SkillEntry[] {
+  if (!fs.existsSync(dir)) return [];
+  const out: SkillEntry[] = [];
+  let names: string[];
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  for (const name of names) {
+    const skillDir = path.join(dir, name);
+    const skillMd = path.join(skillDir, 'SKILL.md');
+    if (!fs.existsSync(skillMd)) continue;
+    const { description } = parseSkillMd(skillMd);
+    out.push({ name, description, source, pluginName, skillMdPath: skillMd });
+  }
+  return out;
+}
+
+function readUserSkills(): SkillEntry[] {
+  return walkSkillsDir(path.join(os.homedir(), '.claude', 'skills'), 'user');
+}
+
+function readProjectSkills(projectDir: string): SkillEntry[] {
+  return walkSkillsDir(path.join(projectDir, '.claude', 'skills'), 'project');
+}
+
+function readPluginSkills(): SkillEntry[] {
+  // Each plugin install path may have a skills/ subdirectory.
+  const installedFile = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+  if (!fs.existsSync(installedFile)) return [];
+  let data: { plugins: Record<string, Array<{ installPath: string }>> };
+  try {
+    data = JSON.parse(fs.readFileSync(installedFile, 'utf8'));
+  } catch {
+    return [];
+  }
+  const out: SkillEntry[] = [];
+  for (const [name, installs] of Object.entries(data.plugins ?? {})) {
+    for (const inst of installs) {
+      out.push(...walkSkillsDir(path.join(inst.installPath, 'skills'), 'plugin', name.split('@')[0]));
+    }
+  }
+  return out;
+}
+
+export function setupSkillsIPC(): void {
+  ipcMain.handle('skills:list', (_e, projectDir?: string) => {
+    return [
+      ...readUserSkills(),
+      ...(projectDir ? readProjectSkills(projectDir) : []),
+      ...readPluginSkills(),
+    ];
+  });
+  ipcMain.handle('skills:read', (_e, skillMdPath: string) => {
+    try {
+      return fs.readFileSync(skillMdPath, 'utf8');
+    } catch {
+      return '';
+    }
+  });
+}
+```
+
+- [ ] **Step 2: Create commands IPC**
+
+Create `electron/ipc/commands.ts`:
+
+```ts
+import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+export interface CommandEntry {
+  name: string;          // command slug = filename without .md
+  source: 'user' | 'project' | 'plugin';
+  pluginName?: string;
+  description: string;   // first non-empty line of the .md (or frontmatter description)
+  filePath: string;
+}
+
+function descriptionFromMd(p: string): string {
+  try {
+    const lines = fs.readFileSync(p, 'utf8').split('\n');
+    // Skip frontmatter
+    let i = 0;
+    if (lines[0]?.trim() === '---') {
+      i = 1;
+      while (i < lines.length && lines[i].trim() !== '---') {
+        const m = /^description:\s*(.+)$/.exec(lines[i]);
+        if (m) return m[1].trim().replace(/^["']|["']$/g, '');
+        i++;
+      }
+      i++; // skip closing ---
+    }
+    while (i < lines.length && !lines[i].trim()) i++;
+    return (lines[i] ?? '').trim().slice(0, 120);
+  } catch {
+    return '';
+  }
+}
+
+function walkCommandsDir(dir: string, source: CommandEntry['source'], pluginName?: string): CommandEntry[] {
+  if (!fs.existsSync(dir)) return [];
+  const out: CommandEntry[] = [];
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  for (const ent of entries) {
+    if (!ent.isFile() || !ent.name.endsWith('.md')) continue;
+    const filePath = path.join(dir, ent.name);
+    out.push({
+      name: ent.name.slice(0, -3),
+      source,
+      pluginName,
+      description: descriptionFromMd(filePath),
+      filePath,
+    });
+  }
+  return out;
+}
+
+export function setupCommandsIPC(): void {
+  ipcMain.handle('commands:list', (_e, projectDir?: string) => {
+    const user = walkCommandsDir(path.join(os.homedir(), '.claude', 'commands'), 'user');
+    const project = projectDir ? walkCommandsDir(path.join(projectDir, '.claude', 'commands'), 'project') : [];
+
+    // Plugins
+    const installedFile = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
+    let plugins: CommandEntry[] = [];
+    if (fs.existsSync(installedFile)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(installedFile, 'utf8')) as { plugins: Record<string, Array<{ installPath: string }>> };
+        for (const [name, installs] of Object.entries(data.plugins ?? {})) {
+          for (const inst of installs) {
+            plugins.push(...walkCommandsDir(path.join(inst.installPath, 'commands'), 'plugin', name.split('@')[0]));
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    return [...user, ...project, ...plugins];
+  });
+  ipcMain.handle('commands:read', (_e, filePath: string) => {
+    try { return fs.readFileSync(filePath, 'utf8'); } catch { return ''; }
+  });
+}
+```
+
+- [ ] **Step 3: Wire both IPCs (main, preload, types)**
+
+In `electron/main.ts`:
+
+```ts
+import { setupSkillsIPC } from './ipc/skills';
+import { setupCommandsIPC } from './ipc/commands';
+
+// In whenReady:
+setupSkillsIPC();
+setupCommandsIPC();
+```
+
+In `electron/preload.ts`, add:
+
+```ts
+skills: {
+  list: (projectDir?: string) => ipcRenderer.invoke('skills:list', projectDir),
+  read: (skillMdPath: string) => ipcRenderer.invoke('skills:read', skillMdPath),
+},
+commands: {
+  list: (projectDir?: string) => ipcRenderer.invoke('commands:list', projectDir),
+  read: (filePath: string) => ipcRenderer.invoke('commands:read', filePath),
+},
+```
+
+In `types/electron.d.ts`, extend `ElectronAPI`:
+
+```ts
+skills: {
+  list: (projectDir?: string) => Promise<Array<{
+    name: string; description: string;
+    source: 'user' | 'project' | 'plugin';
+    pluginName?: string; skillMdPath: string;
+  }>>;
+  read: (skillMdPath: string) => Promise<string>;
+};
+commands: {
+  list: (projectDir?: string) => Promise<Array<{
+    name: string; description: string;
+    source: 'user' | 'project' | 'plugin';
+    pluginName?: string; filePath: string;
+  }>>;
+  read: (filePath: string) => Promise<string>;
+};
+```
+
+- [ ] **Step 4: Build SkillsTab**
+
+In `OperatorPanel.tsx`, replace `SkillsTab`:
+
+```tsx
+function SkillsTab() {
+  const activeSession = useSessionStore((s) => s.sessions.find((x) => x.id === s.activeSessionId) ?? null);
+  const projectDir = activeSession?.projectDir;
+  const [list, setList] = useState<Array<{ name: string; description: string; source: 'user' | 'project' | 'plugin'; pluginName?: string; skillMdPath: string }> | null>(null);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    void (window.electronAPI as unknown as { skills: { list: (p?: string) => Promise<typeof list> } }).skills.list(projectDir).then(setList);
+  }, [projectDir]);
+
+  if (!list) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+  const filtered = filter ? list.filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.description.toLowerCase().includes(filter.toLowerCase())) : list;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter skills…"
+        style={{
+          margin: 8, padding: '6px 10px', fontSize: 12,
+          borderRadius: 6, border: '0.5px solid var(--color-border-primary)',
+          background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+          outline: 'none',
+        }}
+      />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
+        {filtered.map((sk) => (
+          <div
+            key={sk.skillMdPath}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 6, marginBottom: 4,
+              background: 'var(--color-bg-secondary)',
+              border: '0.5px solid var(--color-border-primary)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{sk.name}</span>
+              <SourceBadge source={sk.source} pluginName={sk.pluginName} />
+            </div>
+            {sk.description && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, lineHeight: 1.4 }}>
+                {sk.description}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ source, pluginName }: { source: 'user' | 'project' | 'plugin'; pluginName?: string }) {
+  const color = source === 'user' ? '#7d83ff' : source === 'project' ? '#5cc28b' : '#cc785c';
+  const label = source === 'plugin' && pluginName ? `plugin:${pluginName}` : source;
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 600,
+      background: color, color: 'white',
+      padding: '1px 6px', borderRadius: 4,
+      textTransform: 'uppercase', letterSpacing: 0.3,
+    }}>{label}</span>
+  );
+}
+```
+
+- [ ] **Step 5: Build CommandsTab**
+
+In `OperatorPanel.tsx`, replace `CommandsTab` (similar shape, just different fields):
+
+```tsx
+function CommandsTab() {
+  const activeSession = useSessionStore((s) => s.sessions.find((x) => x.id === s.activeSessionId) ?? null);
+  const projectDir = activeSession?.projectDir;
+  const [list, setList] = useState<Array<{ name: string; description: string; source: 'user' | 'project' | 'plugin'; pluginName?: string; filePath: string }> | null>(null);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    void (window.electronAPI as unknown as { commands: { list: (p?: string) => Promise<typeof list> } }).commands.list(projectDir).then(setList);
+  }, [projectDir]);
+
+  if (!list) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+  const filtered = filter ? list.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.description.toLowerCase().includes(filter.toLowerCase())) : list;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter commands…"
+        style={{
+          margin: 8, padding: '6px 10px', fontSize: 12,
+          borderRadius: 6, border: '0.5px solid var(--color-border-primary)',
+          background: 'var(--color-bg-input)', color: 'var(--color-text-primary)',
+          outline: 'none',
+        }}
+      />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px' }}>
+        {filtered.map((c) => (
+          <div
+            key={c.filePath}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 6, marginBottom: 4,
+              background: 'var(--color-bg-secondary)',
+              border: '0.5px solid var(--color-border-primary)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>/{c.name}</span>
+              <SourceBadge source={c.source} pluginName={c.pluginName} />
+            </div>
+            {c.description && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4, lineHeight: 1.4 }}>
+                {c.description}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: Smoke test**
+
+```bash
+npm run build && npm run dev:electron
+```
+
+Open panel → Skills tab. Should list all skills you have (user / plugin), with colored source badges. Filter input narrows results. Switch to Commands tab — same UI, lists all `/commands`.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add electron/ipc/skills.ts electron/ipc/commands.ts electron/main.ts electron/preload.ts types/electron.d.ts src/components/operator/OperatorPanel.tsx
+git commit -m "feat(view/skills+commands): three-layer browsers with source badges
+
+Skills: walks ~/.claude/skills, <activeProject>/.claude/skills, and each
+installed plugin's skills/. Reads SKILL.md frontmatter for description.
+Commands: identical pattern for *.md under commands/ dirs. Both tabs
+have a filter input. Source badges color-coded user/project/plugin."
+```
+
+---
+
+### Task 24: Stats tab + IPC (incremental cache)
+
+**Files:**
+- Create: `electron/ipc/stats.ts` (reads stats-cache.json + maintains usage-cache.json)
+- Modify: preload + types + main
+- Modify: `OperatorPanel.tsx` (replace `StatsTab`)
+
+This task implements the strategy from spec §7 — read Claude's own `stats-cache.json` for daily activity (free); maintain our own `~/.claudebar/usage-cache.json` with byte-offset incremental token totals from session jsonls.
+
+- [ ] **Step 1: Create the stats IPC + cache module**
+
+Create `electron/ipc/stats.ts`:
+
+```ts
+import { ipcMain } from 'electron';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+const HOME = os.homedir();
+const STATS_CACHE = path.join(HOME, '.claude', 'stats-cache.json');
+const PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
+const OUR_CACHE = path.join(HOME, '.claudebar', 'usage-cache.json');
+
+interface DailyActivity { date: string; messageCount: number; sessionCount: number; toolCallCount: number; }
+interface ClaudeStatsCache { version: number; lastComputedDate: string; dailyActivity: DailyActivity[]; }
+
+interface PerFileEntry {
+  lastByteOffset: number;
+  tokens: { input: number; output: number; cache_creation: number; cache_read: number };
+  byModel: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+}
+interface OurUsageCache {
+  version: 1;
+  perFile: Record<string, PerFileEntry>;
+  byDay: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+}
+
+function emptyCache(): OurUsageCache {
+  return { version: 1, perFile: {}, byDay: {} };
+}
+
+function readOurCache(): OurUsageCache {
+  if (!fs.existsSync(OUR_CACHE)) return emptyCache();
+  try {
+    const data = JSON.parse(fs.readFileSync(OUR_CACHE, 'utf8'));
+    if (data?.version !== 1) return emptyCache();
+    return data;
+  } catch { return emptyCache(); }
+}
+
+function writeOurCache(cache: OurUsageCache): void {
+  fs.mkdirSync(path.dirname(OUR_CACHE), { recursive: true });
+  fs.writeFileSync(OUR_CACHE, JSON.stringify(cache));
+}
+
+interface JsonlMessage {
+  type?: string;
+  timestamp?: string;
+  message?: { model?: string; usage?: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number } };
+}
+
+function parseAndAccumulate(filePath: string, fromOffset: number, entry: PerFileEntry, byDay: OurUsageCache['byDay']): number {
+  const stat = fs.statSync(filePath);
+  if (stat.size <= fromOffset) return fromOffset;
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(stat.size - fromOffset);
+    fs.readSync(fd, buf, 0, buf.length, fromOffset);
+    const text = buf.toString('utf8');
+    const lines = text.split('\n');
+    let consumed = 0;
+    // Process all complete lines (last line may be partial — leave for next pass)
+    for (let i = 0; i < lines.length - 1; i++) {
+      consumed += lines[i].length + 1; // +1 for the \n
+      const line = lines[i].trim();
+      if (!line) continue;
+      try {
+        const msg = JSON.parse(line) as JsonlMessage;
+        const u = msg.message?.usage;
+        if (!u) continue;
+        const model = msg.message?.model ?? 'unknown';
+        const date = (msg.timestamp ?? '').slice(0, 10);
+        const inp = u.input_tokens ?? 0;
+        const out = u.output_tokens ?? 0;
+        const cw = u.cache_creation_input_tokens ?? 0;
+        const cr = u.cache_read_input_tokens ?? 0;
+        entry.tokens.input += inp;
+        entry.tokens.output += out;
+        entry.tokens.cache_creation += cw;
+        entry.tokens.cache_read += cr;
+        const m = entry.byModel[model] ??= { input: 0, output: 0, cache_creation: 0, cache_read: 0 };
+        m.input += inp; m.output += out; m.cache_creation += cw; m.cache_read += cr;
+        if (date) {
+          const d = byDay[date] ??= { input: 0, output: 0, cache_creation: 0, cache_read: 0 };
+          d.input += inp; d.output += out; d.cache_creation += cw; d.cache_read += cr;
+        }
+      } catch { /* malformed line — skip */ }
+    }
+    return fromOffset + consumed;
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function refreshCache(): OurUsageCache {
+  const cache = readOurCache();
+  if (!fs.existsSync(PROJECTS_DIR)) return cache;
+  let projects: string[];
+  try { projects = fs.readdirSync(PROJECTS_DIR); } catch { return cache; }
+
+  for (const projectKey of projects) {
+    const dir = path.join(PROJECTS_DIR, projectKey);
+    let files: string[];
+    try { files = fs.readdirSync(dir); } catch { continue; }
+    for (const fname of files) {
+      if (!fname.endsWith('.jsonl')) continue;
+      const fp = path.join(dir, fname);
+      const key = `${projectKey}/${fname}`;
+      const entry = cache.perFile[key] ??= {
+        lastByteOffset: 0,
+        tokens: { input: 0, output: 0, cache_creation: 0, cache_read: 0 },
+        byModel: {},
+      };
+      try {
+        entry.lastByteOffset = parseAndAccumulate(fp, entry.lastByteOffset, entry, cache.byDay);
+      } catch { /* ignore unreadable file */ }
+    }
+  }
+  writeOurCache(cache);
+  return cache;
+}
+
+function readClaudeDailyActivity(): DailyActivity[] {
+  if (!fs.existsSync(STATS_CACHE)) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(STATS_CACHE, 'utf8')) as ClaudeStatsCache;
+    return data.dailyActivity ?? [];
+  } catch { return []; }
+}
+
+export function setupStatsIPC(): void {
+  ipcMain.handle('stats:get', () => {
+    const cache = refreshCache();
+    const dailyActivity = readClaudeDailyActivity();
+    return {
+      dailyActivity,
+      tokensByDay: cache.byDay,
+      totals: Object.values(cache.perFile).reduce(
+        (acc, f) => ({
+          input: acc.input + f.tokens.input,
+          output: acc.output + f.tokens.output,
+          cache_creation: acc.cache_creation + f.tokens.cache_creation,
+          cache_read: acc.cache_read + f.tokens.cache_read,
+        }),
+        { input: 0, output: 0, cache_creation: 0, cache_read: 0 },
+      ),
+      byModel: Object.values(cache.perFile).reduce((acc, f) => {
+        for (const [model, m] of Object.entries(f.byModel)) {
+          const target = acc[model] ??= { input: 0, output: 0, cache_creation: 0, cache_read: 0 };
+          target.input += m.input; target.output += m.output;
+          target.cache_creation += m.cache_creation; target.cache_read += m.cache_read;
+        }
+        return acc;
+      }, {} as Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>),
+    };
+  });
+  ipcMain.handle('stats:today', () => {
+    const cache = refreshCache();
+    const today = new Date().toISOString().slice(0, 10);
+    return cache.byDay[today] ?? { input: 0, output: 0, cache_creation: 0, cache_read: 0 };
+  });
+}
+```
+
+- [ ] **Step 2: Wire IPC (main, preload, types)**
+
+In `electron/main.ts`:
+
+```ts
+import { setupStatsIPC } from './ipc/stats';
+
+// In whenReady:
+setupStatsIPC();
+```
+
+In `electron/preload.ts`:
+
+```ts
+stats: {
+  get: () => ipcRenderer.invoke('stats:get'),
+  today: () => ipcRenderer.invoke('stats:today'),
+},
+```
+
+In `types/electron.d.ts`:
+
+```ts
+stats: {
+  get: () => Promise<{
+    dailyActivity: Array<{ date: string; messageCount: number; sessionCount: number; toolCallCount: number }>;
+    tokensByDay: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+    totals: { input: number; output: number; cache_creation: number; cache_read: number };
+    byModel: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+  }>;
+  today: () => Promise<{ input: number; output: number; cache_creation: number; cache_read: number }>;
+};
+```
+
+- [ ] **Step 3: Build the StatsTab**
+
+In `OperatorPanel.tsx`, replace `StatsTab`:
+
+```tsx
+function StatsTab() {
+  type StatsPayload = Awaited<ReturnType<NonNullable<(typeof window.electronAPI)['stats']>['get']>>;
+  const [data, setData] = useState<StatsPayload | null>(null);
+
+  useEffect(() => {
+    void (window.electronAPI as unknown as { stats: { get: () => Promise<StatsPayload> } }).stats.get().then(setData);
+  }, []);
+
+  if (!data) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+
+  // Last 14 days from byDay (chronological)
+  const days: Array<{ date: string; input: number; output: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const v = data.tokensByDay[key] ?? { input: 0, output: 0, cache_creation: 0, cache_read: 0 };
+    days.push({ date: key.slice(5), input: v.input + v.cache_read, output: v.output });
+  }
+  const maxVal = Math.max(1, ...days.map((d) => d.input + d.output));
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card title="All-time totals">
+        <Row label="Input" value={data.totals.input.toLocaleString()} />
+        <Row label="Output" value={data.totals.output.toLocaleString()} />
+        <Row label="Cache write" value={data.totals.cache_creation.toLocaleString()} />
+        <Row label="Cache read" value={data.totals.cache_read.toLocaleString()} />
+      </Card>
+
+      <Card title="Last 14 days">
+        <div style={{ display: 'flex', alignItems: 'flex-end', height: 80, gap: 2 }}>
+          {days.map((d) => {
+            const total = d.input + d.output;
+            const h = (total / maxVal) * 100;
+            return (
+              <div key={d.date} title={`${d.date}: ${total.toLocaleString()}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <div style={{ width: '70%', height: `${h}%`, background: 'var(--color-accent)', borderRadius: '2px 2px 0 0', minHeight: total > 0 ? 1 : 0 }} />
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          <span>{days[0].date}</span>
+          <span>{days[days.length - 1].date}</span>
+        </div>
+      </Card>
+
+      <Card title="By model">
+        {Object.entries(data.byModel).length === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>(no usage)</div>
+        )}
+        {Object.entries(data.byModel).map(([model, m]) => (
+          <Row key={model} label={model.length > 30 ? model.slice(0, 30) + '…' : model} value={(m.input + m.output).toLocaleString()} />
+        ))}
+      </Card>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 4: Smoke test**
+
+```bash
+npm run build && npm run dev:electron
+```
+
+Open panel → Stats. First time: parses all your jsonls (may take a few seconds on a large `~/.claude/projects/`). Shows totals + 14-day bar chart + by-model breakdown. Reopen the panel — instant (cache hit). Use a Claude session, then reopen Stats — new tokens reflected (incremental scan picks up the new bytes).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add electron/ipc/stats.ts electron/main.ts electron/preload.ts types/electron.d.ts src/components/operator/OperatorPanel.tsx
+git commit -m "feat(view/stats): incremental token cache + 14-day bar chart
+
+stats:get reads ~/.claude/stats-cache.json (daily activity, free) and
+maintains ~/.claudebar/usage-cache.json with per-file lastByteOffset
+incremental token aggregation. Strategy from spec §7. View shows
+all-time totals, 14-day bar chart of input+output, and by-model
+breakdown."
+```
+
+---
+
+### Task 25: Settings tab — full content
+
+**Files:**
+- Modify: `OperatorPanel.tsx` (replace `SettingsTab` body)
+
+Per spec §6, Settings groups: Claude CLI, Window, Diagnostics. Each setting is a simple form control bound to `useSettingsStore.updateSetting`.
+
+- [ ] **Step 1: Build the SettingsTab**
+
+In `OperatorPanel.tsx`, replace `SettingsTab`:
+
+```tsx
+import { useSettingsStore } from '../../stores/settingsStore';
+
+function SettingsTab() {
+  const settings = useSettingsStore((s) => s as unknown as Record<string, unknown>);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+
+  const get = <T,>(k: string, fallback: T): T => (settings[k] as T) ?? fallback;
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card title="Claude CLI">
+        <SettingRow label="Path">
+          <input
+            value={get<string>('claudePath', '')}
+            onChange={(e) => updateSetting('claudePath', e.target.value)}
+            placeholder="(autodetected)"
+            style={inputStyle}
+          />
+        </SettingRow>
+        <SettingRow label="Default model">
+          <select
+            value={get<string>('defaultModel', 'default')}
+            onChange={(e) => updateSetting('defaultModel', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="default">(use CLI default)</option>
+            <option value="opus">opus</option>
+            <option value="sonnet">sonnet</option>
+            <option value="haiku">haiku</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Default permission">
+          <select
+            value={get<string>('defaultPermissionMode', 'default')}
+            onChange={(e) => updateSetting('defaultPermissionMode', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="default">default (ask each tool)</option>
+            <option value="acceptEdits">acceptEdits</option>
+            <option value="bypassPermissions">bypassPermissions (NO callbacks)</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Idle close (min)">
+          <input
+            type="number"
+            value={get<number>('idleCloseMinutes', 30)}
+            onChange={(e) => updateSetting('idleCloseMinutes', Number(e.target.value) || 30)}
+            min={1}
+            style={inputStyle}
+          />
+        </SettingRow>
+      </Card>
+
+      <Card title="Window">
+        <SettingRow label="Theme">
+          <select
+            value={get<string>('theme', 'system')}
+            onChange={(e) => updateSetting('theme', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="system">system</option>
+            <option value="light">light</option>
+            <option value="dark">dark</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Always on top">
+          <input
+            type="checkbox"
+            checked={get<boolean>('alwaysOnTop', false)}
+            onChange={(e) => updateSetting('alwaysOnTop', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Hide on click outside">
+          <input
+            type="checkbox"
+            checked={get<boolean>('hideOnClickOutside', false)}
+            onChange={(e) => updateSetting('hideOnClickOutside', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Global shortcut">
+          <input
+            value={get<string>('globalShortcut', '')}
+            onChange={(e) => updateSetting('globalShortcut', e.target.value)}
+            placeholder="Cmd+Shift+C"
+            style={inputStyle}
+          />
+        </SettingRow>
+        <SettingRow label="Show pet">
+          <input
+            type="checkbox"
+            checked={get<boolean>('petVisible', true)}
+            onChange={(e) => updateSetting('petVisible', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Pet kind">
+          <select
+            value={get<string>('petKind', 'claude')}
+            onChange={(e) => updateSetting('petKind', e.target.value)}
+            style={inputStyle}
+          >
+            <option value="claude">claude</option>
+            <option value="lobster">lobster</option>
+          </select>
+        </SettingRow>
+      </Card>
+
+      <Card title="Diagnostics">
+        <SettingRow label="SDK trace">
+          <input
+            type="checkbox"
+            checked={get<boolean>('enableSdkTrace', false)}
+            onChange={(e) => updateSetting('enableSdkTrace', e.target.checked)}
+          />
+        </SettingRow>
+        <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          Logs to <code>~/.claudebar/sdk-trace.jsonl</code>. Auth diagnostics: <code>~/.claudebar/auth-debug.log</code>.
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: '4px 8px',
+  fontSize: 11,
+  borderRadius: 4,
+  border: '0.5px solid var(--color-border-primary)',
+  background: 'var(--color-bg-input)',
+  color: 'var(--color-text-primary)',
+  outline: 'none',
+};
+
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', gap: 8 }}>
+      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>{label}</span>
+      <span style={{ flexShrink: 0 }}>{children}</span>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Verify the SDK trace toggle takes effect**
+
+In `electron/claude-bridge.ts` find where `traceEnabled` is set (it currently reads `process.env.CLAUDEBAR_TRACE`). Augment it to also honor the live setting:
+
+```ts
+import { getSettings } from './ipc/settings';
+// ...
+const traceEnabled = !!(getSettings() as { enableSdkTrace?: boolean }).enableSdkTrace
+  || process.env.CLAUDEBAR_TRACE === '1';
+```
+
+(Move `traceEnabled` evaluation inside `runSession` if it was at module top level — re-evaluate per session so toggling the setting takes effect for new sessions.)
+
+- [ ] **Step 3: Smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Open panel → Settings. All controls render. Toggle theme — chat re-renders in new theme immediately. Change `defaultModel` — write down the value, close, reopen — value persists.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/operator/OperatorPanel.tsx electron/claude-bridge.ts
+git commit -m "feat(view/settings): full Settings form per spec §6
+
+Three groups: Claude CLI (path/model/permission/idle), Window (theme/
+on-top/hide/shortcut/pet), Diagnostics (SDK trace toggle, log paths
+shown). enableSdkTrace setting honored at SDK Query construction time
+in addition to CLAUDEBAR_TRACE env."
+```
+
+---
+
+### Task 26: Use ClaudePet hash for session icons + tray icon
+
+**Files:**
+- Modify: `src/components/SessionRail.tsx` (replace letter with ClaudePet variant SVG)
+- Modify: `electron/main.ts` (use ClaudePet bitmap for tray icon)
+- Possibly create: `resources/tray-icons/` (a few PNG renders of the pet at 16/32px for tray)
+
+The rail currently shows a letter for each session. Spec says "ClaudePet variant hashed from project + session id". Pull the existing variant logic from ClawBar's `claude-icon.ts` + `ClaudePet.tsx` and adapt.
+
+- [ ] **Step 1: Inspect existing pet hash util**
+
+```bash
+ls src/utils/claude-icon.ts src/pet/ClaudePet.tsx 2>&1
+cat src/utils/claude-icon.ts | head -50
+```
+
+The `claudePetVariant(key)` function returns body / shadow / hand / leg / eye colors keyed by an arbitrary string. We feed it `<projectKey>:<sessionId>`.
+
+- [ ] **Step 2: Create a SessionIcon component**
+
+Create `src/components/SessionIcon.tsx`:
+
+```tsx
+import { claudePetVariant } from '../utils/claude-icon';
+
+interface Props { projectKey: string; sessionId: string; size?: number; }
+
+export function SessionIcon({ projectKey, sessionId, size = 22 }: Props) {
+  const v = claudePetVariant(`${projectKey}:${sessionId}`);
+  // Compact pet portrait — body + 2 hands + 4 legs + eyes (NO mouth so it's
+  // legible at small sizes). Use 120-unit viewBox to match existing
+  // ClaudePet's coordinates so the variant function's color choices
+  // continue to make sense.
+  return (
+    <svg width={size} height={size} viewBox="0 0 120 120" shapeRendering="crispEdges">
+      <rect x="28" y="38" width="64" height="46" fill={v.bodyColor} />
+      <rect x="20" y="56" width="10" height="10" fill={v.handColor} />
+      <rect x="90" y="56" width="10" height="10" fill={v.handColor} />
+      <rect x="34" y="84" width="9" height="14" fill={v.legColor} />
+      <rect x="48" y="84" width="9" height="14" fill={v.legColor} />
+      <rect x="63" y="84" width="9" height="14" fill={v.legColor} />
+      <rect x="77" y="84" width="9" height="14" fill={v.legColor} />
+      {/* Eyes — variant-controlled style */}
+      <rect x="44" y="52" width="6" height="6" fill={v.eyeColor} />
+      <rect x="70" y="52" width="6" height="6" fill={v.eyeColor} />
+    </svg>
+  );
+}
+```
+
+- [ ] **Step 3: Use SessionIcon in SessionRail**
+
+In `src/components/SessionRail.tsx`, replace the `{session.iconLetter || '?'}` content of `SessionRailIcon` with:
+
+```tsx
+import { SessionIcon } from './SessionIcon';
+// ...
+// In the SessionRailIcon button content, replace the letter span with:
+<SessionIcon projectKey={session.projectKey} sessionId={session.sessionId} size={22} />
+```
+
+- [ ] **Step 4: Tray icon**
+
+ClawBar's tray icon is currently `resources/icon.png` (the lobster). We need a Claude-flavored tray icon.
+
+Create `resources/tray-icon-claude.png` — a 16×16 (and ideally 32×32 retina) PNG of the ClaudePet portrait. Easiest: render the SessionIcon to PNG via a one-off script, or hand-draw in any pixel editor.
+
+For the plan, we'll generate it programmatically with sharp inside `scripts/`:
+
+Create `scripts/build-tray-icon.mjs`:
+
+```js
+// Generates resources/tray-icon-claude.png at 16x16 + 32x32 from the same
+// pixel pet shapes used in SessionIcon.tsx. Run once; the PNG is checked in.
+import { writeFileSync } from 'fs';
+import sharp from 'sharp';
+
+const SVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" shape-rendering="crispEdges">
+  <rect x="28" y="38" width="64" height="46" fill="#cc785c"/>
+  <rect x="20" y="56" width="10" height="10" fill="#cc785c"/>
+  <rect x="90" y="56" width="10" height="10" fill="#cc785c"/>
+  <rect x="34" y="84" width="9" height="14" fill="#cc785c"/>
+  <rect x="48" y="84" width="9" height="14" fill="#cc785c"/>
+  <rect x="63" y="84" width="9" height="14" fill="#cc785c"/>
+  <rect x="77" y="84" width="9" height="14" fill="#cc785c"/>
+  <rect x="44" y="52" width="6" height="6" fill="#000"/>
+  <rect x="70" y="52" width="6" height="6" fill="#000"/>
+</svg>
+`;
+
+await sharp(Buffer.from(SVG)).resize(32, 32, { kernel: 'nearest' }).png().toFile('resources/tray-icon-claude.png');
+console.log('wrote resources/tray-icon-claude.png');
+```
+
+Run:
+
+```bash
+npm install --save-dev sharp
+node scripts/build-tray-icon.mjs
+```
+
+- [ ] **Step 5: Use in main.ts**
+
+In `electron/main.ts`, find where the tray icon is loaded:
+
+```bash
+grep -n "nativeImage\|tray\|.png" electron/main.ts | head
+```
+
+Replace the tray icon path:
+
+```ts
+const trayIconPath = path.join(__dirname, '..', '..', 'resources', 'tray-icon-claude.png');
+const trayImage = nativeImage.createFromPath(trayIconPath);
+trayImage.setTemplateImage(true);  // macOS adapts to dark/light menu bar
+tray = new Tray(trayImage);
+```
+
+- [ ] **Step 6: Build + verify**
+
+```bash
+npm run build && npm run dev:electron
+```
+
+Tray icon should now be the orange Claude pet (template image: it'll render as monochrome on macOS, adapting to menu bar background). Each session in the rail shows its unique-colored pet portrait.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/SessionIcon.tsx src/components/SessionRail.tsx scripts/build-tray-icon.mjs resources/tray-icon-claude.png electron/main.ts package.json package-lock.json
+git commit -m "feat(visual): ClaudePet variant hash for session icons + tray
+
+Each session renders a tiny pet portrait keyed by projectKey:sessionId
+via the existing claudePetVariant util. Tray icon swapped from lobster
+to a 32×32 monochrome Claude pet (template image so macOS adapts it).
+
+Backlog risk from spec §13: at 16×16 the silhouette is borderline; if
+unreadable on user feedback, fall back to a 12-ray sunburst (existing
+ClaudeMark)."
+```
+
+---
+
+### Task 27: Verify Phase 3 ships, tag v0.7.0 (first feature-complete release)
+
+**Files:** none (release prep)
+
+- [ ] **Step 1: Full clean build**
+
+```bash
+npm run clean
+npm run build
+```
+
+- [ ] **Step 2: DMG smoke test against spec §14 success criteria**
+
+```bash
+npm run pack:mac:dmg:arm64
+```
+
+Install fresh from DMG (uninstall any prior version first, including ClawBar if you want to validate the migration). Then verify each spec §14 criterion:
+
+- [ ] Cold launch from Finder → window visible in <2 s, with hydrated session rail
+- [ ] Click any session in rail → resume works for both real and placeholder UUIDs
+- [ ] New session → send markdown message → response streams back with code highlighting
+- [ ] Operator panel slides out smoothly, all 7 tabs load <500 ms (Stats may be slower on first scan, OK)
+- [ ] Migration from ClawBar on first launch is silent and non-destructive (`~/.clawbar/` left intact, `~/.claudebar/.migrated-from-clawbar` flag exists)
+- [ ] DMG launch from Finder works without "Not logged in" (shell-env hydration still works)
+- [ ] Tray click toggles, global shortcut toggles
+- [ ] `Cmd+Shift+C` (or whatever `globalShortcut` was set to) toggles
+- [ ] Settings changes persist across restart
+
+- [ ] **Step 3: Update README + docs/index.html for v0.7.0**
+
+The CI bot bumps download links automatically after tag push (existing workflow inherited from ClawBar). After tag push, `git pull` to merge the bot's commit. (See `ci-bot-bumps-docs-after-tag` memory.)
+
+But the README content itself still describes ClawBar — overhaul it for ClaudeBar. Replace the README's first section with ClaudeBar positioning (use spec §1 as basis). Update screenshots if you have them. Update `docs/index.html` (the project landing page) with ClaudeBar copy.
+
+This is a meaningful chunk of work — split into a separate commit:
+
+```bash
+# After README rewrite + index.html rewrite:
+git add README.md docs/index.html
+git commit -m "docs: rewrite README + landing page for ClaudeBar v0.7.0"
+```
+
+- [ ] **Step 4: Tag + push**
+
+```bash
+git tag v0.7.0
+git push origin main
+git push origin v0.7.0
+```
+
+- [ ] **Step 5: GitHub release**
+
+`gh release create v0.7.0` (or wait for CI to publish — depending on whether the release workflow is wired).
+
+Add release notes summarizing the three phases:
+
+> ClaudeBar v0.7.0 — first feature-complete release. Forked from ClawBar v0.4.8. Floating-window Claude Code app: slim session rail, slide-out operator panel with Overview/Sessions/Plugins/Skills/Commands/Stats/Settings, markdown chat with syntax-highlighted code blocks, multi-line input. Drives your installed `claude` binary (BYO-CLI). Migrates theme/petKind from ClawBar on first launch.
+
+---
+
+## Backlog (deferred per spec §11)
+
+Tracked here for visibility; create as GitHub issues in the new claudebar repo after v0.7.0:
+
+- **Chat polish v1.1**: message hover actions (copy single message / reroll the last user turn), file drag & drop, image paste
+- **Dropped views v1.1**: Plans browser (`~/.claude/plans/`), Hooks viewer (`~/.claude/settings.json` hooks), Cron-like "schedule a prompt"
+- **Window mode v1.2**: popover ↔ float dual-mode toggle in Settings
+- **Stats v1.2**: estimated cost (apply per-model pricing to the token totals), live "burning now" counter from in-flight SDK Query result events (the C of B+C from spec §7)
+- **Tray icon contingency**: if 16×16 ClaudePet silhouette tests poorly, swap to 12-ray sunburst (ClaudeMark)
+- **Plugin watcher v1.2**: file watcher on `~/.claude/plugins/` so the Plugins view auto-refreshes when user installs/uninstalls plugins via CLI
+
+---
+
+## Self-Review notes
+
+**Spec coverage:** every section of `2026-05-12-claudebar-fork-design.md` has at least one task. §1 product positioning lives in README rewrite (Task 27 step 3). §2 repo structure = Task 1. §3 window form factor = Task 11. §4 UI layout = Tasks 13, 19. §5 views = Tasks 19-26. §6 settings = Task 25. §7 stats caching = Task 24. §8 chat baseline = Tasks 15, 16. §9 kept/removed/rewritten = covered transitively across all tasks. §10 branding = Tasks 2 (bundle id), 26 (tray icon, pet default). §11 backlog = explicit Backlog section. §12 migration = Task 3. §13 risks = surfaced inline (Task 26 commit message, Task 24 perf notes). §14 success criteria = Task 27.
+
+**Type consistency:** `ClaudeSession` defined in Task 6 used consistently in Tasks 7, 8, 13, 17, 21. `pendingApprovalsBySessionId` and `useApprovalsStore.countBySession` keyed identically in Tasks 13, 14. `SessionRailIcon`'s `pendingApprovals` prop matches App.tsx's pass-through.
+
+**Placeholder scan:** zero TBD/TODO/"implement later". One inline `console.log('TODO: open new-session wizard')` in Task 13 is intentional — it gets replaced in Task 16 (the immediately next task) and that's called out in Task 13's commit message.
+
+**Open ambiguity:** Task 22's `addClaude` call hashes `iconColor` inline in the Sessions tab; `AddSessionWizard` (Task 17) does the same with a slightly different helper. Acceptable redundancy for v1; refactor to a shared util only if both grow more logic.
 
