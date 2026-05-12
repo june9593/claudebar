@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Settings, ViewState } from '../types';
+import type { Settings, ViewState, ClaudeSession } from '../types';
 
 interface SettingsState extends Settings {
   resolvedTheme: 'light' | 'dark';
@@ -11,22 +11,29 @@ interface SettingsState extends Settings {
 }
 
 const defaults: Settings = {
-  gatewayUrl: 'http://localhost:18789',
-  authMode: 'none',
-  authToken: '',
-  authPassword: '',
+  // Claude CLI
+  claudePath: '',
+  defaultModel: 'default',
+  defaultPermissionMode: 'default',
+  defaultProjectDir: null,
+  idleCloseMinutes: 30,
+
+  // Window
   theme: 'system',
-  chatMode: 'compact',
+  windowSize: { w: 400, h: 800 },
+  windowPosition: null,
+  alwaysOnTop: false,
   hideOnClickOutside: false,
-  autoLaunch: false,
-  channels: [
-    { id: 'openclaw', kind: 'openclaw', name: 'OpenClaw',  builtin: true, enabled: true },
-    { id: 'telegram', kind: 'web',      name: 'Telegram',  builtin: true, enabled: true, url: 'https://web.telegram.org/', icon: '✈️' },
-    { id: 'discord',  kind: 'web',      name: 'Discord',   builtin: true, enabled: true, url: 'https://discord.com/app',   icon: '💬' },
-    { id: 'feishu',   kind: 'web',      name: '飞书',      builtin: true, enabled: true, url: 'https://accounts.feishu.cn/accounts/page/login?app_id=1&no_trap=1&redirect_uri=https%3A%2F%2Fwww.feishu.cn%2Fmessages',     icon: '🪶' },
-    { id: 'lark',     kind: 'web',      name: 'Lark',      builtin: true, enabled: true, url: 'https://accounts.larksuite.com/accounts/page/login?app_id=1&no_trap=1&redirect_uri=https%3A%2F%2Fwww.larksuite.com%2Fmessages', icon: '🐦' },
-  ],
-  activeChannelId: 'openclaw',
+  globalShortcut: 'Cmd+Shift+C',
+  petVisible: true,
+  petKind: 'claude',
+
+  // Diagnostics
+  enableSdkTrace: false,
+
+  // Sessions (persisted across launches)
+  sessions: [] as ClaudeSession[],
+  activeSessionId: null,
 };
 
 const LS_KEY = 'clawbar-settings';
@@ -84,13 +91,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       if (window.electronAPI?.settings) {
         await window.electronAPI.settings.set(key, value);
-      }
-      if (key === 'chatMode') {
-        if (value === 'classic') {
-          window.electronAPI?.window?.setSize(800, 700);
-        } else {
-          window.electronAPI?.window?.setSize(390, 720);
-        }
       }
       set((s) => {
         const next = { ...s, [key]: value };

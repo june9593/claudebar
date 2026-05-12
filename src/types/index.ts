@@ -14,14 +14,27 @@ export interface ClaudeSession {
 }
 
 export interface Settings {
-  gatewayUrl: string;
-  authMode: 'none' | 'token' | 'password';
-  authToken: string;
-  authPassword: string;
+  // Claude CLI
+  claudePath: string;
+  defaultModel: 'default' | 'opus' | 'sonnet' | 'haiku';
+  defaultPermissionMode: 'default' | 'acceptEdits' | 'bypassPermissions';
+  defaultProjectDir: string | null;
+  idleCloseMinutes: number;
+
+  // Window
   theme: 'light' | 'dark' | 'system';
-  chatMode: 'compact' | 'classic';
+  windowSize: { w: number; h: number };
+  windowPosition: { x: number; y: number } | null;
+  alwaysOnTop: boolean;
   hideOnClickOutside: boolean;
-  autoLaunch: boolean;
+  globalShortcut: string;
+  petVisible: boolean;
+  petKind: 'claude' | 'lobster';
+
+  // Diagnostics
+  enableSdkTrace: boolean;
+
+  // Sessions (persisted across launches)
   sessions: ClaudeSession[];
   activeSessionId: string | null;
 }
