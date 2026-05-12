@@ -3,6 +3,8 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
+
   /* Claude Design System — Light */
   --color-bg-primary: #f5f4ed;
   --color-bg-secondary: #faf9f5;
@@ -49,6 +51,8 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
+
   --color-bg-primary: #141413;
   --color-bg-secondary: #30302e;
   --color-bg-tertiary: #3d3d3a;
