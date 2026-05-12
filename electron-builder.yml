@@ -1,5 +1,5 @@
-appId: com.clawbar.app
-productName: ClawBar
+appId: com.june9593.claudebar
+productName: ClaudeBar
 copyright: Copyright © 2026 june9593
 
 mac:
@@ -37,7 +37,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: ClawBar
+  shortcutName: ClaudeBar
 
 portable:
   artifactName: ${productName}-${version}-win-portable-${arch}.${ext}

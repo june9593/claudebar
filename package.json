@@ -1,15 +1,15 @@
 {
-  "name": "clawbar",
-  "version": "0.4.8",
-  "description": "macOS menu bar multi-IM hub for OpenClaw + Telegram + Discord + Feishu + Lark",
+  "name": "claudebar",
+  "version": "0.5.0",
+  "description": "Floating-window desktop app for local Claude Code CLI sessions (BYO-CLI)",
   "main": "dist-electron/electron/main.js",
-  "homepage": "https://github.com/june9593/clawbar",
+  "homepage": "https://github.com/june9593/claudebar",
   "repository": {
     "type": "git",
-    "url": "https://github.com/june9593/clawbar.git"
+    "url": "https://github.com/june9593/claudebar.git"
   },
   "bugs": {
-    "url": "https://github.com/june9593/clawbar/issues"
+    "url": "https://github.com/june9593/claudebar/issues"
   },
   "scripts": {
     "dev": "vite",
@@ -27,11 +27,13 @@
     "clean": "node -e \"const fs=require('fs');for(const d of ['dist','dist-electron','release-artifacts'])fs.rmSync(d,{recursive:true,force:true});\""
   },
   "keywords": [
-    "openclaw",
+    "claude-code",
+    "claude",
+    "anthropic",
     "menu-bar",
     "macos",
-    "electron",
-    "chat"
+    "windows",
+    "electron"
   ],
   "author": "june9593",
   "license": "MIT",
