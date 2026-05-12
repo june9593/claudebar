@@ -4,7 +4,7 @@ import { useSessionStore } from './stores/sessionStore';
 import { useApprovalsStore } from './stores/approvalsStore';
 import { TitleBar } from './components/TitleBar';
 import { ClaudeChannel } from './components/ClaudeChannel';
-import { OperatorPanel } from './components/operator/OperatorPanel';
+import { OperatorPanel, type Tab as OperatorTab } from './components/operator/OperatorPanel';
 import { SessionRail } from './components/SessionRail';
 import { AddSessionWizard } from './components/add-session/AddSessionWizard';
 
@@ -19,7 +19,7 @@ export default function App() {
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelInitialTab, setPanelInitialTab] = useState<'overview' | 'settings'>('overview');
+  const [panelInitialTab, setPanelInitialTab] = useState<OperatorTab>('overview');
   const [wizardOpen, setWizardOpen] = useState(false);
 
   const openPanel = () => { setPanelInitialTab('overview'); setPanelOpen(true); };
