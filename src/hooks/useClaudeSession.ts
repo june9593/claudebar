@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ClaudeEvent, ClaudeEventEnvelope, ApprovalDecision, AskQuestion } from '../../shared/claude-events';
 import { useSessionStore } from '../stores/sessionStore';
+import { useApprovalsStore } from '../stores/approvalsStore';
 
 export interface ChatMessage {
   id: string;
@@ -96,6 +97,15 @@ export function useClaudeSession(
 
   const switchClaudeSession = useSessionStore((s) => s.switchClaudeSession);
   const setRealSessionId = useSessionStore((s) => s.setRealSessionId);
+
+  const setApprovalsCount = useApprovalsStore((s) => s.setCount);
+  const clearApprovalsCount = useApprovalsStore((s) => s.clear);
+
+  useEffect(() => {
+    const count = (pendingApproval ? 1 : 0) + (pendingAsk ? 1 : 0);
+    setApprovalsCount(channelId, count);
+    return () => { clearApprovalsCount(channelId); };
+  }, [channelId, pendingApproval, pendingAsk, setApprovalsCount, clearApprovalsCount]);
 
   // Track the real sessionId we accepted from the bridge's `session-started`
   // event. The renderer mints a placeholder UUID when the user clicks "new

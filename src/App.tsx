@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/settingsStore';
 import { useSessionStore } from './stores/sessionStore';
+import { useApprovalsStore } from './stores/approvalsStore';
 import { TitleBar } from './components/TitleBar';
 import { ClaudeChannel } from './components/ClaudeChannel';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -25,9 +26,7 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', resolvedTheme);
   }, [resolvedTheme]);
 
-  // Stub — Task 14 will populate this from useClaudeSession's pendingApproval
-  // aggregated across all active sessions.
-  const pendingApprovalsBySessionId: Record<string, number> = {};
+  const pendingApprovalsBySessionId = useApprovalsStore((s) => s.countBySession);
 
   const onNewSession = () => {
     // Stub — Task 17 wires up the new-session wizard
