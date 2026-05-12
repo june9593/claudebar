@@ -149,7 +149,7 @@ export function ChatView({
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
+    ta.style.height = Math.min(ta.scrollHeight, 200) + 'px';
   }, []);
 
   const handleSend = useCallback(() => {
@@ -348,7 +348,7 @@ export function ChatView({
           value={input}
           onChange={(e) => { setInput(e.target.value); adjustTextarea(); }}
           onKeyDown={handleKeyDown}
-          placeholder="Message..."
+          placeholder="Message Claude…  (Shift+Enter for newline)"
           rows={1}
           disabled={!!pendingPrompt}
           style={{
