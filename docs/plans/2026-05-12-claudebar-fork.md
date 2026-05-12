@@ -1028,6 +1028,1200 @@ If you want to keep this internal as a checkpoint, skip the release. If you want
 
 ---
 
-## Phase 2 — placeholder
+## Phase 2 — New shell (v0.6.0)
 
-Phase 2 (floating window + slim rail + slide-out operator overlay + markdown chat) and Phase 3 (the 7 operator views) will be added to this plan in subsequent edits. Phase 1 is complete and shippable on its own as v0.5.0; ship and validate it before extending the plan.
+Goal of phase: replace the popover-style window with a draggable / resizable floating window. Build the slim rail (always-visible 32px column with session icons + operator panel toggle + new-session button + settings shortcut). Build the slide-out operator panel as a left overlay (no view content yet — just the shell + a couple of stub view tabs). Add markdown rendering + syntax highlighting + multi-line input to the chat. Hook up the global shortcut + tray-toggle behavior. Ship as v0.6.0.
+
+After Phase 2, the app looks and feels like ClaudeBar — even though the operator views are stubs that get content in Phase 3.
+
+### Task 11: Convert window to standalone floating window
+
+**Files:**
+- Modify: `electron/main.ts` (BrowserWindow construction + tray click handler)
+
+The current `electron/main.ts` constructs a popover-style window (frameless, vibrancy, hides on blur, anchored to tray). We want a regular floating window: still frameless + vibrancy (looks like Edge Copilot), but draggable via the title bar, resizable, persistable position/size, and toggled by tray click rather than tray-anchored.
+
+- [ ] **Step 1: Inspect current BrowserWindow construction**
+
+```bash
+grep -n "BrowserWindow\|setBounds\|setPosition\|tray\.on\|on('click'" electron/main.ts
+```
+
+Note where the popover window is created and how the tray click is wired.
+
+- [ ] **Step 2: Rewrite createWindow + tray click handler**
+
+In `electron/main.ts`, find `function createWindow()` (or however it's named) and replace with:
+
+```ts
+function createWindow() {
+  const settings = getSettings() as {
+    windowSize?: { w: number; h: number };
+    windowPosition?: { x: number; y: number } | null;
+    alwaysOnTop?: boolean;
+    hideOnClickOutside?: boolean;
+  };
+  const size = settings.windowSize ?? { w: 400, h: 800 };
+  const pos = settings.windowPosition ?? null;
+
+  mainWindow = new BrowserWindow({
+    width: size.w,
+    height: size.h,
+    minWidth: 320,
+    minHeight: 500,
+    x: pos?.x,
+    y: pos?.y,
+    frame: false,
+    transparent: false,
+    vibrancy: process.platform === 'darwin' ? 'sidebar' : undefined,
+    visualEffectState: 'active',
+    backgroundColor: process.platform === 'darwin' ? '#00000000' : '#1a1a1a',
+    titleBarStyle: 'hidden',
+    show: false,
+    skipTaskbar: false,
+    alwaysOnTop: settings.alwaysOnTop ?? false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      sandbox: true,
+      nodeIntegration: false,
+      webviewTag: false,
+    },
+  });
+
+  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+    mainWindow.loadURL('http://localhost:5173');
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+  }
+
+  // Track visibility for tray toggle
+  mainWindow.on('show', () => { windowVisible = true; });
+  mainWindow.on('hide', () => { windowVisible = false; });
+  mainWindow.on('close', (e) => {
+    // Hide instead of quit; user must use tray Quit menu
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow?.hide();
+    }
+  });
+
+  // Persist size + position on user resize/drag
+  const persistBounds = () => {
+    if (!mainWindow) return;
+    const [w, h] = mainWindow.getSize();
+    const [x, y] = mainWindow.getPosition();
+    setSetting('windowSize', { w, h });
+    setSetting('windowPosition', { x, y });
+  };
+  mainWindow.on('resized', persistBounds);
+  mainWindow.on('moved', persistBounds);
+
+  // Optional: hide on blur (off by default per spec — float windows shouldn't auto-hide)
+  mainWindow.on('blur', () => {
+    const s = getSettings() as { hideOnClickOutside?: boolean };
+    if (s.hideOnClickOutside) mainWindow?.hide();
+  });
+}
+```
+
+Add the `isQuitting` flag at the top of the file:
+
+```ts
+let isQuitting = false;
+```
+
+And in the existing `app.on('before-quit', ...)`:
+
+```ts
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+```
+
+- [ ] **Step 3: Replace tray click handler**
+
+Find the existing tray click handler (search for `tray.on('click'` or `tray.setContextMenu`). Replace with a simple toggle:
+
+```ts
+function showWindow() {
+  if (!mainWindow) return;
+  mainWindow.show();
+  mainWindow.focus();
+}
+function hideWindow() {
+  mainWindow?.hide();
+}
+function toggleWindow() {
+  if (!mainWindow) return;
+  if (windowVisible) hideWindow();
+  else showWindow();
+}
+
+// Wiring:
+tray?.on('click', toggleWindow);
+```
+
+(Right-click should still pop a context menu — the existing one with Quit / Switch Pet / etc. is fine to keep.)
+
+- [ ] **Step 4: Hide dock icon on macOS**
+
+`app.dock?.hide()` should already exist (ClawBar uses it). Confirm:
+
+```bash
+grep -n "dock\.hide\|app.dock" electron/main.ts
+```
+
+If missing, add at the top of whenReady (after migration + hydration):
+
+```ts
+app.dock?.hide();
+```
+
+- [ ] **Step 5: Build + run**
+
+```bash
+npm run build
+npm run dev:electron
+```
+
+Expected: window opens at center of screen, 400×800. Drag the (still empty) TitleBar — window moves. Resize from corners — window resizes, dimensions persist (close + relaunch, comes back at same size and position). Click tray → window toggles visibility. Right-click tray → menu still works.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add electron/main.ts
+git commit -m "feat(window): standalone floating window (400×800, draggable, resizable)
+
+Tray click toggles visibility instead of anchoring popover. Window
+position + size persisted to settings on user adjustment, restored
+next launch. Closing the window hides instead of quits — Quit lives
+on tray right-click menu. hideOnClickOutside default false (float
+windows shouldn't auto-hide)."
+```
+
+---
+
+### Task 12: Wire global shortcut
+
+**Files:**
+- Modify: `electron/main.ts`
+
+- [ ] **Step 1: Add globalShortcut import + registration**
+
+In `electron/main.ts`, add to imports:
+
+```ts
+import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, screen, globalShortcut } from 'electron';
+```
+
+In the `whenReady().then(async () => { ... })` block, after `createWindow()`:
+
+```ts
+const settings = getSettings() as { globalShortcut?: string };
+const shortcut = settings.globalShortcut ?? (process.platform === 'darwin' ? 'CommandOrControl+Shift+C' : 'Control+Shift+C');
+const ok = globalShortcut.register(shortcut, toggleWindow);
+if (!ok) {
+  // eslint-disable-next-line no-console
+  console.warn(`[shortcut] failed to register ${shortcut}`);
+}
+```
+
+In `app.on('will-quit', ...)` (add the handler if it doesn't exist):
+
+```ts
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
+});
+```
+
+- [ ] **Step 2: Re-register shortcut on settings change**
+
+Settings IPC already broadcasts `settings:changed` events (or has the callback in the renderer's `updateSetting`). For simplicity, watch via the main-process settings module: in `electron/ipc/settings.ts`, after `setSetting` writes, emit a `globalShortcutChanged` if the key was `globalShortcut`. Then in `main.ts`:
+
+```ts
+// Pseudo — adapt to actual settings module API. If settings doesn't
+// have an event emitter, wrap setSetting in main.ts and intercept the
+// globalShortcut key.
+import { onSettingChanged } from './ipc/settings';
+
+onSettingChanged('globalShortcut', (value: string) => {
+  globalShortcut.unregisterAll();
+  globalShortcut.register(value, toggleWindow);
+});
+```
+
+If the settings module doesn't expose `onSettingChanged`, add it:
+
+In `electron/ipc/settings.ts`, near `setSetting`:
+
+```ts
+type Listener = (value: unknown) => void;
+const listeners = new Map<string, Listener[]>();
+
+export function onSettingChanged(key: string, fn: Listener): void {
+  const arr = listeners.get(key) ?? [];
+  arr.push(fn);
+  listeners.set(key, arr);
+}
+
+// In setSetting, after the write:
+const arr = listeners.get(key) ?? [];
+for (const fn of arr) fn(value);
+```
+
+- [ ] **Step 3: Build + verify**
+
+```bash
+npm run build && npm run dev:electron
+```
+
+Press `Cmd+Shift+C` (macOS) — window should toggle. Open Settings, change shortcut to `Cmd+Shift+J`, press it — should now toggle. Old `Cmd+Shift+C` should not.
+
+(Settings UI for changing shortcut isn't built yet — Phase 3. For now you can verify by editing `~/.claudebar/settings.json` directly and restarting.)
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add electron/main.ts electron/ipc/settings.ts
+git commit -m "feat(shortcut): global shortcut toggles window visibility
+
+Default Cmd+Shift+C / Ctrl+Shift+C; rebindable via settings.globalShortcut.
+Listener system added to settings module so shortcut changes
+re-register without an app restart."
+```
+
+---
+
+### Task 13: Build SessionRail component
+
+**Files:**
+- Create: `src/components/SessionRail.tsx`
+- Modify: `src/App.tsx` (mount rail to the left of chat)
+
+The slim rail per spec §4: 32px wide, always visible. From top to bottom: panel-toggle button, new-session button, one icon per session (with red badge for pending approvals), Settings button at the bottom.
+
+- [ ] **Step 1: Create the rail**
+
+Create `src/components/SessionRail.tsx`:
+
+```tsx
+import { Plus, Menu, Settings as SettingsIcon } from 'lucide-react';
+import { useSessionStore } from '../stores/sessionStore';
+import type { ClaudeSession } from '../types';
+
+interface Props {
+  onOpenPanel: () => void;
+  onOpenSettings: () => void;
+  onNewSession: () => void;
+  pendingApprovalsBySessionId: Record<string, number>;
+}
+
+export function SessionRail({ onOpenPanel, onOpenSettings, onNewSession, pendingApprovalsBySessionId }: Props) {
+  const sessions = useSessionStore((s) => s.sessions.filter((x) => x.enabled));
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const setActive = useSessionStore((s) => s.setActive);
+
+  return (
+    <div style={{
+      width: 32,
+      flexShrink: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      borderRight: '0.5px solid var(--color-border-primary)',
+      background: 'var(--color-bg-secondary)',
+      paddingTop: 6,
+      paddingBottom: 6,
+    }}>
+      <RailButton label="Operator panel" onClick={onOpenPanel}>
+        <Menu size={16} strokeWidth={1.75} />
+      </RailButton>
+      <RailButton label="New session" onClick={onNewSession}>
+        <Plus size={16} strokeWidth={1.75} />
+      </RailButton>
+
+      <div style={{ height: 8 }} />
+      <div style={{ flex: 1, overflowY: 'auto', width: '100%' }}>
+        {sessions.map((s) => (
+          <SessionRailIcon
+            key={s.id}
+            session={s}
+            active={s.id === activeSessionId}
+            pendingApprovals={pendingApprovalsBySessionId[s.id] ?? 0}
+            onClick={() => setActive(s.id)}
+          />
+        ))}
+      </div>
+
+      <RailButton label="Settings" onClick={onOpenSettings}>
+        <SettingsIcon size={16} strokeWidth={1.75} />
+      </RailButton>
+    </div>
+  );
+}
+
+function RailButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      style={{
+        width: 28, height: 28,
+        background: 'transparent', border: 'none', cursor: 'pointer',
+        color: 'var(--color-text-secondary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        borderRadius: 6,
+        margin: '2px 0',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-bg-hover)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SessionRailIcon({ session, active, pendingApprovals, onClick }: {
+  session: ClaudeSession;
+  active: boolean;
+  pendingApprovals: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={session.name}
+      aria-label={session.name}
+      style={{
+        position: 'relative',
+        width: 28, height: 28,
+        background: active ? 'var(--color-bg-hover)' : 'transparent',
+        border: 'none', cursor: 'pointer',
+        borderRadius: 6,
+        margin: '2px 0',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
+        fontSize: 11, fontWeight: 600,
+      }}
+    >
+      {/* Phase 3 swaps this letter for the ClaudePet variant icon
+         hashed from project + session id. */}
+      {session.iconLetter || '?'}
+      {pendingApprovals > 0 && (
+        <span style={{
+          position: 'absolute',
+          top: 0, right: 0,
+          background: 'var(--color-status-disconnected, #e53)',
+          color: 'white',
+          borderRadius: 8,
+          minWidth: 14, height: 14,
+          padding: '0 3px',
+          fontSize: 9, fontWeight: 700,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          lineHeight: 1,
+        }}>
+          {pendingApprovals > 9 ? '9+' : pendingApprovals}
+        </span>
+      )}
+    </button>
+  );
+}
+```
+
+- [ ] **Step 2: Mount in App.tsx**
+
+Replace `src/App.tsx`'s render block to include the rail to the left of the chat area:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { useSettingsStore } from './stores/settingsStore';
+import { useSessionStore } from './stores/sessionStore';
+import { TitleBar } from './components/TitleBar';
+import { ClaudeChannel } from './components/ClaudeChannel';
+import { SettingsPanel } from './components/SettingsPanel';
+import { SessionRail } from './components/SessionRail';
+
+export default function App() {
+  const hydrated = useSettingsStore((s) => s.hydrated);
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const syncFromSettings = useSessionStore((s) => s.syncFromSettings);
+
+  const sessions = useSessionStore((s) => s.sessions);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
+  useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
+
+  // Stub — Task 14 will populate this from useClaudeSession's pendingApproval
+  // aggregated across all active sessions.
+  const pendingApprovalsBySessionId: Record<string, number> = {};
+
+  const onNewSession = () => {
+    // Stub — Task 16 wires up the new-session wizard
+    // eslint-disable-next-line no-console
+    console.log('TODO: open new-session wizard');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <SessionRail
+          onOpenPanel={() => setPanelOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onNewSession={onNewSession}
+          pendingApprovalsBySessionId={pendingApprovalsBySessionId}
+        />
+        <div style={{ flex: 1, position: 'relative' }}>
+          {activeSession
+            ? <ClaudeChannel channel={activeSession} isActive />
+            : <EmptyState />}
+          {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+          {panelOpen && (
+            <div
+              onClick={() => setPanelOpen(false)}
+              style={{
+                position: 'absolute', inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                zIndex: 50,
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: 280, height: '100%',
+                  background: 'var(--color-bg-primary)',
+                  borderRight: '0.5px solid var(--color-border-primary)',
+                  padding: 16,
+                  fontSize: 12,
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                Operator panel — Phase 3 fills the 7 view tabs here.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div style={{
+      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'var(--color-text-tertiary)', fontSize: 13, padding: 24, textAlign: 'center',
+    }}>
+      No active session. Click + on the rail to start one.
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: Build + verify visually**
+
+```bash
+npm run dev
+# in another terminal:
+npm run dev:electron
+```
+
+Expected: window now has a 32px-wide left rail with 4 icons (panel, +, settings) and any sessions you have. Click + → console logs "TODO". Click panel-toggle → semi-transparent overlay with stub panel slides in. Click backdrop → closes.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/SessionRail.tsx src/App.tsx
+git commit -m "feat(ui): SessionRail + slide-out operator overlay shell
+
+32px left rail with panel toggle / new-session / settings + per-session
+icons. Operator overlay opens as left sidebar with backdrop click-to-
+dismiss. Pending-approval red badge plumbing in place (sources stubbed
+in Task 14). New-session button stubbed — Task 16 wires the wizard."
+```
+
+---
+
+### Task 14: Aggregate pending approvals across sessions
+
+**Files:**
+- Create: `src/stores/approvalsStore.ts` (lightweight global counter)
+- Modify: `src/hooks/useClaudeSession.ts` (publish pending count to the store)
+- Modify: `src/App.tsx` (subscribe + pass to SessionRail)
+
+The red badge needs to know "how many pending approvals + AskUserQuestions does each session have right now". `useClaudeSession` already tracks `pendingApproval` and `pendingAsk` per session. We need to lift that info to a global store so the rail can render badges for sessions whose chat isn't currently visible.
+
+- [ ] **Step 1: Create the store**
+
+Create `src/stores/approvalsStore.ts`:
+
+```ts
+import { create } from 'zustand';
+
+interface ApprovalsState {
+  // sessionRowId → count of (pendingApproval ? 1 : 0) + (pendingAsk ? 1 : 0)
+  countBySession: Record<string, number>;
+  setCount: (sessionRowId: string, count: number) => void;
+  clear: (sessionRowId: string) => void;
+}
+
+export const useApprovalsStore = create<ApprovalsState>((set) => ({
+  countBySession: {},
+  setCount: (sessionRowId, count) => set((s) => {
+    const next = { ...s.countBySession };
+    if (count <= 0) delete next[sessionRowId];
+    else next[sessionRowId] = count;
+    return { countBySession: next };
+  }),
+  clear: (sessionRowId) => set((s) => {
+    const next = { ...s.countBySession };
+    delete next[sessionRowId];
+    return { countBySession: next };
+  }),
+}));
+```
+
+- [ ] **Step 2: Publish count from useClaudeSession**
+
+In `src/hooks/useClaudeSession.ts`, near the top imports:
+
+```ts
+import { useApprovalsStore } from '../stores/approvalsStore';
+```
+
+Inside the hook body, after the `pendingApproval` / `pendingAsk` `useState` declarations, add:
+
+```ts
+const setApprovalsCount = useApprovalsStore((s) => s.setCount);
+const clearApprovalsCount = useApprovalsStore((s) => s.clear);
+
+useEffect(() => {
+  const count = (pendingApproval ? 1 : 0) + (pendingAsk ? 1 : 0);
+  setApprovalsCount(channelId, count);
+  return () => { clearApprovalsCount(channelId); };
+}, [channelId, pendingApproval, pendingAsk, setApprovalsCount, clearApprovalsCount]);
+```
+
+This makes the count globally readable, and clears it when the hook unmounts (session closed).
+
+- [ ] **Step 3: Read in App.tsx**
+
+Replace the stub in `App.tsx`:
+
+```tsx
+import { useApprovalsStore } from './stores/approvalsStore';
+// ...
+const pendingApprovalsBySessionId = useApprovalsStore((s) => s.countBySession);
+```
+
+Delete the empty stub object.
+
+- [ ] **Step 4: Smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Manually trigger an approval (have a session run a tool that requires approval). Verify the badge appears on the session icon when the approval card is visible, disappears when you approve/deny.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/stores/approvalsStore.ts src/hooks/useClaudeSession.ts src/App.tsx
+git commit -m "feat(approvals): per-session pending count in global store
+
+useClaudeSession publishes (pendingApproval ? 1 : 0) + (pendingAsk ? 1 : 0)
+to approvalsStore.countBySession[channelId]. SessionRail reads it and
+shows a red badge with the count (9+ when >9). Replaces the dropped
+ApprovalsView (spec §4 Q7 decision)."
+```
+
+---
+
+### Task 15: Add markdown + syntax highlighting to chat
+
+**Files:**
+- Create: `src/components/Markdown.tsx`
+- Modify: `src/components/ChatView.tsx` (use Markdown for assistant messages)
+- Modify: `package.json` (add deps)
+
+Per spec §8: `react-markdown` + `remark-gfm` + `react-syntax-highlighter` (locked in plan header).
+
+- [ ] **Step 1: Install deps**
+
+```bash
+npm install react-markdown remark-gfm react-syntax-highlighter
+npm install -D @types/react-syntax-highlighter
+```
+
+- [ ] **Step 2: Create the Markdown component**
+
+Create `src/components/Markdown.tsx`:
+
+```tsx
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
+import { useSettingsStore } from '../stores/settingsStore';
+
+interface Props { source: string; }
+
+export function Markdown({ source }: Props) {
+  const theme = useSettingsStore((s) => (s as unknown as { resolvedTheme?: 'light' | 'dark' }).resolvedTheme);
+  const isDark = theme === 'dark';
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        code({ inline, className, children, ...rest }: {
+          inline?: boolean;
+          className?: string;
+          children?: React.ReactNode;
+        } & React.HTMLAttributes<HTMLElement>) {
+          const match = /language-(\w+)/.exec(className ?? '');
+          const code = String(children ?? '').replace(/\n$/, '');
+          if (!inline && match) {
+            return <CodeBlock language={match[1]} code={code} isDark={isDark} />;
+          }
+          return (
+            <code
+              className={className}
+              style={{
+                background: 'var(--color-bg-input)',
+                padding: '1px 5px', borderRadius: 4,
+                fontFamily: 'var(--font-mono)', fontSize: '0.9em',
+              }}
+              {...rest}
+            >
+              {children}
+            </code>
+          );
+        },
+        a({ href, children }) {
+          return (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}
+            >
+              {children}
+            </a>
+          );
+        },
+      }}
+    >
+      {source}
+    </ReactMarkdown>
+  );
+}
+
+function CodeBlock({ language, code, isDark }: { language: string; code: string; isDark: boolean }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+  return (
+    <div style={{ position: 'relative', margin: '8px 0' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'var(--color-bg-tertiary)',
+        padding: '4px 8px',
+        borderTopLeftRadius: 6, borderTopRightRadius: 6,
+        fontSize: 11, color: 'var(--color-text-tertiary)',
+        borderBottom: '0.5px solid var(--color-border-primary)',
+      }}>
+        <span>{language}</span>
+        <button
+          onClick={onCopy}
+          aria-label="Copy code"
+          style={{
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            color: 'inherit', display: 'flex', alignItems: 'center', gap: 4,
+          }}
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language}
+        style={isDark ? oneDark : oneLight}
+        customStyle={{
+          margin: 0,
+          borderTopLeftRadius: 0, borderTopRightRadius: 0,
+          borderBottomLeftRadius: 6, borderBottomRightRadius: 6,
+          fontSize: 12,
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 3: Use Markdown in ChatView**
+
+Open `src/components/ChatView.tsx`. Find the assistant-message rendering (the `<div>` containing the assistant text). Replace plain text rendering with:
+
+```tsx
+import { Markdown } from './Markdown';
+// ...
+// Where assistant message body is rendered today (likely something like {message.content}):
+<Markdown source={message.content} />
+```
+
+Keep user messages as plain text (no markdown — user input stays literal).
+
+- [ ] **Step 4: Build + visual check**
+
+```bash
+npm run dev:electron
+```
+
+Send a message asking Claude to write a code snippet. Verify:
+- Code block renders with syntax highlight
+- "Copy" button appears top-right of the code block, copies on click
+- Bullet lists / `**bold**` / `[links](https://x)` render correctly
+- Inline `code` is highlighted with a subtle background
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add package.json package-lock.json src/components/Markdown.tsx src/components/ChatView.tsx
+git commit -m "feat(chat): markdown rendering + code-block highlighting
+
+react-markdown + remark-gfm for GFM (tables, task lists, strikethrough,
+autolinks). react-syntax-highlighter (Prism, oneDark/oneLight) for code
+blocks. Per-block 'Copy' button. Inline code styled subtly."
+```
+
+---
+
+### Task 16: Multi-line input with Shift+Enter newline
+
+**Files:**
+- Modify: `src/components/ChatView.tsx` (input element)
+
+The current input is likely a single-line `<input>`. Replace with an auto-growing `<textarea>` where Enter sends and Shift+Enter inserts a newline.
+
+- [ ] **Step 1: Find the current input**
+
+```bash
+grep -n "input\|textarea\|onKeyDown" src/components/ChatView.tsx | head
+```
+
+- [ ] **Step 2: Replace with auto-growing textarea**
+
+In `src/components/ChatView.tsx`, find the input render (probably the bottom of the component). Replace with this textarea pattern:
+
+```tsx
+import { useRef, useEffect } from 'react';
+// (add to existing imports if not already there)
+
+// State (already present, but if not):
+const [text, setText] = useState('');
+const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+// Auto-grow on text change:
+useEffect(() => {
+  const el = textareaRef.current;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';  // cap at 200px
+}, [text]);
+
+const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+    e.preventDefault();
+    if (text.trim()) {
+      sendMessage(text.trim());
+      setText('');
+    }
+  }
+  // Shift+Enter: default behavior inserts newline; do nothing.
+};
+
+// In the JSX where the old input was:
+<div style={{
+  borderTop: '0.5px solid var(--color-border-primary)',
+  padding: 8,
+  background: 'var(--color-bg-secondary)',
+  display: 'flex', gap: 6, alignItems: 'flex-end',
+}}>
+  <textarea
+    ref={textareaRef}
+    value={text}
+    onChange={(e) => setText(e.target.value)}
+    onKeyDown={onKeyDown}
+    placeholder="Message Claude…  (Shift+Enter for newline)"
+    rows={1}
+    style={{
+      flex: 1,
+      resize: 'none',
+      minHeight: 28, maxHeight: 200,
+      padding: '6px 10px',
+      borderRadius: 8,
+      border: '0.5px solid var(--color-border-primary)',
+      background: 'var(--color-bg-input)',
+      color: 'var(--color-text-primary)',
+      fontFamily: 'inherit', fontSize: 13,
+      outline: 'none',
+      lineHeight: '1.4',
+    }}
+  />
+  <button
+    onClick={() => { if (text.trim()) { sendMessage(text.trim()); setText(''); } }}
+    disabled={!text.trim() || isTyping}
+    style={{
+      padding: '6px 12px',
+      borderRadius: 8,
+      border: 'none',
+      background: 'var(--color-accent)', color: 'white',
+      cursor: 'pointer',
+      fontSize: 13,
+    }}
+  >
+    Send
+  </button>
+</div>
+```
+
+(If a Stop / abort button already exists in the chat for in-flight turns, keep it — render it conditionally based on `isTyping`.)
+
+- [ ] **Step 3: Visual smoke test**
+
+```bash
+npm run dev:electron
+```
+
+Type a multi-line message: `line 1`, `Shift+Enter`, `line 2`. Send. Verify both lines transmit. Send a long message — textarea grows up to 200px then scrolls.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/ChatView.tsx
+git commit -m "feat(chat): multi-line input with Shift+Enter newline
+
+Textarea auto-grows up to 200px then scrolls. Enter sends, Shift+Enter
+inserts newline. Send button disabled when empty or while assistant is
+typing."
+```
+
+---
+
+### Task 17: New-session wizard wired to rail's + button
+
+**Files:**
+- Create: `src/components/add-session/AddSessionWizard.tsx` (rebuild — Task 5 deleted the old one)
+- Modify: `src/App.tsx` (mount the wizard)
+
+Reuse the project picker + session picker logic from the old `ClaudeWizard.tsx` (it lived in `src/components/add-channel/`). The mechanics are unchanged: pick project → pick session (resume) or new. Just renamed and freed of the channel-add concept.
+
+- [ ] **Step 1: Create the wizard component**
+
+Create `src/components/add-session/AddSessionWizard.tsx`:
+
+```tsx
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
+import { useSessionStore } from '../../stores/sessionStore';
+
+interface Props {
+  onClose: () => void;
+}
+
+type Step = 'projects' | 'sessions';
+
+function shortName(p: string): string {
+  const parts = p.split('/').filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : p;
+}
+function firstLetter(s: string): string {
+  return s.replace(/[^a-zA-Z0-9]/g, '').slice(0, 1).toUpperCase() || '?';
+}
+function colorFromKey(key: string): string {
+  // Cheap hash → hue; saturation/lightness fixed for legibility
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
+  return `hsl(${Math.abs(h) % 360} 60% 50%)`;
+}
+function relativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+export function AddSessionWizard({ onClose }: Props) {
+  const cliStatus = useClaudeSessionsStore((s) => s.cliStatus);
+  const cliCheckState = useClaudeSessionsStore((s) => s.cliCheckState);
+  const projects = useClaudeSessionsStore((s) => s.projects);
+  const projectsState = useClaudeSessionsStore((s) => s.projectsState);
+  const sessionsByKey = useClaudeSessionsStore((s) => s.sessionsByKey);
+  const sessionsState = useClaudeSessionsStore((s) => s.sessionsState);
+  const errorMsg = useClaudeSessionsStore((s) => s.errorMsg);
+  const checkCli = useClaudeSessionsStore((s) => s.checkCli);
+  const loadProjects = useClaudeSessionsStore((s) => s.loadProjects);
+  const loadSessions = useClaudeSessionsStore((s) => s.loadSessions);
+  const reset = useClaudeSessionsStore((s) => s.reset);
+
+  const addClaude = useSessionStore((s) => s.addClaude);
+
+  const [step, setStep] = useState<Step>('projects');
+  const [pickedProject, setPickedProject] = useState<{ key: string; decodedPath: string } | null>(null);
+
+  useEffect(() => {
+    reset();
+    (async () => {
+      await checkCli();
+      const status = useClaudeSessionsStore.getState().cliStatus;
+      if (status?.found) await loadProjects();
+    })();
+  }, [reset, checkCli, loadProjects]);
+
+  const finish = (sessionId: string, preview: string) => {
+    if (!pickedProject) return;
+    const sn = shortName(pickedProject.decodedPath);
+    addClaude({
+      projectDir: pickedProject.decodedPath,
+      projectKey: pickedProject.key,
+      sessionId,
+      preview,
+      iconLetter: firstLetter(sn),
+      iconColor: colorFromKey(pickedProject.key),
+    });
+    onClose();
+  };
+
+  const newSession = () => {
+    if (!pickedProject) return;
+    finish(crypto.randomUUID(), '');
+  };
+
+  return createPortal(
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 99 }} />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed', left: '50%', top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 360, maxHeight: '80vh', overflowY: 'auto',
+          background: 'var(--color-bg-primary)',
+          border: '0.5px solid var(--color-border-primary)',
+          borderRadius: 12,
+          boxShadow: 'var(--shadow-card)',
+          padding: 16, zIndex: 100,
+        }}
+      >
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--color-text-primary)' }}>
+          {step === 'projects' ? 'Pick a project' : `Pick a session — ${shortName(pickedProject?.decodedPath ?? '')}`}
+        </div>
+
+        {(cliCheckState === 'loading' || cliCheckState === 'idle') && <Spinner label="Checking for Claude CLI…" />}
+        {cliStatus && !cliStatus.found && (
+          <div style={{ padding: 12, fontSize: 12 }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Claude CLI not found</div>
+            <pre style={{ background: 'var(--color-bg-input)', padding: 8, borderRadius: 6, fontSize: 11 }}>npm install -g @anthropic-ai/claude-code</pre>
+          </div>
+        )}
+
+        {cliStatus?.found && step === 'projects' && (
+          <>
+            {projectsState === 'loading' && <Spinner label="Scanning projects…" />}
+            {projectsState === 'error' && <ErrorBox msg={errorMsg ?? 'unknown error'} />}
+            {projectsState === 'ready' && projects.length === 0 && (
+              <div style={{ padding: 12, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+                No projects yet. Run <code>claude</code> in a directory first.
+              </div>
+            )}
+            {projectsState === 'ready' && projects.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => { setPickedProject({ key: p.key, decodedPath: p.decodedPath }); setStep('sessions'); loadSessions(p.key); }}
+                style={rowStyle}
+              >
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.decodedPath}</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{p.sessionCount} session{p.sessionCount === 1 ? '' : 's'}</div>
+                </div>
+                <span style={{ color: 'var(--color-text-tertiary)' }}>›</span>
+              </button>
+            ))}
+          </>
+        )}
+
+        {cliStatus?.found && step === 'sessions' && pickedProject && (
+          <>
+            <button
+              onClick={() => { setStep('projects'); setPickedProject(null); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--color-accent)', cursor: 'pointer', fontSize: 12, marginBottom: 8 }}
+            >
+              ← Projects
+            </button>
+            <button onClick={newSession} style={{ ...rowStyle, color: 'var(--color-accent)' }}>
+              <span style={{ fontSize: 18, marginRight: 4 }}>+</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>New session in this directory</span>
+            </button>
+            {(() => {
+              const state = sessionsState[pickedProject.key];
+              const list = sessionsByKey[pickedProject.key] ?? [];
+              if (state === 'loading') return <Spinner label="Loading sessions…" inline />;
+              if (state === 'error') return <ErrorBox msg={errorMsg ?? 'unknown error'} />;
+              if (state === 'ready' && list.length === 0) {
+                return <div style={{ padding: 12, fontSize: 12, color: 'var(--color-text-tertiary)' }}>No sessions yet.</div>;
+              }
+              return list.map((s) => (
+                <button key={s.sessionId} onClick={() => finish(s.sessionId, s.preview)} style={rowStyle}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.preview || '(empty session)'}</div>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>{relativeTime(s.mtime)}</div>
+                  </div>
+                </button>
+              ));
+            })()}
+          </>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--color-text-secondary)', fontSize: 12, padding: '4px 10px' }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </>,
+    document.body,
+  );
+}
+
+const rowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 8,
+  width: '100%', padding: '8px 8px', borderRadius: 6,
+  border: 'none', background: 'transparent', cursor: 'pointer',
+  textAlign: 'left',
+};
+
+function Spinner({ label, inline }: { label: string; inline?: boolean }) {
+  return (
+    <div style={{ padding: inline ? '8px 0' : '20px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--color-text-tertiary)', fontSize: 12 }}>
+      <span style={{ width: 12, height: 12, border: '2px solid var(--color-border-primary)', borderTopColor: 'var(--color-accent)', borderRadius: '50%', animation: 'cw-spin 0.8s linear infinite' }} />
+      <span>{label}</span>
+      <style>{`@keyframes cw-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function ErrorBox({ msg }: { msg: string }) {
+  return <div style={{ padding: 10, fontSize: 12, color: 'var(--color-status-disconnected, #e53)', background: 'var(--color-bg-input)', borderRadius: 6, margin: '6px 0' }}>{msg}</div>;
+}
+```
+
+- [ ] **Step 2: Wire into App.tsx**
+
+In `src/App.tsx`, replace the stub onNewSession:
+
+```tsx
+import { AddSessionWizard } from './components/add-session/AddSessionWizard';
+
+// ...
+const [wizardOpen, setWizardOpen] = useState(false);
+
+// Replace the onNewSession stub:
+const onNewSession = () => setWizardOpen(true);
+
+// In the render block, add inside the chat area's relative container:
+{wizardOpen && <AddSessionWizard onClose={() => setWizardOpen(false)} />}
+```
+
+- [ ] **Step 3: Smoke test end-to-end**
+
+```bash
+npm run dev:electron
+```
+
+Click + on rail. Wizard opens. Pick project, pick "New session in this directory". Wizard closes. New session icon appears on rail and is set active. Type a message — Claude responds. Verify the markdown rendering + code highlighting works.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/add-session/AddSessionWizard.tsx src/App.tsx
+git commit -m "feat(ui): AddSessionWizard wired to rail + button
+
+Reuses claudeSessionsStore (CLI check, project scan, session listing).
+Resume an existing session OR start fresh; resumes are validated by
+existence of the .jsonl, new sessions get a placeholder UUID per the
+new-session id mirroring invariant (claude-bridge handles the resume
+guard, see memory)."
+```
+
+---
+
+### Task 18: Verify Phase 2 ships, tag v0.6.0
+
+**Files:** none (release prep)
+
+- [ ] **Step 1: Full clean + build**
+
+```bash
+npm run clean
+npm run build
+```
+
+Expected: clean.
+
+- [ ] **Step 2: Local DMG smoke test**
+
+```bash
+npm run pack:mac:dmg:arm64
+```
+
+Mount DMG, install, launch from Finder. Verify:
+- Window opens at center of screen, 400×800
+- Drag the title bar — window moves
+- Resize from corners — persists across relaunch
+- Tray click toggles
+- `Cmd+Shift+C` toggles
+- Click + on rail → wizard → pick project → new session → can chat
+- Markdown renders, code highlights, Copy button works
+- Multi-line: Shift+Enter inserts newline
+- Tool call needing approval → red badge appears on session icon
+- Switch to a different session → badge stays on the original session's icon
+
+- [ ] **Step 3: Tag**
+
+```bash
+git tag v0.6.0
+git push origin main
+git push origin v0.6.0
+```
+
+This is the first version that "feels like ClaudeBar". Worth a public release with DMG attached.
+
+---
+
+
