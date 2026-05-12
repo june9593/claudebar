@@ -16,25 +16,21 @@ export function Markdown({ source }: Props) {
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       components={{
-        code({ className, children, node, ...rest }) {
-          // In react-markdown v10 there is no `inline` prop.
-          // A fenced code block produces <pre><code class="language-x">…</code></pre>.
-          // An inline code span produces <code> without a parent <pre>.
-          const isBlock = node?.position
-            ? (() => {
-                // parent is <pre> when it's a fenced block
-                const parent = (node as unknown as { data?: { hast?: { tagName?: string } }; parent?: { type?: string; tagName?: string } }).parent;
-                return parent?.tagName === 'pre';
-              })()
-            : false;
+        code({ className, children, ...rest }) {
+          // react-markdown v10 dropped the `inline` prop. Distinguish fenced
+          // blocks from inline code by the className: fenced blocks emit
+          // `<code class="language-x">` (or, if no language hint, the parent
+          // <pre> still wraps; we detect the multi-line case by looking for
+          // newlines in the code text).
+          const codeText = String(children ?? '').replace(/\n$/, '');
           const match = /language-(\w+)/.exec(className ?? '');
-          const code = String(children ?? '').replace(/\n$/, '');
+          const isFencedWithLang = !!match;
+          const isFencedNoLang = !match && codeText.includes('\n');
 
-          if (isBlock && match) {
-            return <CodeBlock language={match[1]} code={code} isDark={isDark} />;
+          if (isFencedWithLang) {
+            return <CodeBlock language={match[1]} code={codeText} isDark={isDark} />;
           }
-          // Fenced block without language hint — still render as block if has newlines
-          if (isBlock) {
+          if (isFencedNoLang) {
             return (
               <pre style={{ margin: '8px 0', borderRadius: 6, overflow: 'auto' }}>
                 <code
