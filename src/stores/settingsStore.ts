@@ -24,7 +24,7 @@ const defaults: Settings = {
   windowPosition: null,
   alwaysOnTop: false,
   hideOnClickOutside: false,
-  globalShortcut: 'Cmd+Shift+C',
+  globalShortcut: typeof process !== 'undefined' && process.platform === 'darwin' ? 'Cmd+Shift+C' : 'Ctrl+Shift+C',
   petVisible: true,
   petKind: 'claude',
 
