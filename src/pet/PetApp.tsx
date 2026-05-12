@@ -4,12 +4,10 @@ import ClaudePet from './ClaudePet';
 import './pet.css';
 
 type PetState = 'idle' | 'hover' | 'active' | 'notification' | 'disconnected';
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 type PetKind = 'lobster' | 'claude';
 
 const PetApp: React.FC = () => {
   const [petState, setPetState] = useState<PetState>('idle');
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [petKind, setPetKind] = useState<PetKind>('lobster');
   const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isDraggingRef = useRef(false);
@@ -27,31 +25,6 @@ const PetApp: React.FC = () => {
     loadKind();
     const t = setInterval(loadKind, 2000);
     return () => { cancelled = true; clearInterval(t); };
-  }, []);
-
-  // Listen for ws:status from main process
-  useEffect(() => {
-    const cleanup = window.electronAPI.ws.onStatus((status) => {
-      if (status.connected) {
-        setConnectionStatus('connected');
-        // Clear disconnected state when reconnected
-        setPetState((prev) => (prev === 'disconnected' ? 'idle' : prev));
-      } else if (status.error) {
-        setConnectionStatus('disconnected');
-        setPetState('disconnected');
-      } else {
-        setConnectionStatus('connecting');
-      }
-    });
-    return cleanup;
-  }, []);
-
-  // Listen for approval events → notification state
-  useEffect(() => {
-    const cleanup = window.electronAPI.ws.onApproval(() => {
-      setPetState('notification');
-    });
-    return cleanup;
   }, []);
 
   const handleMouseEnter = useCallback(() => {
@@ -117,10 +90,6 @@ const PetApp: React.FC = () => {
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
-  const statusDotClass = connectionStatus === 'disconnected' ? 'error'
-    : connectionStatus === 'connecting' ? 'connecting'
-    : '';
-
   return (
     <div
       className={`pet-container state-${petState}`}
@@ -134,7 +103,6 @@ const PetApp: React.FC = () => {
         {petKind === 'claude' ? <ClaudePet /> : <LobsterPet />}
       </div>
       <div className="pet-shadow" />
-      <div className={`status-dot ${statusDotClass}`} />
     </div>
   );
 };
