@@ -8,6 +8,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 export default function App() {
   const hydrated = useSettingsStore((s) => s.hydrated);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
+  const resolvedTheme = useSettingsStore((s) => s.resolvedTheme);
   const syncFromSettings = useSessionStore((s) => s.syncFromSettings);
 
   const sessions = useSessionStore((s) => s.sessions);
@@ -18,6 +19,9 @@ export default function App() {
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+  }, [resolvedTheme]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
