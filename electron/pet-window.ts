@@ -15,7 +15,7 @@ let dragOffset = { x: 0, y: 0 };
 
 function getPetBoundsPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(homeDir, '.clawbar', 'pet-bounds.json');
+  return path.join(homeDir, '.claudebar', 'pet-bounds.json');
 }
 
 function savePetBounds() {

@@ -29,7 +29,7 @@ const ALLOW_PREFIXES = ['ANTHROPIC_', 'CLAUDE_'];
 const DIAG_DIR = path.join(os.homedir(), '.claudebar');
 const DIAG_FILE = path.join(DIAG_DIR, 'auth-debug.log');
 
-/** Append a diagnostic line to ~/.clawbar/auth-debug.log so we can inspect
+/** Append a diagnostic line to ~/.claudebar/auth-debug.log so we can inspect
  *  what hydration actually did, even when stdout is swallowed by launchd.
  *  Values are NEVER written — only key names and counts. */
 function diag(msg: string): void {

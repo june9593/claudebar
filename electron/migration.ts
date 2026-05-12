@@ -30,7 +30,11 @@ export function maybeMigrateFromClawbar(): void {
   try {
     oldSettings = JSON.parse(fs.readFileSync(oldSettingsPath, 'utf8'));
   } catch {
-    return; // unreadable — give up silently
+    // Unreadable or malformed — skip the settings copy but still mark as attempted
+    // so we don't retry on every launch.
+    try { fs.mkdirSync(CLAUDEBAR_DIR, { recursive: true }); } catch { /* ignore */ }
+    try { fs.writeFileSync(MIGRATED_FLAG, new Date().toISOString() + ' (parse-failed)'); } catch { /* ignore */ }
+    return;
   }
 
   // ClaudeBar default petKind is 'claude' (per spec §10), but if the user
