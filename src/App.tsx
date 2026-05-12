@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSettingsStore } from './stores/settingsStore';
 import { useSessionStore } from './stores/sessionStore';
 import { TitleBar } from './components/TitleBar';
 import { ClaudeChannel } from './components/ClaudeChannel';
+import { SettingsPanel } from './components/SettingsPanel';
 
 export default function App() {
   const hydrated = useSettingsStore((s) => s.hydrated);
@@ -13,16 +14,19 @@ export default function App() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <TitleBar />
+      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         {activeSession
           ? <ClaudeChannel channel={activeSession} isActive />
           : <EmptyState />}
+        {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </div>
     </div>
   );

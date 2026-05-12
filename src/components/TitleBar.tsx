@@ -1,7 +1,9 @@
 import * as React from 'react';
 import { Settings } from 'lucide-react';
 
-export function TitleBar() {
+interface Props { onOpenSettings: () => void; }
+
+export function TitleBar({ onOpenSettings }: Props) {
   return (
     <div style={{
       height: 36,
@@ -15,7 +17,7 @@ export function TitleBar() {
         ClaudeBar
       </span>
       <button
-        onClick={() => { /* Phase 2 opens the operator panel here */ }}
+        onClick={onOpenSettings}
         style={{
           WebkitAppRegion: 'no-drag',
           background: 'transparent', border: 'none', cursor: 'pointer',
