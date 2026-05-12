@@ -6,6 +6,7 @@ import { setupWsBridge } from './ws-bridge';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
+import { maybeMigrateFromClawbar } from './migration';
 import { createPetWindow, isPetVisible, showPet, hidePet } from './pet-window';
 
 let mainWindow: BrowserWindow | null = null;
@@ -74,7 +75,7 @@ function hideWindow() {
 
 function getWindowBoundsPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(homeDir, '.clawbar', 'window-bounds.json');
+  return path.join(homeDir, '.claudebar', 'window-bounds.json');
 }
 
 function saveWindowBounds() {
@@ -312,6 +313,10 @@ if (!gotLock) {
 app.dock?.hide();
 
 app.whenReady().then(async () => {
+  // Run migration BEFORE anything reads settings — settings IPC needs
+  // ~/.claudebar/settings.json to exist if the user is migrating from ClawBar.
+  maybeMigrateFromClawbar();
+
   // Hydrate the user's shell auth env BEFORE the Claude bridge starts
   // taking IPC calls — when launched from Finder/Dock on macOS, launchd
   // does not source ~/.zshrc, so without this the spawned `claude` binary

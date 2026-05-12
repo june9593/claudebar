@@ -26,7 +26,7 @@ let cached: Record<string, string> | null = null;
 
 const ALLOW_PREFIXES = ['ANTHROPIC_', 'CLAUDE_'];
 
-const DIAG_DIR = path.join(os.homedir(), '.clawbar');
+const DIAG_DIR = path.join(os.homedir(), '.claudebar');
 const DIAG_FILE = path.join(DIAG_DIR, 'auth-debug.log');
 
 /** Append a diagnostic line to ~/.clawbar/auth-debug.log so we can inspect

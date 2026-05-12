@@ -56,7 +56,7 @@ const defaults: AppSettings = {
 
 function getConfigPath(): string {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(homeDir, '.clawbar', 'settings.json');
+  return path.join(homeDir, '.claudebar', 'settings.json');
 }
 
 function readStore(): AppSettings {

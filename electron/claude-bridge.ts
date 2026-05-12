@@ -109,10 +109,10 @@ function destroySession(channelId: string) {
 function makeCanUseTool(s: ActiveSession): CanUseTool {
   return async (toolName, input, options) => {
     const signal = (options as { signal?: AbortSignal }).signal;
-    // Optional debug trace (gated by CLAWBAR_TRACE=1 in env).
-    if (process.env.CLAWBAR_TRACE === '1') {
+    // Optional debug trace (gated by CLAUDEBAR_TRACE=1 in env).
+    if (process.env.CLAUDEBAR_TRACE === '1') {
       try {
-        const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
+        const traceFile = path.join(os.homedir(), '.claudebar', 'sdk-trace.jsonl');
         fs.appendFileSync(traceFile, JSON.stringify({
           t: Date.now(), channel: s.channelId, label: 'canUseTool',
           toolName, input, allowed: s.allowedForSession.has(toolName),
@@ -229,11 +229,11 @@ function makeToolStartTracker() {
 
 async function runSession(s: ActiveSession, q: Query): Promise<void> {
   const tracker = makeToolStartTracker();
-  // Optional debug trace: set CLAWBAR_TRACE=1 to dump every SDK message
-  // to ~/.clawbar/sdk-trace.jsonl. Off by default to avoid disk writes
+  // Optional debug trace: set CLAUDEBAR_TRACE=1 to dump every SDK message
+  // to ~/.claudebar/sdk-trace.jsonl. Off by default to avoid disk writes
   // and PII leakage. Useful for diagnosing SDK protocol issues.
-  const traceEnabled = process.env.CLAWBAR_TRACE === '1';
-  const traceFile = path.join(os.homedir(), '.clawbar', 'sdk-trace.jsonl');
+  const traceEnabled = process.env.CLAUDEBAR_TRACE === '1';
+  const traceFile = path.join(os.homedir(), '.claudebar', 'sdk-trace.jsonl');
   if (traceEnabled) {
     try { fs.mkdirSync(path.dirname(traceFile), { recursive: true }); } catch { /* ignore */ }
   }
@@ -415,7 +415,7 @@ function openQuery(s: ActiveSession): void {
       // Critical when ClawBar is launched from Finder/Dock — launchd does
       // not source ~/.zshrc, so process.env has no ANTHROPIC_AUTH_TOKEN.
       // hydrateShellEnv() ran at app boot and cached the relevant vars;
-      // we layer them on top of process.env so explicit env (CLAWBAR_TRACE
+      // we layer them on top of process.env so explicit env (CLAUDEBAR_TRACE
       // etc.) still wins.
       env: (() => {
         const merged = { ...process.env, ...getShellAuthEnv() } as Record<string, string | undefined>;
