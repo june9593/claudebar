@@ -6,6 +6,7 @@ import { TitleBar } from './components/TitleBar';
 import { ClaudeChannel } from './components/ClaudeChannel';
 import { SettingsPanel } from './components/SettingsPanel';
 import { SessionRail } from './components/SessionRail';
+import { AddSessionWizard } from './components/add-session/AddSessionWizard';
 
 export default function App() {
   const hydrated = useSettingsStore((s) => s.hydrated);
@@ -19,6 +20,7 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
@@ -28,11 +30,7 @@ export default function App() {
 
   const pendingApprovalsBySessionId = useApprovalsStore((s) => s.countBySession);
 
-  const onNewSession = () => {
-    // Stub — Task 17 wires up the new-session wizard
-    // eslint-disable-next-line no-console
-    console.log('TODO: open new-session wizard');
-  };
+  const onNewSession = () => setWizardOpen(true);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -49,6 +47,7 @@ export default function App() {
             ? <ClaudeChannel channel={activeSession} isActive />
             : <EmptyState />}
           {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+          {wizardOpen && <AddSessionWizard onClose={() => setWizardOpen(false)} />}
           {panelOpen && (
             <div
               onClick={() => setPanelOpen(false)}
