@@ -4,7 +4,7 @@ import { useSessionStore } from './stores/sessionStore';
 import { useApprovalsStore } from './stores/approvalsStore';
 import { TitleBar } from './components/TitleBar';
 import { ClaudeChannel } from './components/ClaudeChannel';
-import { SettingsPanel } from './components/SettingsPanel';
+import { OperatorPanel } from './components/operator/OperatorPanel';
 import { SessionRail } from './components/SessionRail';
 import { AddSessionWizard } from './components/add-session/AddSessionWizard';
 
@@ -18,9 +18,12 @@ export default function App() {
   const activeSessionId = useSessionStore((s) => s.activeSessionId);
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? null;
 
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelInitialTab, setPanelInitialTab] = useState<'overview' | 'settings'>('overview');
   const [wizardOpen, setWizardOpen] = useState(false);
+
+  const openPanel = () => { setPanelInitialTab('overview'); setPanelOpen(true); };
+  const openSettings = () => { setPanelInitialTab('settings'); setPanelOpen(true); };
 
   useEffect(() => { void loadSettings(); }, [loadSettings]);
   useEffect(() => { if (hydrated) syncFromSettings(); }, [hydrated, syncFromSettings]);
@@ -37,8 +40,8 @@ export default function App() {
       <TitleBar />
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
         <SessionRail
-          onOpenPanel={() => setPanelOpen(true)}
-          onOpenSettings={() => setSettingsOpen((v) => !v)}
+          onOpenPanel={openPanel}
+          onOpenSettings={openSettings}
           onNewSession={onNewSession}
           pendingApprovalsBySessionId={pendingApprovalsBySessionId}
         />
@@ -46,32 +49,8 @@ export default function App() {
           {activeSession
             ? <ClaudeChannel channel={activeSession} isActive />
             : <EmptyState />}
-          {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+          {panelOpen && <OperatorPanel initialTab={panelInitialTab} onClose={() => setPanelOpen(false)} />}
           {wizardOpen && <AddSessionWizard onClose={() => setWizardOpen(false)} />}
-          {panelOpen && (
-            <div
-              onClick={() => setPanelOpen(false)}
-              style={{
-                position: 'absolute', inset: 0,
-                background: 'rgba(0,0,0,0.4)',
-                zIndex: 50,
-              }}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  width: 280, height: '100%',
-                  background: 'var(--color-bg-primary)',
-                  borderRight: '0.5px solid var(--color-border-primary)',
-                  padding: 16,
-                  fontSize: 12,
-                  color: 'var(--color-text-secondary)',
-                }}
-              >
-                Operator panel — Phase 3 fills the 7 view tabs here.
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
