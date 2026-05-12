@@ -37,7 +37,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <TitleBar onOpenSettings={() => setSettingsOpen(true)} />
+      <TitleBar />
       <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
         <SessionRail
           onOpenPanel={() => setPanelOpen(true)}
