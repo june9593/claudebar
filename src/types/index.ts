@@ -1,3 +1,18 @@
+// A single ClaudeBar session: a project + a Claude Code session id, with
+// presentation metadata (icon hash inputs, preview text). No more channel
+// kinds — ClaudeBar only hosts Claude sessions.
+export interface ClaudeSession {
+  id: string;            // stable internal id (cl-<timestamp>-<rand>); placeholder UUID for new sessions, real session id for resumed
+  name: string;          // display name "shortProjectName · preview"
+  enabled: boolean;
+  projectDir: string;    // absolute path
+  projectKey: string;    // ~/.claude/projects/<key>/ slug
+  sessionId: string;     // either placeholder UUID (new) or real Claude session id (resumed)
+  preview: string;       // last assistant message snippet
+  iconLetter: string;    // first letter of project shortName (kept for backward compat with hash inputs)
+  iconColor: string;     // accent color hash (kept for backward compat)
+}
+
 export interface Settings {
   gatewayUrl: string;
   authMode: 'none' | 'token' | 'password';
@@ -7,44 +22,9 @@ export interface Settings {
   chatMode: 'compact' | 'classic';
   hideOnClickOutside: boolean;
   autoLaunch: boolean;
-  channels: Channel[];
-  activeChannelId: string;
+  sessions: ClaudeSession[];
+  activeSessionId: string | null;
 }
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 export type ViewState = 'chat' | 'settings';
-
-export type ChannelKind = 'openclaw' | 'web' | 'claude';
-
-interface BaseChannel {
-  id: string;
-  name: string;
-  builtin: boolean;
-  enabled: boolean;
-}
-
-export interface OpenClawChannelDef extends BaseChannel {
-  kind: 'openclaw';
-  builtin: true;
-  enabled: true;
-}
-
-export interface WebChannelDef extends BaseChannel {
-  kind: 'web';
-  url: string;
-  icon: string;
-}
-
-export interface ClaudeChannelDef extends BaseChannel {
-  kind: 'claude';
-  builtin: false;
-  enabled: true;
-  projectDir: string;
-  projectKey: string;
-  sessionId: string;
-  preview: string;
-  iconLetter: string;
-  iconColor: string;
-}
-
-export type Channel = OpenClawChannelDef | WebChannelDef | ClaudeChannelDef;
