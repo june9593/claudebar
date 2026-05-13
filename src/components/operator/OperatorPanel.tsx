@@ -3,6 +3,7 @@ import { LayoutGrid, MessageSquare, Package, Sparkles, Terminal, BarChart3, Sett
 import { useSessionStore } from '../../stores/sessionStore';
 import { useApprovalsStore } from '../../stores/approvalsStore';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { shortName, firstLetter, colorFromKey } from '../../utils/session-icon';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
@@ -540,7 +541,137 @@ function StatsTab() {
     </div>
   );
 }
-function SettingsTab() { return <Stub label="Settings" />; }
+function SettingsTab() {
+  const settings = useSettingsStore((s) => s as unknown as Record<string, unknown>);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+
+  function get<T>(k: string, fallback: T): T {
+    return (settings[k] as T) ?? fallback;
+  }
+
+  const logDir = `${typeof window !== 'undefined' ? '~' : ''}/.claudebar/`;
+
+  return (
+    <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+      {/* ── Claude CLI ─────────────────────────────────────────────── */}
+      <Card title="Claude CLI">
+        <SettingRow label="CLI path">
+          <input
+            style={inputStyle}
+            placeholder="(auto-detect)"
+            value={get<string>('claudePath', '')}
+            onChange={(e) => void updateSetting('claudePath', e.target.value)}
+          />
+        </SettingRow>
+        <SettingRow label="Default model">
+          <select
+            style={inputStyle}
+            value={get<string>('defaultModel', 'default')}
+            onChange={(e) => void updateSetting('defaultModel', e.target.value)}
+          >
+            <option value="default">default</option>
+            <option value="opus">opus</option>
+            <option value="sonnet">sonnet</option>
+            <option value="haiku">haiku</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Permission mode">
+          <select
+            style={inputStyle}
+            value={get<string>('defaultPermissionMode', 'default')}
+            onChange={(e) => void updateSetting('defaultPermissionMode', e.target.value)}
+          >
+            <option value="default">default</option>
+            <option value="acceptEdits">acceptEdits</option>
+            <option value="bypassPermissions">bypassPermissions</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Idle close (min)">
+          <input
+            style={{ ...inputStyle, width: 64 }}
+            type="number"
+            min={1}
+            max={480}
+            value={get<number>('idleCloseMinutes', 30)}
+            onChange={(e) => void updateSetting('idleCloseMinutes', Number(e.target.value))}
+          />
+        </SettingRow>
+      </Card>
+
+      {/* ── Window ────────────────────────────────────────────────── */}
+      <Card title="Window">
+        <SettingRow label="Theme">
+          <select
+            style={inputStyle}
+            value={get<string>('theme', 'system')}
+            onChange={(e) => void updateSetting('theme', e.target.value)}
+          >
+            <option value="system">system</option>
+            <option value="light">light</option>
+            <option value="dark">dark</option>
+          </select>
+        </SettingRow>
+        <SettingRow label="Always on top">
+          <input
+            type="checkbox"
+            checked={get<boolean>('alwaysOnTop', false)}
+            onChange={(e) => void updateSetting('alwaysOnTop', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Hide on click outside">
+          <input
+            type="checkbox"
+            checked={get<boolean>('hideOnClickOutside', false)}
+            onChange={(e) => void updateSetting('hideOnClickOutside', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Global shortcut">
+          <input
+            style={inputStyle}
+            value={get<string>('globalShortcut', '')}
+            onChange={(e) => void updateSetting('globalShortcut', e.target.value)}
+          />
+        </SettingRow>
+        <SettingRow label="Show pet">
+          <input
+            type="checkbox"
+            checked={get<boolean>('petVisible', true)}
+            onChange={(e) => void updateSetting('petVisible', e.target.checked)}
+          />
+        </SettingRow>
+        <SettingRow label="Pet kind">
+          <select
+            style={inputStyle}
+            value={get<string>('petKind', 'claude')}
+            onChange={(e) => void updateSetting('petKind', e.target.value)}
+          >
+            <option value="claude">claude</option>
+            <option value="lobster">lobster</option>
+          </select>
+        </SettingRow>
+      </Card>
+
+      {/* ── Diagnostics ───────────────────────────────────────────── */}
+      <Card title="Diagnostics">
+        <SettingRow label="SDK trace log">
+          <input
+            type="checkbox"
+            checked={get<boolean>('enableSdkTrace', false)}
+            onChange={(e) => void updateSetting('enableSdkTrace', e.target.checked)}
+          />
+        </SettingRow>
+        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          Logs SDK messages to <code style={{ fontSize: 10 }}>{logDir}sdk-trace.jsonl</code>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+          Auth debug log: <code style={{ fontSize: 10 }}>{logDir}auth-debug.log</code>
+        </div>
+      </Card>
+
+    </div>
+  );
+}
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -574,10 +705,20 @@ function Skel() {
   );
 }
 
-function Stub({ label }: { label: string }) {
+
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  background: 'var(--color-bg-input)',
+  border: '0.5px solid var(--color-border-primary)',
+  borderRadius: 5, padding: '4px 7px',
+  fontSize: 11, color: 'var(--color-text-primary)', outline: 'none',
+};
+
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-      {label} — pending Phase 3 implementation.
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', gap: 8 }}>
+      <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', flexShrink: 0 }}>{label}</span>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>{children}</div>
     </div>
   );
 }

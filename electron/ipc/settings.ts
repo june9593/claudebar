@@ -116,7 +116,9 @@ export function setupSettingsIPC() {
       'gatewayUrl', 'authMode', 'authToken', 'authPassword',
       'theme', 'chatMode', 'hideOnClickOutside', 'autoLaunch',
       'channels', 'activeChannelId', 'petVisible', 'petKind',
-      'globalShortcut',
+      'globalShortcut', 'alwaysOnTop', 'windowSize', 'windowPosition',
+      'claudePath', 'defaultModel', 'defaultPermissionMode', 'idleCloseMinutes',
+      'enableSdkTrace',
     ];
     if (!allowedKeys.includes(key)) return;
 
