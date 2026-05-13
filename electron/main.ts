@@ -3,6 +3,8 @@ import * as path from 'path';
 import { setupSettingsIPC, getSettings, setSetting, onSettingChanged } from './ipc/settings';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupPluginsIPC } from './ipc/plugins';
+import { setupSkillsIPC } from './ipc/skills';
+import { setupCommandsIPC } from './ipc/commands';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
 import { maybeMigrateFromClawbar } from './migration';
@@ -261,6 +263,8 @@ app.whenReady().then(async () => {
   setupSettingsIPC();
   setupClaudeSessionsIPC();
   setupPluginsIPC();
+  setupSkillsIPC();
+  setupCommandsIPC();
   setupClaudeBridge();
   createPetWindow(
     showWindow,

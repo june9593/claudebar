@@ -53,6 +53,26 @@ export interface ElectronAPI {
       marketplaces: string[];
     }>;
   };
+  skills: {
+    list(projectDir?: string): Promise<Array<{
+      name: string;
+      description: string;
+      source: 'user' | 'project' | 'plugin';
+      pluginName?: string;
+      dir: string;
+    }>>;
+    read(skillDir: string): Promise<string | null>;
+  };
+  commands: {
+    list(projectDir?: string): Promise<Array<{
+      name: string;
+      description: string;
+      source: 'user' | 'project' | 'plugin';
+      pluginName?: string;
+      filePath: string;
+    }>>;
+    read(filePath: string): Promise<string | null>;
+  };
 }
 
 declare global {
