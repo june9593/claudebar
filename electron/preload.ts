@@ -52,4 +52,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       return () => ipcRenderer.removeListener('claude:event', handler);
     },
   },
+  plugins: {
+    list: () => ipcRenderer.invoke('plugins:list'),
+  },
 });

@@ -39,6 +39,20 @@ export interface ElectronAPI {
     }>>;
     onEvent(cb: (envelope: import('../shared/claude-events').ClaudeEventEnvelope) => void): () => void;
   };
+  plugins: {
+    list(): Promise<{
+      plugins: Array<{
+        name: string;
+        marketplace: string;
+        scope: 'user' | 'project';
+        version: string;
+        installedAt: string;
+        lastUpdated: string;
+        installPath: string;
+      }>;
+      marketplaces: string[];
+    }>;
+  };
 }
 
 declare global {
