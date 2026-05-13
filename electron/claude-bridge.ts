@@ -7,6 +7,7 @@ import * as os from 'os';
 import * as readline from 'readline';
 import { MessageQueue } from './claude-message-queue';
 import { getShellAuthEnv, logChildEnvKeys } from './shell-env';
+import { getSettings } from './ipc/settings';
 import type { ClaudeEvent, ApprovalDecision, AskQuestion } from '../shared/claude-events';
 
 interface PendingApproval {
@@ -109,8 +110,8 @@ function destroySession(channelId: string) {
 function makeCanUseTool(s: ActiveSession): CanUseTool {
   return async (toolName, input, options) => {
     const signal = (options as { signal?: AbortSignal }).signal;
-    // Optional debug trace (gated by CLAUDEBAR_TRACE=1 in env).
-    if (process.env.CLAUDEBAR_TRACE === '1') {
+    // Optional debug trace (gated by CLAUDEBAR_TRACE=1 in env or enableSdkTrace setting).
+    if (!!(getSettings() as { enableSdkTrace?: boolean }).enableSdkTrace || process.env.CLAUDEBAR_TRACE === '1') {
       try {
         const traceFile = path.join(os.homedir(), '.claudebar', 'sdk-trace.jsonl');
         fs.appendFileSync(traceFile, JSON.stringify({
@@ -229,10 +230,11 @@ function makeToolStartTracker() {
 
 async function runSession(s: ActiveSession, q: Query): Promise<void> {
   const tracker = makeToolStartTracker();
-  // Optional debug trace: set CLAUDEBAR_TRACE=1 to dump every SDK message
-  // to ~/.claudebar/sdk-trace.jsonl. Off by default to avoid disk writes
-  // and PII leakage. Useful for diagnosing SDK protocol issues.
-  const traceEnabled = process.env.CLAUDEBAR_TRACE === '1';
+  // Optional debug trace: set CLAUDEBAR_TRACE=1 or enable SDK trace in Settings
+  // to dump every SDK message to ~/.claudebar/sdk-trace.jsonl. Off by default
+  // to avoid disk writes and PII leakage. Useful for diagnosing SDK protocol issues.
+  const traceEnabled = !!(getSettings() as { enableSdkTrace?: boolean }).enableSdkTrace
+    || process.env.CLAUDEBAR_TRACE === '1';
   const traceFile = path.join(os.homedir(), '.claudebar', 'sdk-trace.jsonl');
   if (traceEnabled) {
     try { fs.mkdirSync(path.dirname(traceFile), { recursive: true }); } catch { /* ignore */ }
