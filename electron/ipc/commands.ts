@@ -59,18 +59,17 @@ function listCommands(projectDir?: string): CommandEntry[] {
     entries.push(...walkCommandsDir(path.join(projectDir, '.claude', 'commands'), 'project'));
   }
 
-  // Plugin commands
+  // Plugin commands — dedupe to the latest install per plugin name
   const installedFile = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
   if (fs.existsSync(installedFile)) {
     try {
       const data = JSON.parse(fs.readFileSync(installedFile, 'utf8')) as {
-        plugins?: Record<string, Array<{ installPath: string }>>;
+        plugins?: Record<string, Array<{ installPath: string; installedAt: string }>>;
       };
       for (const [name, installs] of Object.entries(data.plugins ?? {})) {
-        for (const inst of installs) {
-          const commandsDir = path.join(inst.installPath, 'commands');
-          entries.push(...walkCommandsDir(commandsDir, 'plugin', name));
-        }
+        if (installs.length === 0) continue;
+        const latest = installs.reduce((a, b) => (a.installedAt > b.installedAt ? a : b));
+        entries.push(...walkCommandsDir(path.join(latest.installPath, 'commands'), 'plugin', name.split('@')[0]));
       }
     } catch {
       // ignore

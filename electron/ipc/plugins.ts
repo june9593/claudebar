@@ -32,18 +32,21 @@ function readInstalled(): PluginInstall[] {
     const data = JSON.parse(fs.readFileSync(file, 'utf8')) as InstalledPluginsFile;
     const result: PluginInstall[] = [];
     for (const [name, installs] of Object.entries(data.plugins ?? {})) {
+      if (installs.length === 0) continue;
+      // Keep only the most-recently-installed version per plugin name to avoid
+      // listing the same plugin multiple times when it has been updated (each
+      // update creates a new entry with a fresh SHA install path).
+      const latest = installs.reduce((a, b) => (a.installedAt > b.installedAt ? a : b));
       const marketplace = name.includes('@') ? name.split('@').slice(1).join('@') : '(unknown)';
-      for (const inst of installs) {
-        result.push({
-          name,
-          marketplace,
-          scope: inst.scope,
-          version: inst.version,
-          installedAt: inst.installedAt,
-          lastUpdated: inst.lastUpdated,
-          installPath: inst.installPath,
-        });
-      }
+      result.push({
+        name,
+        marketplace,
+        scope: latest.scope,
+        version: latest.version,
+        installedAt: latest.installedAt,
+        lastUpdated: latest.lastUpdated,
+        installPath: latest.installPath,
+      });
     }
     return result;
   } catch {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { LayoutGrid, MessageSquare, Package, Sparkles, Terminal, BarChart3, Settings as SettingsIcon } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useApprovalsStore } from '../../stores/approvalsStore';
@@ -194,6 +194,7 @@ function SessionsTab() {
         <div key={p.key} style={{ marginBottom: 4 }}>
           <button
             onClick={() => onToggle(p.key)}
+            title={p.decodedPath}
             style={{
               width: '100%', textAlign: 'left',
               background: 'transparent', border: 'none', cursor: 'pointer',
@@ -203,7 +204,7 @@ function SessionsTab() {
             }}
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {expanded[p.key] ? '▾ ' : '▸ '}{p.decodedPath.split('/').pop()}
+              {expanded[p.key] ? '▾ ' : '▸ '}{shortLabel(p.decodedPath)}
             </span>
             <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{p.sessionCount}</span>
           </button>
@@ -290,23 +291,14 @@ function PluginsTab() {
 type SkillsList = Awaited<ReturnType<typeof window.electronAPI.skills.list>>;
 type CommandsList = Awaited<ReturnType<typeof window.electronAPI.commands.list>>;
 
-const SOURCE_COLORS: Record<'user' | 'project' | 'plugin', string> = {
-  user: 'var(--color-accent, #7c6af7)',
-  project: 'var(--color-status-connected, #3a9)',
-  plugin: 'var(--color-text-tertiary)',
-};
-
-function SourceBadge({ source }: { source: 'user' | 'project' | 'plugin' }) {
-  return (
-    <span style={{
-      fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
-      color: SOURCE_COLORS[source],
-      border: `0.5px solid ${SOURCE_COLORS[source]}`,
-      borderRadius: 3, padding: '1px 4px',
-    }}>
-      {source}
-    </span>
-  );
+/** Returns the last 2 path segments joined with '/' for display, e.g.
+ *  "/Users/yueliu/edge/src" → "edge/src". Falls back to the single segment
+ *  when the path has only one non-empty part. Full path is exposed via title. */
+function shortLabel(decodedPath: string): string {
+  const parts = decodedPath.split('/').filter(Boolean);
+  if (parts.length === 0) return decodedPath || '?';
+  if (parts.length === 1) return parts[0];
+  return parts.slice(-2).join('/');
 }
 
 function SkillsTab() {
@@ -324,50 +316,67 @@ function SkillsTab() {
 
   if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
 
-  const visible = filter
+  const filtered = filter
     ? items.filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.description.toLowerCase().includes(filter.toLowerCase()))
     : items;
 
+  const grouped = useMemo(() => {
+    const out: Record<string, typeof filtered> = {};
+    for (const sk of filtered) {
+      const key = sk.source === 'plugin' ? `plugin:${sk.pluginName ?? '(unknown)'}` : sk.source;
+      (out[key] ??= []).push(sk);
+    }
+    const order = ['user', 'project'];
+    const pluginKeys = Object.keys(out).filter(k => k.startsWith('plugin:')).sort();
+    return [...order.filter(k => out[k]).map(k => [k, out[k]] as const), ...pluginKeys.map(k => [k, out[k]] as const)];
+  }, [filtered]);
+
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <input
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Filter skills…"
-        style={{
-          width: '100%', boxSizing: 'border-box',
-          background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
-          borderRadius: 6, padding: '5px 8px',
-          fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
-        }}
-      />
-      {visible.length === 0 && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '12px 12px 0' }}>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter skills…"
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
+            borderRadius: 6, padding: '5px 8px',
+            fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
+          }}
+        />
+      </div>
+      {filtered.length === 0 && (
+        <div style={{ padding: '12px 12px', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
           {items.length === 0 ? 'No skills found.' : 'No matches.'}
         </div>
       )}
-      {visible.map((s) => (
-        <div
-          key={s.dir}
-          style={{
-            padding: '8px 10px',
-            background: 'var(--color-bg-secondary)',
-            borderRadius: 6,
-            border: '0.5px solid var(--color-border-primary)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>{s.name}</span>
-            <SourceBadge source={s.source} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
+        {grouped.map(([key, groupItems]) => (
+          <div key={key}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginTop: 12, marginBottom: 6, letterSpacing: 0.5 }}>
+              {key.startsWith('plugin:') ? key.slice(7) : key}
+            </div>
+            {groupItems.map((s) => (
+              <div
+                key={s.dir}
+                style={{
+                  padding: '8px 10px',
+                  background: 'var(--color-bg-secondary)',
+                  borderRadius: 6,
+                  border: '0.5px solid var(--color-border-primary)',
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{s.name}</span>
+                {s.description && (
+                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{s.description}</div>
+                )}
+              </div>
+            ))}
           </div>
-          {s.description && (
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{s.description}</div>
-          )}
-          {s.pluginName && (
-            <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>via {s.pluginName}</div>
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
@@ -387,50 +396,67 @@ function CommandsTab() {
 
   if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
 
-  const visible = filter
+  const filtered = filter
     ? items.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.description.toLowerCase().includes(filter.toLowerCase()))
     : items;
 
+  const grouped = useMemo(() => {
+    const out: Record<string, typeof filtered> = {};
+    for (const cmd of filtered) {
+      const key = cmd.source === 'plugin' ? `plugin:${cmd.pluginName ?? '(unknown)'}` : cmd.source;
+      (out[key] ??= []).push(cmd);
+    }
+    const order = ['user', 'project'];
+    const pluginKeys = Object.keys(out).filter(k => k.startsWith('plugin:')).sort();
+    return [...order.filter(k => out[k]).map(k => [k, out[k]] as const), ...pluginKeys.map(k => [k, out[k]] as const)];
+  }, [filtered]);
+
   return (
-    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <input
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Filter commands…"
-        style={{
-          width: '100%', boxSizing: 'border-box',
-          background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
-          borderRadius: 6, padding: '5px 8px',
-          fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
-        }}
-      />
-      {visible.length === 0 && (
-        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '12px 12px 0' }}>
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Filter commands…"
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
+            borderRadius: 6, padding: '5px 8px',
+            fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
+          }}
+        />
+      </div>
+      {filtered.length === 0 && (
+        <div style={{ padding: '12px 12px', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
           {items.length === 0 ? 'No commands found.' : 'No matches.'}
         </div>
       )}
-      {visible.map((c) => (
-        <div
-          key={c.filePath}
-          style={{
-            padding: '8px 10px',
-            background: 'var(--color-bg-secondary)',
-            borderRadius: 6,
-            border: '0.5px solid var(--color-border-primary)',
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>/{c.name}</span>
-            <SourceBadge source={c.source} />
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 12px' }}>
+        {grouped.map(([key, groupItems]) => (
+          <div key={key}>
+            <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginTop: 12, marginBottom: 6, letterSpacing: 0.5 }}>
+              {key.startsWith('plugin:') ? key.slice(7) : key}
+            </div>
+            {groupItems.map((c) => (
+              <div
+                key={c.filePath}
+                style={{
+                  padding: '8px 10px',
+                  background: 'var(--color-bg-secondary)',
+                  borderRadius: 6,
+                  border: '0.5px solid var(--color-border-primary)',
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ fontSize: 12, fontWeight: 600 }}>/{c.name}</span>
+                {c.description && (
+                  <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{c.description}</div>
+                )}
+              </div>
+            ))}
           </div>
-          {c.description && (
-            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{c.description}</div>
-          )}
-          {c.pluginName && (
-            <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>via {c.pluginName}</div>
-          )}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
