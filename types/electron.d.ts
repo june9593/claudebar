@@ -73,6 +73,15 @@ export interface ElectronAPI {
     }>>;
     read(filePath: string): Promise<string | null>;
   };
+  stats: {
+    get(): Promise<{
+      dailyActivity: Array<{ date: string; totalRequests?: number; totalTokensUsed?: number }>;
+      tokensByDay: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+      totals: { input: number; output: number; cache_creation: number; cache_read: number };
+      byModel: Record<string, { input: number; output: number; cache_creation: number; cache_read: number }>;
+    }>;
+    today(): Promise<{ input: number; output: number; cache_creation: number; cache_read: number }>;
+  };
 }
 
 declare global {
