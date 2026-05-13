@@ -21,10 +21,23 @@ function projectsRoot(): string {
   return path.join(os.homedir(), '.claude', 'projects');
 }
 
-/** Decode "-Users-yueliu-edge-clawbar" → "/Users/yueliu/edge/clawbar" */
+/**
+ * Decode project-dir key back to an absolute path.
+ *
+ * Claude CLI encoding: absolute path → replace '/' with '-'. Hidden-directory
+ * dots are also replaced: '.' → '-', so '/Users/yueliu/.vibebook/session/repo'
+ * becomes '-Users-yueliu--vibebook-session-repo' (the dot+slash pair becomes
+ * '--').  Decoding must therefore map '--' → '/.' BEFORE mapping remaining '-'
+ * → '/'.
+ *
+ * Known limitation: a path segment whose name legitimately starts with '-'
+ * would be indistinguishable from a hidden-dir prefix under this scheme, but
+ * such paths are vanishingly rare in practice.
+ */
 function decodePath(key: string): string {
   if (!key.startsWith('-')) return key;
-  return '/' + key.slice(1).replace(/-/g, '/');
+  // Replace '--' (hidden-dir dot) before replacing single '-' (slash)
+  return '/' + key.slice(1).replace(/--/g, '/.').replace(/-/g, '/');
 }
 
 /**
