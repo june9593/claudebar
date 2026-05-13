@@ -4,7 +4,7 @@ import { useSessionStore } from '../../stores/sessionStore';
 import { useApprovalsStore } from '../../stores/approvalsStore';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
-import { shortName, firstLetter, colorFromKey } from '../../utils/session-icon';
+import { shortName, firstLetter, colorFromKey } from '../../utils/claude-icon';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
 

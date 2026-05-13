@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 import { useSessionStore } from '../../stores/sessionStore';
-import { shortName, firstLetter, colorFromKey } from '../../utils/session-icon';
+import { shortName, firstLetter, colorFromKey } from '../../utils/claude-icon';
 
 interface Props {
   onClose: () => void;
