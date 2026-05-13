@@ -5,6 +5,7 @@ import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
 import { setupPluginsIPC } from './ipc/plugins';
 import { setupSkillsIPC } from './ipc/skills';
 import { setupCommandsIPC } from './ipc/commands';
+import { setupStatsIPC } from './ipc/stats';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
 import { maybeMigrateFromClawbar } from './migration';
@@ -265,6 +266,7 @@ app.whenReady().then(async () => {
   setupPluginsIPC();
   setupSkillsIPC();
   setupCommandsIPC();
+  setupStatsIPC();
   setupClaudeBridge();
   createPetWindow(
     showWindow,

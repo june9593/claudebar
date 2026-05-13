@@ -99,15 +99,14 @@ function OverviewTab() {
 
   const [cli, setCli] = useState<CliStatus | null>(null);
   const [projectCount, setProjectCount] = useState<number | null>(null);
-  const [tokensToday, setTokensToday] = useState<{ input: number; output: number } | null>(null);
+  const [tokensToday, setTokensToday] = useState<{ input: number; output: number; cache_creation: number; cache_read: number } | null>(null);
 
   useEffect(() => {
     void window.electronAPI?.claude?.checkCli().then((r: CliStatus) => setCli(r));
     void window.electronAPI?.claude?.scanProjects?.()
       .then((r) => setProjectCount(r.length))
       .catch(() => setProjectCount(null));
-    // Stats IPC added in Task 24 — try, gracefully skip if not yet wired
-    void (window.electronAPI as unknown as { stats?: { today: () => Promise<{ input: number; output: number }> } }).stats?.today?.()
+    void window.electronAPI.stats.today()
       .then(setTokensToday)
       .catch(() => setTokensToday(null));
   }, []);
@@ -141,6 +140,9 @@ function OverviewTab() {
           <>
             <Row label="Input" value={tokensToday.input.toLocaleString()} />
             <Row label="Output" value={tokensToday.output.toLocaleString()} />
+            {(tokensToday.cache_read > 0 || tokensToday.cache_creation > 0) && (
+              <Row label="Cache read" value={tokensToday.cache_read.toLocaleString()} />
+            )}
           </>
         )}
       </Card>
@@ -432,7 +434,106 @@ function CommandsTab() {
   );
 }
 
-function StatsTab() { return <Stub label="Stats" />; }
+type StatsPayload = Awaited<ReturnType<typeof window.electronAPI.stats.get>>;
+
+function StatsTab() {
+  const [data, setData] = useState<StatsPayload | null>(null);
+
+  useEffect(() => {
+    void window.electronAPI.stats.get().then(setData);
+  }, []);
+
+  if (!data) {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading stats…</div>;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Build last 14 days array
+  const days: Array<{ date: string; input: number; output: number }> = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const bucket = data.tokensByDay[key];
+    days.push({ date: key, input: bucket?.input ?? 0, output: bucket?.output ?? 0 });
+  }
+
+  const maxTokens = Math.max(...days.map((d) => d.input + d.output), 1);
+
+  const todayBucket = data.tokensByDay[today];
+  const models = Object.entries(data.byModel).sort((a, b) => {
+    const ta = a[1].input + a[1].output;
+    const tb = b[1].input + b[1].output;
+    return tb - ta;
+  });
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Card title="All-time totals">
+        <Row label="Input tokens" value={data.totals.input.toLocaleString()} />
+        <Row label="Output tokens" value={data.totals.output.toLocaleString()} />
+        <Row label="Cache read" value={data.totals.cache_read.toLocaleString()} />
+        <Row label="Cache creation" value={data.totals.cache_creation.toLocaleString()} />
+      </Card>
+
+      <Card title="Today">
+        {!todayBucket && <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>No usage today yet.</div>}
+        {todayBucket && (
+          <>
+            <Row label="Input" value={todayBucket.input.toLocaleString()} />
+            <Row label="Output" value={todayBucket.output.toLocaleString()} />
+          </>
+        )}
+      </Card>
+
+      <Card title="Last 14 days">
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 60, marginBottom: 4 }}>
+          {days.map((d) => {
+            const total = d.input + d.output;
+            const heightPct = total / maxTokens;
+            const isToday = d.date === today;
+            return (
+              <div
+                key={d.date}
+                title={`${d.date}: ${total.toLocaleString()} tokens`}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}
+              >
+                <div style={{
+                  width: '100%',
+                  height: `${Math.max(heightPct * 100, total > 0 ? 4 : 1)}%`,
+                  background: isToday ? 'var(--color-accent, #7c6af7)' : 'var(--color-text-tertiary)',
+                  borderRadius: '2px 2px 0 0',
+                  opacity: isToday ? 1 : 0.5,
+                }} />
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--color-text-tertiary)' }}>
+          <span>{days[0].date.slice(5)}</span>
+          <span>today</span>
+        </div>
+      </Card>
+
+      {models.length > 0 && (
+        <Card title="By model">
+          {models.map(([model, bucket]) => {
+            const shortModel = model.replace(/^claude-/, '').replace(/-\d{8}$/, '');
+            return (
+              <div key={model} style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={model}>{shortModel}</div>
+                <Row label="In" value={(bucket.input).toLocaleString()} />
+                <Row label="Out" value={(bucket.output).toLocaleString()} />
+              </div>
+            );
+          })}
+        </Card>
+      )}
+    </div>
+  );
+}
 function SettingsTab() { return <Stub label="Settings" />; }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

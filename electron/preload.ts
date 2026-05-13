@@ -63,4 +63,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     list: (projectDir?: string) => ipcRenderer.invoke('commands:list', projectDir),
     read: (filePath: string) => ipcRenderer.invoke('commands:read', filePath),
   },
+  stats: {
+    get: () => ipcRenderer.invoke('stats:get'),
+    today: () => ipcRenderer.invoke('stats:today'),
+  },
 });
