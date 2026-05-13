@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { LayoutGrid, MessageSquare, Package, Sparkles, Terminal, BarChart3, Settings as SettingsIcon } from 'lucide-react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useApprovalsStore } from '../../stores/approvalsStore';
+import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
 
@@ -145,7 +146,89 @@ function OverviewTab() {
     </div>
   );
 }
-function SessionsTab() { return <Stub label="Sessions" />; }
+function SessionsTab() {
+  const projects = useClaudeSessionsStore((s) => s.projects);
+  const projectsState = useClaudeSessionsStore((s) => s.projectsState);
+  const sessionsByKey = useClaudeSessionsStore((s) => s.sessionsByKey);
+  const sessionsState = useClaudeSessionsStore((s) => s.sessionsState);
+  const loadProjects = useClaudeSessionsStore((s) => s.loadProjects);
+  const loadSessions = useClaudeSessionsStore((s) => s.loadSessions);
+  const addClaude = useSessionStore((s) => s.addClaude);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  if (projectsState === 'loading' || projectsState === 'idle') {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Scanning…</div>;
+  }
+  if (projects.length === 0) {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>No projects.</div>;
+  }
+
+  const onToggle = (key: string) => {
+    const newExpanded = !expanded[key];
+    setExpanded((s) => ({ ...s, [key]: newExpanded }));
+    if (newExpanded && !sessionsByKey[key]) void loadSessions(key);
+  };
+
+  const onResume = (projectKey: string, decodedPath: string, sessionId: string, preview: string) => {
+    addClaude({
+      projectDir: decodedPath,
+      projectKey,
+      sessionId,
+      preview,
+      iconLetter: ((decodedPath.split('/').filter(Boolean).pop() ?? '?').slice(0, 1).toUpperCase()),
+      iconColor: 'hsl(' + (Math.abs(projectKey.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 360) + ' 60% 50%)',
+    });
+  };
+
+  return (
+    <div style={{ padding: 8 }}>
+      {projects.map((p) => (
+        <div key={p.key} style={{ marginBottom: 4 }}>
+          <button
+            onClick={() => onToggle(p.key)}
+            style={{
+              width: '100%', textAlign: 'left',
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              padding: '6px 8px', borderRadius: 6,
+              fontSize: 12, color: 'var(--color-text-primary)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {expanded[p.key] ? '▾ ' : '▸ '}{p.decodedPath.split('/').pop()}
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>{p.sessionCount}</span>
+          </button>
+          {expanded[p.key] && (
+            <div style={{ paddingLeft: 16 }}>
+              {sessionsState[p.key] === 'loading' && <div style={{ fontSize: 11, padding: 6, color: 'var(--color-text-tertiary)' }}>loading…</div>}
+              {(sessionsByKey[p.key] ?? []).map((s) => (
+                <button
+                  key={s.sessionId}
+                  onClick={() => onResume(p.key, p.decodedPath, s.sessionId, s.preview)}
+                  style={{
+                    display: 'block', width: '100%',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: '4px 8px', borderRadius: 6,
+                    fontSize: 11, color: 'var(--color-text-secondary)',
+                    textAlign: 'left',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {s.preview || '(empty session)'}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 function PluginsTab() { return <Stub label="Plugins" />; }
 function SkillsTab() { return <Stub label="Skills" />; }
 function CommandsTab() { return <Stub label="Commands" />; }
