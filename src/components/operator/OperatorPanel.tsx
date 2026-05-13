@@ -314,11 +314,12 @@ function SkillsTab() {
     void window.electronAPI.skills.list(projectDir).then(setItems);
   }, [projectDir]);
 
-  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
-
+  // Hooks must run unconditionally — compute filter+grouping BEFORE the
+  // early return for the loading state, otherwise React #310 (hook order
+  // changed between renders) when items flips from null to a list.
   const filtered = filter
-    ? items.filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.description.toLowerCase().includes(filter.toLowerCase()))
-    : items;
+    ? (items ?? []).filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.description.toLowerCase().includes(filter.toLowerCase()))
+    : (items ?? []);
 
   const grouped = useMemo(() => {
     const out: Record<string, typeof filtered> = {};
@@ -330,6 +331,8 @@ function SkillsTab() {
     const pluginKeys = Object.keys(out).filter(k => k.startsWith('plugin:')).sort();
     return [...order.filter(k => out[k]).map(k => [k, out[k]] as const), ...pluginKeys.map(k => [k, out[k]] as const)];
   }, [filtered]);
+
+  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -394,11 +397,10 @@ function CommandsTab() {
     void window.electronAPI.commands.list(projectDir).then(setItems);
   }, [projectDir]);
 
-  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
-
+  // See SkillsTab for the same hook-order fix.
   const filtered = filter
-    ? items.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.description.toLowerCase().includes(filter.toLowerCase()))
-    : items;
+    ? (items ?? []).filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.description.toLowerCase().includes(filter.toLowerCase()))
+    : (items ?? []);
 
   const grouped = useMemo(() => {
     const out: Record<string, typeof filtered> = {};
@@ -410,6 +412,8 @@ function CommandsTab() {
     const pluginKeys = Object.keys(out).filter(k => k.startsWith('plugin:')).sort();
     return [...order.filter(k => out[k]).map(k => [k, out[k]] as const), ...pluginKeys.map(k => [k, out[k]] as const)];
   }, [filtered]);
+
+  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
