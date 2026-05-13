@@ -50,7 +50,17 @@ interface ActiveSession {
 }
 
 const sessions = new Map<string, ActiveSession>();
-const IDLE_CLOSE_MS = 30 * 60 * 1000; // 30 minutes
+const DEFAULT_IDLE_CLOSE_MIN = 30;
+
+function getIdleCloseMs(): number {
+  // Read live so the user changing idleCloseMinutes in Settings takes effect
+  // for the NEXT activity bump (no app restart needed).
+  const s = getSettings() as { idleCloseMinutes?: number };
+  const min = typeof s.idleCloseMinutes === 'number' && s.idleCloseMinutes > 0
+    ? s.idleCloseMinutes
+    : DEFAULT_IDLE_CLOSE_MIN;
+  return min * 60 * 1000;
+}
 
 function sendToRenderer(channelEvent: string, payload: unknown) {
   for (const w of BrowserWindow.getAllWindows()) {
@@ -65,7 +75,7 @@ function emit(channelId: string, event: ClaudeEvent) {
 function bumpActivity(s: ActiveSession) {
   s.lastActivityAt = Date.now();
   if (s.idleTimer) clearTimeout(s.idleTimer);
-  s.idleTimer = setTimeout(() => closeQuery(s), IDLE_CLOSE_MS);
+  s.idleTimer = setTimeout(() => closeQuery(s), getIdleCloseMs());
 }
 
 /** Tear down the live Query but KEEP the ActiveSession record so the next
