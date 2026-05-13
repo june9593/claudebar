@@ -3,6 +3,7 @@ import { LayoutGrid, MessageSquare, Package, Sparkles, Terminal, BarChart3, Sett
 import { useSessionStore } from '../../stores/sessionStore';
 import { useApprovalsStore } from '../../stores/approvalsStore';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
+import { shortName, firstLetter, colorFromKey } from '../../utils/session-icon';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
 
@@ -179,8 +180,8 @@ function SessionsTab() {
       projectKey,
       sessionId,
       preview,
-      iconLetter: ((decodedPath.split('/').filter(Boolean).pop() ?? '?').slice(0, 1).toUpperCase()),
-      iconColor: 'hsl(' + (Math.abs(projectKey.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 0)) % 360) + ' 60% 50%)',
+      iconLetter: firstLetter(shortName(decodedPath)),
+      iconColor: colorFromKey(projectKey),
     });
   };
 
