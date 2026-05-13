@@ -450,13 +450,19 @@ function StatsTab() {
   const today = new Date().toISOString().slice(0, 10);
 
   // Build last 14 days array
+  // Per spec: input column lumps cache_read in (cache reads are user-attributable
+  // input volume even though they're not billed at the same rate).
   const days: Array<{ date: string; input: number; output: number }> = [];
   for (let i = 13; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const key = d.toISOString().slice(0, 10);
     const bucket = data.tokensByDay[key];
-    days.push({ date: key, input: bucket?.input ?? 0, output: bucket?.output ?? 0 });
+    days.push({
+      date: key,
+      input: (bucket?.input ?? 0) + (bucket?.cache_read ?? 0),
+      output: bucket?.output ?? 0,
+    });
   }
 
   const maxTokens = Math.max(...days.map((d) => d.input + d.output), 1);
