@@ -1,6 +1,7 @@
 import { Plus, Menu, Settings as SettingsIcon } from 'lucide-react';
 import { useSessionStore } from '../stores/sessionStore';
 import type { ClaudeSession } from '../types';
+import { SessionIcon } from './SessionIcon';
 
 interface Props {
   onOpenPanel: () => void;
@@ -98,13 +99,9 @@ function SessionRailIcon({ session, active, pendingApprovals, onClick }: {
         borderRadius: 6,
         margin: '2px 0',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        color: active ? 'var(--color-text-primary)' : 'var(--color-text-tertiary)',
-        fontSize: 11, fontWeight: 600,
       }}
     >
-      {/* Phase 3 swaps this letter for the ClaudePet variant icon
-         hashed from project + session id. */}
-      {session.iconLetter || '?'}
+      <SessionIcon projectKey={session.projectKey} sessionId={session.sessionId} size={22} />
       {pendingApprovals > 0 && (
         <span style={{
           position: 'absolute',
