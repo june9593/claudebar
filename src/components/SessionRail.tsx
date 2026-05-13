@@ -101,7 +101,7 @@ function SessionRailIcon({ session, active, pendingApprovals, onClick }: {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
-      <SessionIcon projectKey={session.projectKey} sessionId={session.sessionId} size={22} />
+      <SessionIcon projectKey={session.projectKey} sessionId={session.id} size={22} />
       {pendingApprovals > 0 && (
         <span style={{
           position: 'absolute',
