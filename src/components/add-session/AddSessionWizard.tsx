@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 import { useSessionStore } from '../../stores/sessionStore';
+import { shortName, firstLetter, colorFromKey } from '../../utils/session-icon';
 
 interface Props {
   onClose: () => void;
@@ -9,19 +10,6 @@ interface Props {
 
 type Step = 'projects' | 'sessions';
 
-function shortName(p: string): string {
-  const parts = p.split('/').filter(Boolean);
-  return parts.length > 0 ? parts[parts.length - 1] : p;
-}
-function firstLetter(s: string): string {
-  return s.replace(/[^a-zA-Z0-9]/g, '').slice(0, 1).toUpperCase() || '?';
-}
-function colorFromKey(key: string): string {
-  // Cheap hash → hue; saturation/lightness fixed for legibility
-  let h = 0;
-  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) | 0;
-  return `hsl(${Math.abs(h) % 360} 60% 50%)`;
-}
 function relativeTime(ms: number): string {
   const diff = Date.now() - ms;
   const m = Math.floor(diff / 60000);
