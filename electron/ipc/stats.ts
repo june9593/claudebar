@@ -191,7 +191,20 @@ function parseAndAccumulate(
 // Cache refresh
 // ---------------------------------------------------------------------------
 
+// Throttle full-disk rescans: each call to stats:get / stats:today on a heavy
+// projects dir does a full walk + per-file tail read. If the user opens the
+// operator panel and both Overview + Stats tabs render, two rescans land
+// back-to-back. Cache the most recent refresh result for ~3s so subsequent
+// IPC calls inside that window reuse it. The byte-offset incremental scan is
+// still cheap for hot files; this just collapses redundant directory walks.
+const REFRESH_TTL_MS = 3000;
+let lastRefresh: { at: number; cache: OurUsageCache } | null = null;
+
 function refreshCache(): OurUsageCache {
+  const now = Date.now();
+  if (lastRefresh && now - lastRefresh.at < REFRESH_TTL_MS) {
+    return lastRefresh.cache;
+  }
   const cache = loadOurCache();
 
   // Walk ~/.claude/projects/*/  for *.jsonl files
@@ -233,6 +246,7 @@ function refreshCache(): OurUsageCache {
   }
 
   saveOurCache(cache);
+  lastRefresh = { at: now, cache };
   return cache;
 }
 
