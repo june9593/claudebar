@@ -2,6 +2,7 @@ import { app, BrowserWindow, Tray, nativeImage, nativeTheme, ipcMain, globalShor
 import * as path from 'path';
 import { setupSettingsIPC, getSettings, setSetting, onSettingChanged } from './ipc/settings';
 import { setupClaudeSessionsIPC } from './ipc/claude-sessions';
+import { setupPluginsIPC } from './ipc/plugins';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
 import { maybeMigrateFromClawbar } from './migration';
@@ -259,6 +260,7 @@ app.whenReady().then(async () => {
   setupWindowIPC();
   setupSettingsIPC();
   setupClaudeSessionsIPC();
+  setupPluginsIPC();
   setupClaudeBridge();
   createPetWindow(
     showWindow,

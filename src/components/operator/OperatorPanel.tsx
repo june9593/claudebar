@@ -230,7 +230,60 @@ function SessionsTab() {
     </div>
   );
 }
-function PluginsTab() { return <Stub label="Plugins" />; }
+type PluginsData = Awaited<ReturnType<typeof window.electronAPI.plugins.list>>;
+
+function PluginsTab() {
+  const [data, setData] = useState<PluginsData | null>(null);
+
+  useEffect(() => {
+    void window.electronAPI.plugins.list().then(setData);
+  }, []);
+
+  if (!data) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+  if (data.plugins.length === 0) {
+    return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>No plugins installed.</div>;
+  }
+
+  // Group by marketplace
+  const byMarket: Record<string, typeof data.plugins> = {};
+  for (const p of data.plugins) {
+    (byMarket[p.marketplace] ??= []).push(p);
+  }
+
+  return (
+    <div style={{ padding: 12 }}>
+      {Object.entries(byMarket).map(([market, plugins]) => (
+        <div key={market} style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', color: 'var(--color-text-tertiary)', marginBottom: 6, letterSpacing: 0.5 }}>
+            {market}
+          </div>
+          {plugins.map((p) => {
+            const shortPluginName = p.name.split('@')[0];
+            return (
+              <div
+                key={p.name + ':' + p.installPath}
+                style={{
+                  padding: '8px 10px',
+                  background: 'var(--color-bg-secondary)',
+                  borderRadius: 6, marginBottom: 4,
+                  border: '0.5px solid var(--color-border-primary)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{shortPluginName}</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>v{p.version}</span>
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>
+                  {p.scope} · installed {new Date(p.installedAt).toLocaleDateString()}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
 function SkillsTab() { return <Stub label="Skills" />; }
 function CommandsTab() { return <Stub label="Commands" />; }
 function StatsTab() { return <Stub label="Stats" />; }
