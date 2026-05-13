@@ -284,8 +284,154 @@ function PluginsTab() {
     </div>
   );
 }
-function SkillsTab() { return <Stub label="Skills" />; }
-function CommandsTab() { return <Stub label="Commands" />; }
+type SkillsList = Awaited<ReturnType<typeof window.electronAPI.skills.list>>;
+type CommandsList = Awaited<ReturnType<typeof window.electronAPI.commands.list>>;
+
+const SOURCE_COLORS: Record<'user' | 'project' | 'plugin', string> = {
+  user: 'var(--color-accent, #7c6af7)',
+  project: 'var(--color-status-connected, #3a9)',
+  plugin: 'var(--color-text-tertiary)',
+};
+
+function SourceBadge({ source }: { source: 'user' | 'project' | 'plugin' }) {
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4,
+      color: SOURCE_COLORS[source],
+      border: `0.5px solid ${SOURCE_COLORS[source]}`,
+      borderRadius: 3, padding: '1px 4px',
+    }}>
+      {source}
+    </span>
+  );
+}
+
+function SkillsTab() {
+  const sessions = useSessionStore((s) => s.sessions);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const activeSession = sessions.find((x) => x.id === activeSessionId) ?? null;
+  const projectDir = activeSession?.projectDir;
+
+  const [items, setItems] = useState<SkillsList | null>(null);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    void window.electronAPI.skills.list(projectDir).then(setItems);
+  }, [projectDir]);
+
+  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+
+  const visible = filter
+    ? items.filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()) || s.description.toLowerCase().includes(filter.toLowerCase()))
+    : items;
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter skills…"
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
+          borderRadius: 6, padding: '5px 8px',
+          fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
+        }}
+      />
+      {visible.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+          {items.length === 0 ? 'No skills found.' : 'No matches.'}
+        </div>
+      )}
+      {visible.map((s) => (
+        <div
+          key={s.dir}
+          style={{
+            padding: '8px 10px',
+            background: 'var(--color-bg-secondary)',
+            borderRadius: 6,
+            border: '0.5px solid var(--color-border-primary)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>{s.name}</span>
+            <SourceBadge source={s.source} />
+          </div>
+          {s.description && (
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{s.description}</div>
+          )}
+          {s.pluginName && (
+            <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>via {s.pluginName}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CommandsTab() {
+  const sessions = useSessionStore((s) => s.sessions);
+  const activeSessionId = useSessionStore((s) => s.activeSessionId);
+  const activeSession = sessions.find((x) => x.id === activeSessionId) ?? null;
+  const projectDir = activeSession?.projectDir;
+
+  const [items, setItems] = useState<CommandsList | null>(null);
+  const [filter, setFilter] = useState('');
+
+  useEffect(() => {
+    void window.electronAPI.commands.list(projectDir).then(setItems);
+  }, [projectDir]);
+
+  if (!items) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
+
+  const visible = filter
+    ? items.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()) || c.description.toLowerCase().includes(filter.toLowerCase()))
+    : items;
+
+  return (
+    <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <input
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter commands…"
+        style={{
+          width: '100%', boxSizing: 'border-box',
+          background: 'var(--color-bg-input)', border: '0.5px solid var(--color-border-primary)',
+          borderRadius: 6, padding: '5px 8px',
+          fontSize: 12, color: 'var(--color-text-primary)', outline: 'none',
+        }}
+      />
+      {visible.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+          {items.length === 0 ? 'No commands found.' : 'No matches.'}
+        </div>
+      )}
+      {visible.map((c) => (
+        <div
+          key={c.filePath}
+          style={{
+            padding: '8px 10px',
+            background: 'var(--color-bg-secondary)',
+            borderRadius: 6,
+            border: '0.5px solid var(--color-border-primary)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>/{c.name}</span>
+            <SourceBadge source={c.source} />
+          </div>
+          {c.description && (
+            <div style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginTop: 2 }}>{c.description}</div>
+          )}
+          {c.pluginName && (
+            <div style={{ fontSize: 10, color: 'var(--color-text-tertiary)', marginTop: 2 }}>via {c.pluginName}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function StatsTab() { return <Stub label="Stats" />; }
 function SettingsTab() { return <Stub label="Settings" />; }
 

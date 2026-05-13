@@ -55,4 +55,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   plugins: {
     list: () => ipcRenderer.invoke('plugins:list'),
   },
+  skills: {
+    list: (projectDir?: string) => ipcRenderer.invoke('skills:list', projectDir),
+    read: (skillDir: string) => ipcRenderer.invoke('skills:read', skillDir),
+  },
+  commands: {
+    list: (projectDir?: string) => ipcRenderer.invoke('commands:list', projectDir),
+    read: (filePath: string) => ipcRenderer.invoke('commands:read', filePath),
+  },
 });
