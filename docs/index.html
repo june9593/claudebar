@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ClawBar — Every channel to your OpenClaw, in the menu bar</title>
-<meta name="description" content="Talk to your OpenClaw from Telegram, Discord, Feishu, Lark, or its own web chat — all reachable through one menu-bar / system-tray app on macOS and Windows. Open-source, MIT.">
-<meta property="og:title" content="ClawBar — Every channel to your OpenClaw, in the menu bar">
-<meta property="og:description" content="One bar for every OpenClaw channel: Telegram, Discord, Feishu, Lark, and the web client. macOS + Windows.">
+<title>ClaudeBar — Floating-window desktop app for Claude Code (BYO-CLI)</title>
+<meta name="description" content="A free-standing floating window for your local Claude Code CLI sessions. Visual session switching, inline tool approvals, plugin/skill/command browser, token stats. macOS. Open-source, MIT.">
+<meta property="og:title" content="ClaudeBar — Floating-window desktop app for Claude Code">
+<meta property="og:description" content="BYO-CLI Claude Code companion: floating window, session rail, 7-tab operator panel, stats. macOS.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://june9593.github.io/clawbar/">
+<meta property="og:url" content="https://june9593.github.io/claudebar/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1132,21 +1132,21 @@
 <nav class="nav">
   <a href="#top" class="brand">
     <span class="brand-mark"></span>
-    ClawBar
+    ClaudeBar
   </a>
   <div class="nav-right">
     <a href="#features">Features</a>
     <a href="#install">Install</a>
     <a href="#faq">FAQ</a>
-    <a href="https://github.com/june9593/clawbar" class="gh">GitHub →</a>
+    <a href="https://github.com/june9593/claudebar" class="gh">GitHub →</a>
   </div>
 </nav>
 
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <header class="hero container" id="top">
-  <div class="eyebrow">A menu-bar / system-tray app for OpenClaw</div>
-  <h1>Every <em>channel</em><br>to your OpenClaw,<br>in <em>one</em> bar.</h1>
-  <p class="lede">Your OpenClaw agent reaches you through Telegram, Discord, Feishu, Lark, its own web chat — and anywhere else you've wired it up. Plus your local <strong>Claude Code</strong> sessions, with tool approvals, expandable tool pills, and AskUserQuestion cards. ClawBar puts every one of those channels in a single bar, sitting in the macOS menu bar or the Windows system tray. <em>Bar in a bar.</em></p>
+  <div class="eyebrow">A floating-window desktop app for Claude Code (BYO-CLI)</div>
+  <h1>Your Claude Code,<br>in a <em>free-standing</em><br><em>floating window.</em></h1>
+  <p class="lede">ClaudeBar drives the <strong>claude binary you already have installed</strong> — no bundling. Visual session switching, inline tool-call pills and approval prompts, markdown chat with syntax highlighting, and a slide-out operator panel for plugins, skills, commands, and token stats. All in a 400×800 draggable window that lives in your menu bar.</p>
   <div class="actions">
     <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/download/v0.7.1/ClawBar-0.4.8-mac-arm64.dmg">
       Download for macOS
@@ -1162,21 +1162,21 @@
     </a>
   </div>
   <div class="install-note">
-    <strong>For OpenClaw users.</strong> macOS 12+ (Apple Silicon) · Windows 10 / 11 (x64) · Not code-signed, see install note below.
+    <strong>For Claude Code CLI users.</strong> macOS 12+ (Apple Silicon) · Requires <code>claude</code> CLI installed · Not code-signed, see install note below.
   </div>
 
   <div class="stats">
     <div>
-      <div class="num">1</div>
-      <div class="label">agent, your OpenClaw</div>
+      <div class="num">BYO</div>
+      <div class="label">CLI — drives your claude binary</div>
     </div>
     <div>
-      <div class="num">6+</div>
-      <div class="label">channel kinds</div>
+      <div class="num">7</div>
+      <div class="label">operator panel tabs</div>
     </div>
     <div>
-      <div class="num">10</div>
-      <div class="label">operator views</div>
+      <div class="num">3</div>
+      <div class="label">plugin/skill/command layers</div>
     </div>
     <div>
       <div class="num">0</div>
@@ -1188,240 +1188,26 @@
 <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <section class="plates container" id="features">
 
-  <article class="plate">
-    <div class="plate-no">II<span class="small">THE&nbsp;DOCK</span></div>
-    <div class="copy">
-      <h2>Every channel to your agent, in a 48&nbsp;px <em>bar.</em></h2>
-      <p>OpenClaw exposes itself through many channels — its native web chat, IM bots, custom integrations. ClawBar arranges them in a slim left bar. The lobster (OpenClaw's own chat) sits at the top, fixed; the others are yours to add, hide, rename, or delete.</p>
-      <ul>
-        <li><span class="marker">A</span><span><strong>OpenClaw</strong> — the gateway's native WebSocket chat, top of the bar.</span></li>
-        <li><span class="marker">B</span><span><strong>Telegram, Discord, 飞书, Lark</strong> — wherever your OpenClaw bot lives.</span></li>
-        <li><span class="marker">C</span><span><strong>+</strong> — your own integration's web URL, dropped in.</span></li>
-      </ul>
-    </div>
-    <div class="stage">
-      <div class="window">
-        <div class="titlebar">
-          <div class="left">
-            <span class="dot"></span>
-            <span class="lobster-icon"></span>
-            <span class="name">ClawBar</span>
-          </div>
-          <div class="right">
-            <span class="iconbtn">⌘</span>
-            <span class="iconbtn">⚙</span>
-          </div>
-        </div>
-        <div class="body">
-          <div class="dock">
-            <div class="dock-icon active"><span class="lobster-glyph"></span></div>
-            <div class="dock-icon">✈️</div>
-            <div class="dock-icon">💬</div>
-            <div class="dock-icon">🪶</div>
-            <div class="dock-icon">🐦</div>
-            <div class="dock-spacer"></div>
-            <div class="dock-icon plus">+</div>
-          </div>
-          <div class="content">
-            <div class="content-head">
-              <span class="crumb">Main · ▾</span>
-              <span style="font-size:14px;color:var(--ink-mute);">+</span>
-            </div>
-            <div class="messages">
-              <div class="empty">
-                <div class="badge"><span class="lobster-glyph"></span></div>
-                <h3>Start a conversation</h3>
-                <p>Send a message to your OpenClaw agent.</p>
-                <span class="hint">⏎ send · ⇧⏎ newline</span>
-              </div>
-            </div>
-            <div class="composer">
-              <div class="input">Message…</div>
-              <div class="send">↑</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <span class="stage-label">FIG. II · Default state · 360 × 500</span>
-    </div>
-  </article>
+<!-- removed: FIG. II "Every channel to your agent in a 48px bar" — multi-channel dock with Telegram/Discord/Feishu/Lark, lobster icon, OpenClaw chat. Not part of ClaudeBar. TODO: replace with ClaudeBar session rail screenshot. -->
 
-  <article class="plate flip">
-    <div class="plate-no">III<span class="small">OPERATOR</span></div>
-    <div class="copy">
-      <h2>Click the lobster again — operate your <em>OpenClaw.</em></h2>
-      <p>The OpenClaw channel isn't only chat. Behind its icon hides a 10-pane operator surface for the gateway itself: overview, approvals, sessions, usage, cron, agents, skills, logs, settings.</p>
-      <ul>
-        <li><span class="marker">↑</span><span><strong>Re-clicking the active channel</strong> toggles its sidebar — no extra hamburger.</span></li>
-        <li><span class="marker">→</span><span><strong>Backdrop respects the bar</strong> — switch to any other channel without dismissing.</span></li>
-      </ul>
-    </div>
-    <div class="stage">
-      <div class="window">
-        <div class="titlebar">
-          <div class="left">
-            <span class="dot"></span>
-            <span class="lobster-icon"></span>
-            <span class="name">ClawBar</span>
-          </div>
-          <div class="right">
-            <span class="iconbtn">⌘</span>
-            <span class="iconbtn">⚙</span>
-          </div>
-        </div>
-        <div class="body">
-          <div class="dock">
-            <div class="dock-icon active"><span class="lobster-glyph"></span></div>
-            <div class="dock-icon dim">✈️</div>
-            <div class="dock-icon dim">💬</div>
-            <div class="dock-icon dim">🪶</div>
-            <div class="dock-icon dim">🐦</div>
-            <div class="dock-spacer"></div>
-            <div class="dock-icon plus dim">+</div>
-          </div>
-          <div class="content">
-            <div class="content-head"><span class="crumb">Main · ▾</span></div>
-            <div class="messages"><div class="empty"><div class="badge"><span class="lobster-glyph"></span></div></div></div>
-            <div class="composer"><div class="input">Message…</div><div class="send">↑</div></div>
-          </div>
-        </div>
-        <div class="op-backdrop"></div>
-        <div class="op-sidebar">
-          <div class="op-item"><span class="op-glyph">▣</span> Overview</div>
-          <div class="op-item active"><span class="op-glyph">●</span> Chat</div>
-          <div class="op-item"><span class="op-glyph">◈</span> Approvals</div>
-          <div class="op-item"><span class="op-glyph">◇</span> Sessions</div>
-          <div class="op-divider"></div>
-          <div class="op-item"><span class="op-glyph">▥</span> Usage</div>
-          <div class="op-item"><span class="op-glyph">⏱</span> Cron</div>
-          <div class="op-item"><span class="op-glyph">◉</span> Agents</div>
-          <div class="op-item"><span class="op-glyph">◊</span> Skills</div>
-          <div class="op-item"><span class="op-glyph">▦</span> Logs</div>
-          <div class="op-spacer"></div>
-          <div class="op-divider"></div>
-          <div class="op-item"><span class="op-glyph">⚙</span> Settings</div>
-        </div>
-      </div>
-      <span class="stage-label">FIG. III · Operator sidebar over OpenClaw</span>
-    </div>
-  </article>
+<!-- removed: FIG. III "Click the lobster again — operate your OpenClaw" — 10-view OpenClaw operator sidebar. Not part of ClaudeBar. TODO: replace with ClaudeBar 7-tab operator panel screenshot. -->
 
-  <article class="plate">
-    <div class="plate-no">IV<span class="small">ADD</span></div>
-    <div class="copy">
-      <h2>Add a channel — wherever else your <em>bot lives.</em></h2>
-      <p>Wired your OpenClaw into a custom Mattermost server? An internal Notion? A WhatsApp Business gateway? Click the <strong>+</strong> and paste the URL. It joins the bar like any built-in channel.</p>
-      <ul>
-        <li><span class="marker">·</span><span>Hostname becomes the channel name; favicon auto-loads as the icon.</span></li>
-        <li><span class="marker">·</span><span>Right-click any channel to rename, change icon, reorder, or delete.</span></li>
-        <li><span class="marker">·</span><span>Each channel keeps its own cookie jar — log in once, log in forever.</span></li>
-      </ul>
-    </div>
-    <div class="stage">
-      <div class="window wide">
-        <div class="titlebar">
-          <div class="left">
-            <span class="dot"></span>
-            <span class="lobster-icon"></span>
-            <span class="name">ClawBar</span>
-          </div>
-          <div class="right">
-            <span class="iconbtn">⌘</span>
-            <span class="iconbtn">⚙</span>
-          </div>
-        </div>
-        <div class="body">
-          <div class="dock">
-            <div class="dock-icon"><span class="lobster-glyph"></span></div>
-            <div class="dock-icon">✈️</div>
-            <div class="dock-icon">💬</div>
-            <div class="dock-icon">🪶</div>
-            <div class="dock-icon">🐦</div>
-            <div class="dock-spacer"></div>
-            <div class="dock-icon plus active">+</div>
-          </div>
-          <div class="content"></div>
-        </div>
-        <div class="add-pop">
-          <h4>Add a channel</h4>
-          <div class="small-label">Built-in</div>
-          <div class="row-item">✈️ Telegram <span class="check">✓</span></div>
-          <div class="row-item">💬 Discord <span class="check">✓</span></div>
-          <div class="row-item">🪶 飞书 <span class="check">✓</span></div>
-          <div class="row-item">🐦 Lark <span class="check">✓</span></div>
-          <div class="small-label" style="margin-top:8px;border-top:0.5px solid var(--rule);padding-top:8px;">Custom URL</div>
-          <div class="url-input">https://notion.so</div>
-          <div class="actions">
-            <span class="btn-cancel">Cancel</span>
-            <span class="btn-add">Add</span>
-          </div>
-        </div>
-      </div>
-      <span class="stage-label">FIG. IV · Adding a custom URL</span>
-    </div>
-  </article>
+<!-- removed: FIG. IV "Add a channel — wherever else your bot lives" — custom URL + IM built-ins. Not part of ClaudeBar. TODO: replace with AddSessionWizard screenshot. -->
 
-  <article class="plate flip">
-    <div class="plate-no">V<span class="small">MOBILE&nbsp;UA</span></div>
-    <div class="copy">
-      <h2>Phone-shaped windows demand phone-shaped <em>web pages.</em></h2>
-      <p>Web channels report an iPhone user-agent so IM apps render their compact mobile layouts — readable in 390&nbsp;px instead of cramped desktop chrome.</p>
-      <ul>
-        <li><span class="marker">←</span><span>The title bar grows browser-style <strong>Back</strong> and <strong>Reload</strong> while a web channel is active.</span></li>
-        <li><span class="marker">⊕</span><span>Inactive channels keep painting (visibility, not <code>display:none</code>) so switches feel instant.</span></li>
-      </ul>
-    </div>
-    <div class="stage">
-      <div class="window">
-        <div class="titlebar">
-          <div class="left">
-            <span class="dot"></span>
-            <span class="lobster-icon"></span>
-            <span class="name">ClawBar</span>
-            <span style="display:inline-flex;gap:1px;margin-left:6px;">
-              <span class="iconbtn">←</span>
-              <span class="iconbtn">↻</span>
-            </span>
-          </div>
-          <div class="right">
-            <span class="iconbtn">⌘</span>
-            <span class="iconbtn">⚙</span>
-          </div>
-        </div>
-        <div class="body">
-          <div class="dock">
-            <div class="dock-icon"><span class="lobster-glyph"></span></div>
-            <div class="dock-icon">✈️</div>
-            <div class="dock-icon">💬</div>
-            <div class="dock-icon">🪶</div>
-            <div class="dock-icon active">🐦</div>
-            <div class="dock-spacer"></div>
-            <div class="dock-icon plus">+</div>
-          </div>
-          <div class="webview-mock">
-            <div class="logo">L</div>
-            <h3>Welcome to Lark</h3>
-            <div class="field">Phone or email</div>
-            <div class="field">Password</div>
-            <div class="next-btn">Next →</div>
-            <div class="switch">Log in with QR code</div>
-          </div>
-        </div>
-      </div>
-      <span class="stage-label">FIG. V · Lark login, mobile layout</span>
-    </div>
-  </article>
+<!-- removed: FIG. V "Phone-shaped windows demand phone-shaped web pages" — mobile UA / webview channels. webviewTag: false in ClaudeBar. TODO: replace with markdown chat or tool pill screenshot. -->
+
+<!-- TODO: add ClaudeBar feature articles here. See docs/MILESTONES.md for feature list. -->
 
   <article class="plate">
     <div class="plate-no">VI<span class="small">PET</span></div>
     <div class="copy">
       <h2>An optional mascot, <em>tethered to your desktop.</em></h2>
-      <p>A 100×110 transparent always-on-top window with a tiny mascot. Click to toggle the popover. Drag freely. Hide whenever it gets in the way; bring it back from the tray menu. Pick which one you want — the OpenClaw lobster 🦞 or a chunky Claude Code pixel critter ✦ — from the same menu.</p>
+      <p>A 100×110 transparent always-on-top window with a tiny mascot. Click to toggle the main window. Drag freely. Hide whenever it gets in the way; bring it back from the tray menu. Pick which one you want — the Claude pixel critter ✦ (default) or the lobster — from the same menu.</p>
       <ul>
-        <li><span class="marker">↶</span><span><strong>Click</strong> — toggle the main popover from anywhere on screen.</span></li>
+        <li><span class="marker">↶</span><span><strong>Click</strong> — toggle the main window from anywhere on screen.</span></li>
         <li><span class="marker">⇄</span><span><strong>Drag</strong> — position is remembered across launches.</span></li>
         <li><span class="marker">⌫</span><span><strong>Hide</strong> — right-click → "Hide Pet". Persisted to settings.</span></li>
-        <li><span class="marker">⇄</span><span><strong>Switch Pet</strong> — right-click → "Switch Pet" → OpenClaw / Claude Code. Same submenu in the tray.</span></li>
+        <li><span class="marker">⇄</span><span><strong>Switch Pet</strong> — right-click → "Switch Pet" → Claude / Lobster. Same submenu in the tray.</span></li>
       </ul>
     </div>
     <div class="stage">
@@ -1453,15 +1239,15 @@
             <hr>
             <div class="item">Hide Pet</div>
             <hr>
-            <div class="item danger">Quit ClawBar</div>
+            <div class="item danger">Quit ClaudeBar</div>
           </div>
           <div class="pet-tray-mock">
-            <div class="header">🦞 Tray menu</div>
+            <div class="header">✦ Tray menu</div>
             <div class="item" style="padding:6px 12px;">Settings</div>
             <hr style="border:none;border-top:1px solid var(--rule);margin:4px 6px;">
             <div class="item" style="padding:6px 12px;color:var(--lobster);">Show Pet</div>
             <hr style="border:none;border-top:1px solid var(--rule);margin:4px 6px;">
-            <div class="item" style="padding:6px 12px;color:var(--berry);">Quit ClawBar</div>
+            <div class="item" style="padding:6px 12px;color:var(--berry);">Quit ClaudeBar</div>
           </div>
         </div>
       </div>
@@ -1483,7 +1269,7 @@
               <div class="left">
                 <span class="dot"></span>
                 <span class="lobster-icon"></span>
-                <span class="name">ClawBar</span>
+                <span class="name">ClaudeBar</span>
               </div>
               <div class="right"><span class="iconbtn">⌘</span><span class="iconbtn">⚙</span></div>
             </div>
@@ -1512,7 +1298,7 @@
               <div class="left">
                 <span class="dot"></span>
                 <span class="lobster-icon"></span>
-                <span class="name">ClawBar</span>
+                <span class="name">ClaudeBar</span>
               </div>
               <div class="right"><span class="iconbtn">⌘</span><span class="iconbtn">⚙</span></div>
             </div>
@@ -1558,7 +1344,7 @@
           <div class="left">
             <span class="dot"></span>
             <span class="lobster-icon"></span>
-            <span class="name">ClawBar</span>
+            <span class="name">ClaudeBar</span>
           </div>
           <div class="right">
             <span class="iconbtn">⌘</span>
@@ -1618,8 +1404,8 @@
   <div class="container">
     <div class="grid">
       <div>
-        <h2>Get your OpenClaw in the menu bar in <em>30 seconds.</em></h2>
-        <p>One download, one drag (or one Next-Next-Install). Point it at your gateway URL and you're in — on macOS or Windows.</p>
+        <h2>Get ClaudeBar in your menu bar in <em>30 seconds.</em></h2>
+        <p>One download, one drag. Requires the Claude Code CLI installed on your system. macOS Apple Silicon only for pre-built releases.</p>
         <div class="actions">
           <a class="btn btn-primary" href="https://github.com/june9593/clawbar/releases/download/v0.7.1/ClawBar-0.4.8-mac-arm64.dmg">
             macOS (.dmg)
@@ -1641,7 +1427,7 @@
           <div class="step"><span class="num">1</span><span>Download <a href="https://github.com/june9593/clawbar/releases/download/v0.7.1/ClawBar-0.4.8-mac-arm64.dmg"><code>ClawBar-0.4.8-mac-arm64.dmg</code></a>.</span></div>
           <div class="step"><span class="num">2</span><span>Open it and drag <strong>ClawBar</strong> into <code>/Applications</code>.</span></div>
           <div class="step"><span class="num">3</span><span>First launch — <strong>right-click → Open</strong>, then "Open" in the Gatekeeper dialog. The app isn't code-signed.</span></div>
-          <div class="step"><span class="num">4</span><span>Or skip step 3: <pre>xattr -dr com.apple.quarantine /Applications/ClawBar.app</pre></span></div>
+          <div class="step"><span class="num">4</span><span>Or skip step 3: <pre>xattr -dr com.apple.quarantine /Applications/ClaudeBar.app</pre></span></div>
         </div>
         <div class="panel">
           <h4>Install — Windows (x64)</h4>
@@ -1651,15 +1437,14 @@
         </div>
         <div class="panel">
           <h4>Build from source</h4>
-<pre><span class="comment"># clone, install, run (macOS or Windows)</span>
-git clone https://github.com/june9593/clawbar.git
-cd clawbar
+<pre><span class="comment"># clone, install, run (macOS)</span>
+git clone https://github.com/june9593/claudebar.git
+cd claudebar
 npm install
 npm run dev:electron
 
 <span class="comment"># package your own build</span>
-npm run pack:mac:dmg:arm64    <span class="comment"># macOS</span>
-npm run pack:win              <span class="comment"># Windows (NSIS + portable)</span></pre>
+npm run pack:mac:dmg:arm64    <span class="comment"># macOS Apple Silicon</span></pre>
         </div>
       </div>
     </div>
@@ -1675,43 +1460,31 @@ npm run pack:win              <span class="comment"># Windows (NSIS + portable)<
   <div class="list">
     <details open>
       <summary>Why isn't the build signed?</summary>
-      <p>Code signing costs money on both platforms — Apple Developer is $99/yr plus notarisation, and Windows EV / OV certs are $200–$500/yr. ClawBar is a free side-project, so the DMG and the NSIS installer are both unsigned. On macOS you bypass Gatekeeper once with right-click → Open (or <code>xattr -dr com.apple.quarantine</code>); on Windows you click <strong>More info → Run anyway</strong> in the SmartScreen dialog. Both are one-time.</p>
+      <p>Code signing costs money — Apple Developer is $99/yr plus notarisation. ClaudeBar is a free side-project, so the DMG is unsigned. On macOS you bypass Gatekeeper once with right-click → Open (or <code>xattr -dr com.apple.quarantine /Applications/ClaudeBar.app</code>). One-time.</p>
     </details>
     <details>
       <summary>Does it work on Intel Macs?</summary>
       <p>Not in releases — we ship macOS arm64 only. The build pipeline can produce x64 (run <code>npm run pack:mac:dmg:x64</code> from source), it's just not part of the GitHub Actions release. PRs welcome.</p>
     </details>
     <details>
-      <summary>Does the Windows build work on Windows 10 / ARM?</summary>
-      <p>Releases ship <strong>Windows x64</strong>, which covers Windows 10 22H2 and Windows 11 on Intel/AMD. ARM64 Windows and 32-bit Windows aren't built by the release pipeline — you can produce them from source by editing <code>electron-builder.yml</code>'s <code>win.target.arch</code>. On Windows 11, the tray icon often starts hidden in the overflow flyout — drag it onto the main taskbar to pin it.</p>
-    </details>
-    <details>
-      <summary>What's the OpenClaw connection like?</summary>
-      <p>ClawBar talks to your gateway over a single WebSocket from the Electron main process. Ed25519 device identity, generated and stored locally at <code>~/.clawbar/device-identity.json</code> — the private key never leaves the main process. Tokens never reach the renderer either.</p>
+      <summary>Does it work on Windows?</summary>
+      <p>Windows is not yet validated for v0.7.0. The codebase compiles on Windows, but no release artifact has been tested since the ClawBar fork. Build from source and expect rough edges. Tracked as post-v0.7.0 work.</p>
     </details>
     <details>
       <summary>Does it phone home?</summary>
-      <p>No. No analytics, no error reporting, no auto-update check. The only network calls are the ones you make: the WebSocket to your OpenClaw gateway, and whatever each <code>&lt;webview&gt;</code> channel does on its own.</p>
+      <p>No. No analytics, no error reporting, no auto-update check. The only network calls are the ones your <code>claude</code> binary makes (to the Anthropic API with your own API key or Claude subscription).</p>
     </details>
     <details>
       <summary>Where are settings stored?</summary>
-      <p><code>~/.clawbar/settings.json</code> for app config (gateway URL, theme, channel list, pet visibility). <code>~/.clawbar/device-identity.json</code> for the Ed25519 keypair. Each channel's cookies and localStorage live in Electron partitions under your Electron user-data directory.</p>
+      <p><code>~/.claudebar/settings.json</code> for app config (theme, window size/position, pet visibility, global shortcut, Claude CLI path). Stats cache at <code>~/.claudebar/usage-cache.json</code>. SDK trace (if enabled) at <code>~/.claudebar/sdk-trace.jsonl</code>. Shell-env diagnostic at <code>~/.claudebar/auth-debug.log</code>.</p>
     </details>
     <details>
-      <summary>Can I add a channel that isn't built in?</summary>
-      <p>Yes — anywhere your OpenClaw bot is reachable as a web URL works. Click <strong>+</strong> at the bottom of the bar, paste the URL. The favicon auto-loads as the icon, hostname becomes the name. Right-click to rename, reorder, or delete. Custom Mattermost, internal chat tools, anything web-based.</p>
-    </details>
-    <details>
-      <summary>Do I need OpenClaw to use ClawBar?</summary>
-      <p>The first channel (the lobster) is the OpenClaw native chat — that part assumes you have an OpenClaw gateway running and reachable. The other channels (Telegram / Discord / Feishu / Lark / custom URLs) are just web wrappers, so they work standalone too. But the project is built around OpenClaw — that's the agent on the other end of all these channels.</p>
-    </details>
-    <details>
-      <summary>What does the Claude Code channel need?</summary>
-      <p>An installed <code>claude</code> binary on your <code>PATH</code> — install via <code>npm install -g @anthropic-ai/claude-code</code> or the official native installer. ClawBar drives <em>your</em> CLI via the <a href="https://docs.claude.com/en/docs/claude-code/sdk">Claude Agent SDK's</a> <code>pathToClaudeCodeExecutable</code> option; the SDK's own bundled fork (~205 MB native binary) is excluded from the DMG. If <code>claude</code> isn't found, the channel shows an install guide. Tool permissions still go through your existing <code>~/.claude/settings.json</code> allow / deny lists, with anything not pre-approved surfacing as an inline approval card.</p>
+      <summary>What does ClaudeBar need to run?</summary>
+      <p>An installed <code>claude</code> binary — install via <code>npm install -g @anthropic-ai/claude-code</code> or the official native installer. ClaudeBar drives <em>your</em> CLI via the <a href="https://docs.claude.com/en/docs/claude-code/sdk">Claude Agent SDK's</a> <code>pathToClaudeCodeExecutable</code> option; the SDK's own bundled platform binary (~205 MB) is excluded from the DMG. If <code>claude</code> isn't found, the app shows an install guide. Tool permissions go through your existing <code>~/.claude/settings.json</code> allow/deny lists, with anything not pre-approved surfacing as an inline approval card.</p>
     </details>
     <details>
       <summary>Is it open source?</summary>
-      <p>Yes — MIT licensed. Source at <a href="https://github.com/june9593/clawbar">github.com/june9593/clawbar</a>. Issues and PRs welcome.</p>
+      <p>Yes — MIT licensed. Source at <a href="https://github.com/june9593/claudebar">github.com/june9593/claudebar</a>. Forked from <a href="https://github.com/june9593/clawbar">ClawBar</a> with full git history. Issues and PRs welcome.</p>
     </details>
   </div>
 </section>
@@ -1723,30 +1496,30 @@ npm run pack:win              <span class="comment"># Windows (NSIS + portable)<
       <div>
         <div class="brand-block">
           <span class="brand-mark"></span>
-          <span>ClawBar</span>
+          <span>ClaudeBar</span>
         </div>
-        <p>Every channel to your OpenClaw — Telegram, Discord, Feishu, Lark, web chat, your own integration — in one bar, in the menu bar.</p>
-        <p class="stamp">— a bar in the bar.</p>
+        <p>A free-standing floating window for your local Claude Code CLI sessions — session rail, 7-tab operator panel, inline tool approvals, markdown chat.</p>
+        <p class="stamp">— BYO-CLI, no bundling.</p>
       </div>
       <div>
         <h5>Project</h5>
-        <a href="https://github.com/june9593/clawbar">GitHub</a>
-        <a href="https://github.com/june9593/clawbar/releases">Releases</a>
-        <a href="https://github.com/june9593/clawbar/issues">Issues</a>
-        <a href="https://github.com/june9593/clawbar/blob/main/LICENSE">MIT License</a>
+        <a href="https://github.com/june9593/claudebar">GitHub</a>
+        <a href="https://github.com/june9593/claudebar/releases">Releases</a>
+        <a href="https://github.com/june9593/claudebar/issues">Issues</a>
+        <a href="https://github.com/june9593/claudebar/blob/main/LICENSE">MIT License</a>
       </div>
       <div>
         <h5>Docs</h5>
-        <a href="https://github.com/june9593/clawbar/blob/main/README.md">README</a>
-        <a href="https://github.com/june9593/clawbar/blob/main/docs/ARCHITECTURE.md">Architecture</a>
-        <a href="https://github.com/june9593/clawbar/blob/main/CLAUDE.md">CLAUDE.md</a>
+        <a href="https://github.com/june9593/claudebar/blob/main/README.md">README</a>
+        <a href="https://github.com/june9593/claudebar/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+        <a href="https://github.com/june9593/claudebar/blob/main/CLAUDE.md">CLAUDE.md</a>
       </div>
       <div>
         <h5>Built with</h5>
         <a href="https://www.electronjs.org/">Electron 35</a>
         <a href="https://react.dev/">React 19</a>
         <a href="https://vitejs.dev/">Vite 6</a>
-        <a href="https://github.com/nicepkg/openclaw">OpenClaw</a>
+        <a href="https://docs.claude.com/en/docs/claude-code/sdk">Claude Agent SDK</a>
       </div>
     </div>
     <div class="colophon">
