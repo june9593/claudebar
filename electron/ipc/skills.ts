@@ -71,7 +71,7 @@ function listSkills(projectDir?: string): SkillEntry[] {
         if (installs.length === 0) continue;
         const latest = installs.reduce((a, b) => (a.installedAt > b.installedAt ? a : b));
         const skillsDir = path.join(latest.installPath, 'skills');
-        entries.push(...walkSkillsDir(skillsDir, 'plugin', name));
+        entries.push(...walkSkillsDir(skillsDir, 'plugin', name.split('@')[0]));
       }
     } catch {
       // ignore
