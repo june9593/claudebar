@@ -35,6 +35,14 @@
 - **New IPC handlers**: `electron/ipc/plugins.ts`, `electron/ipc/skills.ts`, `electron/ipc/commands.ts`, `electron/ipc/stats.ts`
 - **Bug fixes discovered in Phase 3 self-test**: React #185 (Zustand `.filter()` in selector infinite loop, fixed in `SessionRail.tsx`), React #310 (hooks below early return in `SkillsTab` / `CommandsTab`, fixed by moving hooks above returns)
 
+## v0.7.1 (2026-05-14) — Renderer transport abstraction (Phase A1 of multi-device)
+
+- Internal refactor — invisible to users; preparation for the multi-device feature (Phase A2/A3)
+- New `src/lib/apiClient.ts`: single typed gateway over `window.electronAPI`. Same React bundle can later run inside a browser/PWA (Phase B) without UI changes
+- Migrated all renderer call sites: `settingsStore`, `claudeSessionsStore`, `sessionStore`, `useClaudeSession`, `OperatorPanel`, `PetApp`. Existence guards (`if (!window.electronAPI?.foo)`) preserved as bootstrap signals
+- CLAUDE.md convention added: never write `window.electronAPI.foo()` directly in `src/`
+- Spec: `docs/specs/2026-05-13-multi-device-design.md` §15
+
 ## See also
 
 - **Design spec**: `docs/specs/2026-05-12-claudebar-fork-design.md` — authoritative product description (264 lines); describes positioning, window form factor, UI layout, operator views, settings shape, stats caching strategy, migration sketch
