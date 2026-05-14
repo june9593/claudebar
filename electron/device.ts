@@ -47,7 +47,12 @@ export function getDeviceIdentity(): DeviceIdentity {
 }
 
 function generateAndPersist(): DeviceIdentity {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  // Use ECDSA P-256 — universally supported by Electron's BoringSSL stack.
+  // ed25519 (which we tried first) caused TLS handshake_failure errors in
+  // Electron's mTLS even though plain Node + openssl handle it fine.
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
+    namedCurve: 'P-256',
+  });
   const identity: DeviceIdentity = {
     deviceId: crypto.randomUUID(),
     privateKeyPem: privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
@@ -57,7 +62,6 @@ function generateAndPersist(): DeviceIdentity {
 
   fs.mkdirSync(CLAUDEBAR_DIR, { recursive: true });
   fs.writeFileSync(DEVICE_FILE, JSON.stringify(identity, null, 2), { mode: 0o600 });
-  // Re-chmod in case mkdirSync left more permissive bits.
   try { fs.chmodSync(DEVICE_FILE, 0o600); } catch { /* ignore */ }
 
   return identity;

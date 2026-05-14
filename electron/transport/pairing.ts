@@ -11,13 +11,14 @@
 // Spec: docs/specs/2026-05-13-multi-device-design.md §4
 import * as crypto from 'crypto';
 import { WebSocket } from 'ws';
-import { getDeviceIdentity } from '../device';
+import { getDeviceIdentity, getDeviceCertPem } from '../device';
 import { addPeer, type Peer } from '../peers';
 
 interface HelloFrame {
   type: 'hello';
   nonce: string;     // base64 N1
   pubkey: string;    // initiator's PEM pubkey
+  deviceId: string;  // initiator's deviceId — listener stores this as peer.id
   ciphertext: string; // E_K(b"PROOF") — proves initiator had the PIN
   iv: string;        // base64 IV used for AES-GCM
   authTag: string;   // base64 AES-GCM tag
@@ -27,16 +28,16 @@ interface HelloAckFrame {
   type: 'hello-ack';
   nonce: string;     // base64 N2
   pubkey: string;    // listener's PEM pubkey
+  deviceId: string;  // listener's deviceId — initiator stores this as peer.id
   ciphertext: string; // E_K(b"PROOF") — proves listener had the PIN
   iv: string;
   authTag: string;
-  pendingPeerId: string; // listener-assigned id
 }
 
 interface ConfirmFrame {
   type: 'confirm';
   label: string;     // initiator's label for the listener
-  pendingPeerId: string;
+  initiatorDeviceId: string;
 }
 
 const PROOF = Buffer.from('CLAUDEBAR-PIN-PROOF');
@@ -88,7 +89,15 @@ export async function runInitiator(opts: InitiatorOptions): Promise<InitiatorRes
   const id = getDeviceIdentity();
   const url = `wss://${opts.hostAddress}/pair/`;
   return new Promise((resolve) => {
+    // Server is mTLS-aware (requestCert: true). Even on /pair/ (where the
+    // server doesn't VERIFY the cert against peers.json), the TLS handshake
+    // still requires the client to present *some* cert. Use our device cert
+    // — its pubkey will end up in the listener's peers.json after the
+    // PROOF exchange anyway.
+    const { cert, key } = getDeviceCertPem();
     const wsOpts = {
+      cert,
+      key,
       rejectUnauthorized: false,
       checkServerIdentity: () => undefined as unknown as Error | undefined,
     };
@@ -110,6 +119,7 @@ export async function runInitiator(opts: InitiatorOptions): Promise<InitiatorRes
         type: 'hello',
         nonce,
         pubkey: id.publicKeyPem,
+        deviceId: id.deviceId,
         ciphertext: enc.ciphertext,
         iv: enc.iv,
         authTag: enc.authTag,
@@ -126,9 +136,9 @@ export async function runInitiator(opts: InitiatorOptions): Promise<InitiatorRes
           finish({ ok: false, error: 'wrong-pin' });
           return;
         }
-        // Listener proved they had the PIN. Trust their pubkey.
+        // Listener proved they had the PIN. Trust their pubkey + deviceId.
         const peer: Peer = {
-          id: frame.pendingPeerId,
+          id: frame.deviceId,
           label: opts.label,
           publicKeyPem: frame.pubkey,
           lastSeenAt: new Date().toISOString(),
@@ -139,7 +149,7 @@ export async function runInitiator(opts: InitiatorOptions): Promise<InitiatorRes
         const confirm: ConfirmFrame = {
           type: 'confirm',
           label: opts.label,
-          pendingPeerId: frame.pendingPeerId,
+          initiatorDeviceId: id.deviceId,
         };
         ws.send(JSON.stringify(confirm));
         clearTimeout(timeout);
@@ -152,10 +162,12 @@ export async function runInitiator(opts: InitiatorOptions): Promise<InitiatorRes
     ws.on('close', () => {
       if (!resolved) finish({ ok: false, error: 'closed' });
     });
-    ws.on('error', () => {
+    ws.on('error', (err) => {
+      // eslint-disable-next-line no-console
+      console.error('[pairing] initiator WS error:', err);
       // 'close' will follow; we report it as connection-failed if no other
       // error has been recorded.
-      if (!resolved) finish({ ok: false, error: 'connection-failed' });
+      if (!resolved) finish({ ok: false, error: `connection-failed: ${err.message || err}` });
     });
   });
 }
@@ -193,16 +205,13 @@ export function handlePairingFrame(
       try { ws.close(); } catch { /* ignore */ }
       return;
     }
-    // Initiator proved they had the PIN. Trust their pubkey.
+    // Initiator proved they had the PIN. Trust their pubkey + deviceId.
     const id = getDeviceIdentity();
     const newNonce = crypto.randomBytes(16).toString('base64');
     const newKey = deriveKey(pin, newNonce);
     const enc = encryptProof(newKey);
-    // Stable peer id: hash of their pubkey (short).
-    const pendingPeerId = crypto.createHash('sha256')
-      .update(hello.pubkey).digest('hex').slice(0, 16);
     addPeer({
-      id: pendingPeerId,
+      id: hello.deviceId,
       label: 'pending',
       publicKeyPem: hello.pubkey,
       lastSeenAt: new Date().toISOString(),
@@ -212,10 +221,10 @@ export function handlePairingFrame(
       type: 'hello-ack',
       nonce: newNonce,
       pubkey: id.publicKeyPem,
+      deviceId: id.deviceId,
       ciphertext: enc.ciphertext,
       iv: enc.iv,
       authTag: enc.authTag,
-      pendingPeerId,
     };
     ws.send(JSON.stringify(ack));
     ctx.voidPin(); // burn the PIN; one successful pairing per PIN
@@ -223,10 +232,9 @@ export function handlePairingFrame(
   }
 
   if (f.type === 'confirm') {
-    // Initiator's confirm gives us a label for them. We already added their
-    // peer record in the hello step; update the label.
+    // Initiator's confirm gives us a label for them.
     const c = f as unknown as ConfirmFrame;
     const { updatePeer } = require('../peers') as typeof import('../peers');
-    updatePeer(c.pendingPeerId, { label: c.label });
+    updatePeer(c.initiatorDeviceId, { label: c.label });
   }
 }
