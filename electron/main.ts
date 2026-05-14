@@ -6,6 +6,8 @@ import { setupPluginsIPC } from './ipc/plugins';
 import { setupSkillsIPC } from './ipc/skills';
 import { setupCommandsIPC } from './ipc/commands';
 import { setupStatsIPC } from './ipc/stats';
+import { setupPeersIPC } from './ipc/peers';
+import { getDeviceIdentity } from './device';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
 import { maybeMigrateFromClawbar } from './migration';
@@ -267,6 +269,10 @@ app.whenReady().then(async () => {
   setupSkillsIPC();
   setupCommandsIPC();
   setupStatsIPC();
+  // Eagerly load device identity so the keypair is generated on first launch
+  // before user can open Settings → Pairing.
+  getDeviceIdentity();
+  setupPeersIPC();
   setupClaudeBridge();
   createPetWindow(
     showWindow,
