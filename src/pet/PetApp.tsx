@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { apiClient } from '../lib/apiClient';
 import LobsterPet from './LobsterPet';
 import ClaudePet from './ClaudePet';
 import './pet.css';
@@ -18,7 +19,7 @@ const PetApp: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const loadKind = async () => {
-      const s = await window.electronAPI.settings.get();
+      const s = await apiClient.settings.get();
       const k = (s as { petKind?: string }).petKind;
       if (!cancelled && (k === 'lobster' || k === 'claude')) setPetKind(k);
     };
@@ -49,12 +50,12 @@ const PetApp: React.FC = () => {
       activeTimeoutRef.current = setTimeout(() => setPetState('idle'), 400);
     }
 
-    window.electronAPI.pet.onClick();
+    apiClient.pet.onClick();
   }, [petState]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
-    window.electronAPI.pet.onRightClick();
+    apiClient.pet.onRightClick();
   }, []);
 
   // Drag handling
@@ -70,7 +71,7 @@ const PetApp: React.FC = () => {
         isDraggingRef.current = true;
       }
       if (isDraggingRef.current) {
-        window.electronAPI.pet.onDrag(ev.screenX, ev.screenY);
+        apiClient.pet.onDrag(ev.screenX, ev.screenY);
       }
     };
 
@@ -78,7 +79,7 @@ const PetApp: React.FC = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       if (isDraggingRef.current) {
-        window.electronAPI.pet.onDragEnd();
+        apiClient.pet.onDragEnd();
       }
       // Reset drag flag after a tick so click handler can check it
       setTimeout(() => {
