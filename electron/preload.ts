@@ -67,4 +67,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     get: () => ipcRenderer.invoke('stats:get'),
     today: () => ipcRenderer.invoke('stats:today'),
   },
+  peers: {
+    list: () => ipcRenderer.invoke('peers:list'),
+    remove: (peerId: string) => ipcRenderer.invoke('peers:remove', peerId),
+    setLabel: (peerId: string, label: string) => ipcRenderer.invoke('peers:setLabel', peerId, label),
+    getMachineName: () => ipcRenderer.invoke('peers:getMachineName'),
+    setMachineName: (name: string) => ipcRenderer.invoke('peers:setMachineName', name),
+    generatePin: () => ipcRenderer.invoke('peers:generatePin'),
+    cancelPin: () => ipcRenderer.invoke('peers:cancelPin'),
+    activePin: () => ipcRenderer.invoke('peers:activePin'),
+    claimPin: (args: { pin: string; label: string }) => ipcRenderer.invoke('peers:claimPin', args),
+  },
 });

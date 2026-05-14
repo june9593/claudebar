@@ -82,6 +82,26 @@ export interface ElectronAPI {
     }>;
     today(): Promise<{ input: number; output: number; cache_creation: number; cache_read: number }>;
   };
+  peers: {
+    list(): Promise<Array<{
+      id: string;
+      label: string;
+      publicKeyPem: string;
+      lastSeenAt: string;
+      lastAddress: string;
+    }>>;
+    remove(peerId: string): Promise<void>;
+    setLabel(peerId: string, label: string): Promise<void>;
+    getMachineName(): Promise<string>;
+    setMachineName(name: string): Promise<void>;
+    generatePin(): Promise<{ pin: string; expiresAt: number }>;
+    cancelPin(): Promise<void>;
+    activePin(): Promise<{ pin: string; expiresAt: number } | null>;
+    claimPin(args: { pin: string; label: string }): Promise<
+      | { ok: true; peer: { id: string; label: string; publicKeyPem: string; lastSeenAt: string; lastAddress: string } }
+      | { ok: false; error: 'no-active-pin' | 'pin-expired' | 'wrong-pin' | 'too-many-attempts'; attemptsRemaining?: number }
+    >;
+  };
 }
 
 declare global {
