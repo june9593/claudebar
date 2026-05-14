@@ -126,7 +126,9 @@ export function useClaudeSession(
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const checkAndStart = useCallback(async () => {
-    if (!apiClient.claude) return;
+    // Existence check (NOT a call) — bootstrap guard for the rare case where
+    // preload hasn't completed before this hook runs. Mirrors settingsStore.
+    if (!window.electronAPI?.claude) return;
     const r = await apiClient.claude.checkCli();
     if (!r.found || !r.path) {
       setCliMissing(true);
@@ -148,7 +150,7 @@ export function useClaudeSession(
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!apiClient.claude) return;
+      if (!window.electronAPI?.claude) return;
       const list = await apiClient.claude.listSessions(projectKey).catch(() => []);
       if (cancelled) return;
       const mapped: Session[] = list.map((s) => ({
@@ -186,7 +188,7 @@ export function useClaudeSession(
   // History load reads the initial sessionId at mount time only; after a
   // hard switch the second effect re-loads it.
   useEffect(() => {
-    if (!apiClient.claude) return;
+    if (!window.electronAPI?.claude) return;
 
     // Load .jsonl history for instant context.
     apiClient.claude.loadHistory(projectKey, sessionIdRef.current).then((turns) => {
@@ -415,7 +417,7 @@ export function useClaudeSession(
   }, [sessionId, projectKey]);
 
   const sendMessage = (text: string) => {
-    if (!apiClient.claude) return;
+    if (!window.electronAPI?.claude) return;
     setIsTyping(true);
     setMessages((prev) => [...prev, {
       id: `cl-u-${Date.now()}`,
@@ -430,7 +432,7 @@ export function useClaudeSession(
   };
 
   const abort = () => {
-    if (!apiClient.claude) return;
+    if (!window.electronAPI?.claude) return;
     apiClient.claude.abort(channelId).catch(() => { /* ignore */ });
   };
 
