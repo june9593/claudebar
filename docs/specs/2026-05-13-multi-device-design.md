@@ -1,6 +1,8 @@
 # ClaudeBar Multi-Device — Design Doc
 
-> Date: 2026-05-13 · Author: Yue Liu (with brainstorming via Claude) · Status: Draft pending implementation plan
+> Date: 2026-05-13 · Author: Yue Liu (with brainstorming via Claude) · Status: A2b shipped in v0.8.0; A3 pending plan
+
+> **Implementation status (2026-05-15):** Phase A1 (renderer transport abstraction) ✓ shipped in v0.7.1. Phase A2a (pairing identity + UI shell) ✓ shipped in v0.7.2. Phase A2b (real transport: mDNS + mTLS WS + PAKE) ✓ shipped in v0.8.0. Phase A3 (session mirroring + UI + remote cache) — pending plan in `docs/plans/`. Note: the device key is **ECDSA P-256**, not ed25519 as originally written in §11 — Electron's BoringSSL rejects ed25519 server certs in the mTLS handshake.
 
 ClaudeBar Multi-Device makes any of your Macs running ClaudeBar a remote display for any other Mac running ClaudeBar — sessions stay on the machine that started them; you see them, take them over, and approve their tool calls from anywhere.
 

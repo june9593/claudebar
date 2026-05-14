@@ -55,6 +55,20 @@
 - Verified end-to-end via Playwright: PIN generation → claim → peer persisted → 0 console errors
 - Spec: `docs/specs/2026-05-13-multi-device-design.md` §4 + §11
 
+## v0.8.0 (2026-05-15) — Multi-device A2b: real pairing transport
+
+- mTLS WebSocket server on port 47891 (default); X.509 cert derived per-launch from the persistent device key
+- mTLS WebSocket client maintains long-lived outbound connections to all paired peers; reconnects with exponential backoff (1s..60s)
+- mDNS service `_claudebar._tcp.local.` advertises this machine + scans for peers; auto-dials when a discovered service's deviceId matches `peers.json`
+- PIN-authenticated pairing handshake over `wss://host/pair/`: HKDF(PIN || nonce) → AES-256-GCM key + symmetric PROOF roundtrip; brute-force resistance via 5-attempt lockout
+- PairingPanel updates: live status dot per peer (online / offline), host-address input field for initiator
+- Two new deps: `ws` (WebSocket lib), `bonjour-service` (mDNS); `@types/ws` dev-dep
+- **Implementation note**: device key switched from ed25519 to ECDSA P-256 — Electron's BoringSSL rejected ed25519 server certs in the mTLS handshake (SSL alert 40), even though plain Node + macOS openssl handle them fine. Existing `device.json` files will silently regenerate on first v0.8.0 launch
+- **Implementation note**: peer.id derived from each end's real `deviceId` (sent in hello/hello-ack frames) so mDNS auto-connect-after-pairing actually works
+- Loopback (single-machine) test confirms PIN handshake → PROOF verification → peer persistence works end-to-end. Real cross-machine validation requires two Macs (USER GATE)
+- A3 will plug session events on top of these connections
+- Spec: `docs/specs/2026-05-13-multi-device-design.md` §3-§5, §11
+
 ## See also
 
 - **Design spec**: `docs/specs/2026-05-12-claudebar-fork-design.md` — authoritative product description (264 lines); describes positioning, window form factor, UI layout, operator views, settings shape, stats caching strategy, migration sketch
