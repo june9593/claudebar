@@ -5,6 +5,7 @@ import { useApprovalsStore } from '../../stores/approvalsStore';
 import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { shortName, firstLetter, colorFromKey } from '../../utils/claude-icon';
+import { apiClient } from '../../lib/apiClient';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
 
@@ -103,11 +104,11 @@ function OverviewTab() {
   const [tokensToday, setTokensToday] = useState<{ input: number; output: number; cache_creation: number; cache_read: number } | null>(null);
 
   useEffect(() => {
-    void window.electronAPI?.claude?.checkCli().then((r: CliStatus) => setCli(r));
-    void window.electronAPI?.claude?.scanProjects?.()
+    void apiClient.claude.checkCli().then((r: CliStatus) => setCli(r));
+    void apiClient.claude.scanProjects()
       .then((r) => setProjectCount(r.length))
       .catch(() => setProjectCount(null));
-    void window.electronAPI.stats.today()
+    void apiClient.stats.today()
       .then(setTokensToday)
       .catch(() => setTokensToday(null));
   }, []);
@@ -234,13 +235,13 @@ function SessionsTab() {
     </div>
   );
 }
-type PluginsData = Awaited<ReturnType<typeof window.electronAPI.plugins.list>>;
+type PluginsData = Awaited<ReturnType<typeof apiClient.plugins.list>>;
 
 function PluginsTab() {
   const [data, setData] = useState<PluginsData | null>(null);
 
   useEffect(() => {
-    void window.electronAPI.plugins.list().then(setData);
+    void apiClient.plugins.list().then(setData);
   }, []);
 
   if (!data) return <div style={{ padding: 16, fontSize: 12, color: 'var(--color-text-tertiary)' }}>Loading…</div>;
@@ -288,8 +289,8 @@ function PluginsTab() {
     </div>
   );
 }
-type SkillsList = Awaited<ReturnType<typeof window.electronAPI.skills.list>>;
-type CommandsList = Awaited<ReturnType<typeof window.electronAPI.commands.list>>;
+type SkillsList = Awaited<ReturnType<typeof apiClient.skills.list>>;
+type CommandsList = Awaited<ReturnType<typeof apiClient.commands.list>>;
 
 /** Returns the last 2 path segments joined with '/' for display, e.g.
  *  "/Users/yueliu/edge/src" → "edge/src". Falls back to the single segment
@@ -311,7 +312,7 @@ function SkillsTab() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    void window.electronAPI.skills.list(projectDir).then(setItems);
+    void apiClient.skills.list(projectDir).then(setItems);
   }, [projectDir]);
 
   // Hooks must run unconditionally — compute filter+grouping BEFORE the
@@ -394,7 +395,7 @@ function CommandsTab() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    void window.electronAPI.commands.list(projectDir).then(setItems);
+    void apiClient.commands.list(projectDir).then(setItems);
   }, [projectDir]);
 
   // See SkillsTab for the same hook-order fix.
@@ -465,13 +466,13 @@ function CommandsTab() {
   );
 }
 
-type StatsPayload = Awaited<ReturnType<typeof window.electronAPI.stats.get>>;
+type StatsPayload = Awaited<ReturnType<typeof apiClient.stats.get>>;
 
 function StatsTab() {
   const [data, setData] = useState<StatsPayload | null>(null);
 
   useEffect(() => {
-    void window.electronAPI.stats.get().then(setData);
+    void apiClient.stats.get().then(setData);
   }, []);
 
   if (!data) {
