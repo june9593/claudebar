@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiClient } from '../lib/apiClient';
 
 export interface ClaudeProject {
   key: string;
@@ -45,7 +46,7 @@ export const useClaudeSessionsStore = create<ClaudeSessionsState>((set, get) => 
     if (get().cliCheckState === 'loading') return;
     set({ cliCheckState: 'loading', errorMsg: null });
     try {
-      const status = await window.electronAPI.claude.checkCli();
+      const status = await apiClient.claude.checkCli();
       set({ cliStatus: status, cliCheckState: 'ready' });
     } catch (e) {
       set({ cliCheckState: 'error', errorMsg: (e as Error).message });
@@ -56,7 +57,7 @@ export const useClaudeSessionsStore = create<ClaudeSessionsState>((set, get) => 
     if (get().projectsState === 'loading') return;
     set({ projectsState: 'loading', errorMsg: null });
     try {
-      const projects = await window.electronAPI.claude.scanProjects();
+      const projects = await apiClient.claude.scanProjects();
       set({ projects, projectsState: 'ready' });
     } catch (e) {
       set({ projectsState: 'error', errorMsg: (e as Error).message });
@@ -68,7 +69,7 @@ export const useClaudeSessionsStore = create<ClaudeSessionsState>((set, get) => 
     if (state === 'loading') return;
     set((s) => ({ sessionsState: { ...s.sessionsState, [projectKey]: 'loading' }, errorMsg: null }));
     try {
-      const sessions = await window.electronAPI.claude.listSessions(projectKey);
+      const sessions = await apiClient.claude.listSessions(projectKey);
       set((s) => ({
         sessionsByKey: { ...s.sessionsByKey, [projectKey]: sessions },
         sessionsState: { ...s.sessionsState, [projectKey]: 'ready' },
