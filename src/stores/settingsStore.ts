@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Settings, ViewState, ClaudeSession } from '../types';
+import { apiClient } from '../lib/apiClient';
 
 interface SettingsState extends Settings {
   resolvedTheme: 'light' | 'dark';
@@ -58,6 +59,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setView: (view: ViewState) => set({ view }),
 
   loadSettings: async () => {
+    // Existence check (NOT a call) — drives the localStorage-fallback branch
+    // for browser/SSR-style bootstrap before the renderer is fully wired.
     if (!window.electronAPI?.settings) {
       // Browser mode: use localStorage as fallback
       const saved = loadFromLocalStorage();
@@ -66,13 +69,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       return;
     }
     try {
-      const settings = await window.electronAPI.settings.get();
+      const settings = await apiClient.settings.get();
       const merged = { ...defaults, ...settings };
 
       let resolvedTheme: 'light' | 'dark' = 'light';
       if (merged.theme === 'system') {
-        resolvedTheme = await window.electronAPI.theme.getSystemTheme();
-        window.electronAPI.theme.onThemeChange((t) => {
+        resolvedTheme = await apiClient.theme.getSystemTheme();
+        apiClient.theme.onThemeChange((t) => {
           if (get().theme === 'system') {
             set({ resolvedTheme: t });
           }
@@ -90,7 +93,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateSetting: async (key: string, value: unknown) => {
     try {
       if (window.electronAPI?.settings) {
-        await window.electronAPI.settings.set(key, value);
+        await apiClient.settings.set(key, value);
       }
       set((s) => {
         const next = { ...s, [key]: value };
