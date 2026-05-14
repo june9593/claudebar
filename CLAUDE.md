@@ -23,6 +23,7 @@ CLAUDEBAR_TRACE=1 npm run dev:electron  # Dump every Claude SDK message to ~/.cl
 
 - **No hardcoded colors** — all colors via CSS variables in `src/styles/globals.css`
 - **IPC channels** — `domain:action` format (e.g. `settings:get`, `claude:start`, `plugins:list`, `skills:list`, `commands:list`, `stats:get`)
+- **Renderer IPC** — never write `window.electronAPI.foo()` in `src/`. Import `apiClient` from `src/lib/apiClient.ts` and call `apiClient.foo()`. The abstraction lets the same React bundle run in Electron (today) and a browser/PWA (Phase B); see [`docs/specs/2026-05-13-multi-device-design.md`](docs/specs/2026-05-13-multi-device-design.md) §15. Existence guards (`if (!window.electronAPI?.foo)`) are exempt — they're bootstrap signals, not calls.
 - **New IPC** — add handler in `electron/ipc/` → expose in `electron/preload.ts` → type in `types/electron.d.ts`. Cross-process types (event payloads etc.) live in `shared/` and are imported by both processes — `tsconfig.node.json` has `rootDir: "."` and `include: ["electron", "shared"]` for this reason
 - **Security** — `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, `webviewTag: false` (no web channels in ClaudeBar — this is the key difference from ClawBar, which needed `webviewTag: true` for its IM channel webviews)
 - **State** — Zustand stores, no React Context. Selectors MUST NOT compute new arrays or objects (the React #185 trap). Call `.filter()` / `.map()` outside the selector in the component body. See the comment in `src/components/SessionRail.tsx` for the exact pattern.
