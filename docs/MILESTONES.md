@@ -43,6 +43,18 @@
 - CLAUDE.md convention added: never write `window.electronAPI.foo()` directly in `src/`
 - Spec: `docs/specs/2026-05-13-multi-device-design.md` §15
 
+## v0.7.2 (2026-05-15) — Multi-device A2a: pairing identity + UI shell
+
+- New `~/.claudebar/device.json` (mode 0600): persistent ed25519 keypair generated on first launch
+- New `~/.claudebar/peers.json`: paired-peer trust store (initially empty)
+- New `electronAPI.peers` IPC: list/remove/setLabel/getMachineName/setMachineName/generatePin/cancelPin/activePin/claimPin
+- New `PairingPanel` rendered as a "Pairing" card in Settings tab
+- 6-digit PIN, 5-minute TTL, 5-attempt brute-force lockout (in-memory, never persisted)
+- New `machineName` setting (defaults to `os.hostname()`)
+- Phase A2a stub: claiming a PIN on the same machine creates a fake peer entry to enable UI iteration; A2b replaces with real PAKE handshake over WS+mTLS
+- Verified end-to-end via Playwright: PIN generation → claim → peer persisted → 0 console errors
+- Spec: `docs/specs/2026-05-13-multi-device-design.md` §4 + §11
+
 ## See also
 
 - **Design spec**: `docs/specs/2026-05-12-claudebar-fork-design.md` — authoritative product description (264 lines); describes positioning, window form factor, UI layout, operator views, settings shape, stats caching strategy, migration sketch
