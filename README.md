@@ -18,10 +18,10 @@ Head to the [Releases page](https://github.com/june9593/claudebar/releases) and 
 
 ### macOS (Apple Silicon)
 
-1. Download [`ClawBar-0.4.8-mac-arm64.dmg`](https://github.com/june9593/clawbar/releases/download/v0.7.1/ClawBar-0.4.8-mac-arm64.dmg).
-2. Open it and drag **ClawBar** into `/Applications`.
+1. Download [`ClaudeBar-0.7.1-mac-arm64.dmg`](https://github.com/june9593/claudebar/releases/download/v0.7.1/ClaudeBar-0.7.1-mac-arm64.dmg).
+2. Open it and drag **ClaudeBar** into `/Applications`.
 3. **First launch** — the app isn't code-signed, so Gatekeeper will block it once. Pick one:
-   - Finder → **right-click `ClawBar.app` → Open**, then click **Open** in the warning dialog.
+   - Finder → **right-click `ClaudeBar.app` → Open**, then click **Open** in the warning dialog.
    - Or run once in Terminal:
      ```bash
      xattr -dr com.apple.quarantine /Applications/ClaudeBar.app
@@ -31,9 +31,7 @@ The tray icon appears in the **macOS menu bar**. Click it to toggle the floating
 
 ### Windows
 
-1. Download [`ClawBar-0.4.8-win-x64.exe`](https://github.com/june9593/clawbar/releases/download/v0.7.1/ClawBar-0.4.8-win-x64.exe) (NSIS installer).
-2. Double-click to install. **SmartScreen** warns because the installer is **not code-signed** — click **More info → Run anyway**.
-3. Launch from the Start Menu or desktop shortcut.
+Windows is not yet validated for v0.7.x. The codebase compiles on Windows, but no release artifact has been tested since the ClawBar fork. Use "Build from source" below if you need a Windows build, and expect rough edges.
 
 ## Usage walk-through
 
