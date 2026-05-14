@@ -6,6 +6,7 @@ import { useClaudeSessionsStore } from '../../stores/claudeSessionsStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { shortName, firstLetter, colorFromKey } from '../../utils/claude-icon';
 import { apiClient } from '../../lib/apiClient';
+import { PairingPanel } from '../PairingPanel';
 
 export type Tab = 'overview' | 'sessions' | 'plugins' | 'skills' | 'commands' | 'stats' | 'settings';
 
@@ -681,6 +682,11 @@ function SettingsTab() {
             <option value="lobster">lobster</option>
           </select>
         </SettingRow>
+      </Card>
+
+      {/* ── Pairing ───────────────────────────────────────────────── */}
+      <Card title="Pairing">
+        <PairingPanel />
       </Card>
 
       {/* ── Diagnostics ───────────────────────────────────────────── */}
