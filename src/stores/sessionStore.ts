@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ClaudeSession } from '../types';
 import { useSettingsStore } from './settingsStore';
+import { apiClient } from '../lib/apiClient';
 
 interface SessionState {
   sessions: ClaudeSession[];
@@ -90,7 +91,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (!target) return;
     if (target.sessionId === newSessionId) return;
 
-    window.electronAPI?.claude?.close(sessionRowId).catch(() => { /* ignore */ });
+    window.electronAPI?.claude && apiClient.claude.close(sessionRowId).catch(() => { /* ignore */ });
 
     const trimmedPreview = newPreview.length > 28
       ? newPreview.slice(0, 28) + '…'
@@ -125,7 +126,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const list = get().sessions;
     const idx = list.findIndex((c) => c.id === id);
     if (idx < 0) return;
-    window.electronAPI?.claude?.close(id).catch(() => { /* ignore */ });
+    window.electronAPI?.claude && apiClient.claude.close(id).catch(() => { /* ignore */ });
     const sessions = list.filter((c) => c.id !== id);
     let next = get().activeSessionId;
     if (next === id) {
