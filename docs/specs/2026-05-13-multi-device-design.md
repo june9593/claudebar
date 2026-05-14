@@ -376,18 +376,87 @@ Pairing state (PINs, peer trust) lives in **separate files** (`device.json`, `pe
 
 v0.7.0 → multi-device: zero migration. Existing settings preserved, no schema changes to existing keys, no breaking changes to local session behavior. First launch after upgrade: ClaudeBar generates `device.json` if absent. `peers.json` starts empty. Multi-device is fully opt-in (must pair to use).
 
-## 15. Future considerations: PWA companion
+## 15. Renderer transport abstraction (enables PWA in Phase B)
 
-This v1 is built so a future PWA mobile companion can connect as a third "client type" without protocol changes:
+The v1 architectural decision: **the renderer is built so it can run in two environments without changes** — inside Electron (with `window.electronAPI` IPC) AND inside a regular browser (over WebSocket). The Electron app remains the primary product; the browser path enables a future PWA companion (mobile / tablet / any device with a browser) for ~free.
 
-- **Transport must work in browsers** — WebSocket + JSON, no Node-specific APIs in the wire format. ✓ as designed.
-- **mTLS in the browser** — browsers can't easily present client certificates. Future PWA will likely use a token-based handshake (signed JWT issued by the device-cert holder during pairing) over plain WSS. Spec note: leave room for `Authorization: Bearer <jwt>` as an alternative authentication path on the server.
-- **Discovery from browser** — browsers can't do mDNS or Tailscale shell-out. PWA will require typing or scanning the host's address. Acceptable.
-- **PIN pairing for PWA** — PIN on host machine, scan QR on PWA → QR encodes `{ wssUrl, pubkeyFingerprint }`. PWA stores in IndexedDB.
+### The `apiClient` interface
 
-These are forward-compatible additions; v1 design needs no changes today, just awareness when picking the auth model that "device cert" isn't the only path.
+All renderer code that today calls `window.electronAPI.<domain>.<method>(...)` is migrated to call `apiClient.<domain>.<method>(...)`. `apiClient` is a thin wrapper with two implementations:
 
-## 16. Risks and open questions
+```ts
+// src/lib/apiClient.ts (new)
+interface ApiClient {
+  claude: { checkCli, scanProjects, listSessions, start, send, abort, close, ... };
+  settings: { get, set, ... };
+  plugins: { list };
+  skills: { list, read };
+  commands: { list, read };
+  stats: { get, today };
+  peers: { ... }; // new in multi-device
+  // each method returns Promise<...> OR exposes onEvent listener
+}
+
+// Picked at module init based on environment:
+export const apiClient: ApiClient =
+  typeof window !== 'undefined' && (window as any).electronAPI
+    ? createElectronApiClient()        // wraps window.electronAPI (IPC)
+    : createWebSocketApiClient();       // wraps WSS to local main-process server
+```
+
+Event subscriptions (e.g. the `claude:event` stream) follow the same pattern: `apiClient.claude.onEvent(handler) → unsubscribe`.
+
+### Local server inside Electron main process
+
+Electron main process runs an **additional** HTTP+WSS server on the same port used for peer transport (47891 by default), but on a different path:
+
+- `wss://127.0.0.1:47891/peer/` — peer-to-peer (between two Macs running ClaudeBar), mTLS pinned, used by §3-12
+- `wss://127.0.0.1:47891/web/` — local browser/PWA path. Same JSON message shapes as `/peer/` but auth is via a **session token** (signed JWT issued by Settings UI), not mTLS.
+- `https://127.0.0.1:47891/` — serves `dist/` (the same renderer bundle Electron loads via `loadFile`)
+
+Both `/peer/` and `/web/` ultimately invoke the SAME IPC handlers (the `setup*IPC()` functions in `electron/ipc/`); they're just different transports.
+
+### Phase A vs Phase B
+
+- **Phase A (this multi-device v1, what this spec implements)**:
+  - Build the `apiClient` abstraction
+  - Migrate all renderer call sites from `window.electronAPI.*` to `apiClient.*`
+  - Implement only the Electron transport (`createElectronApiClient`) — Electron-to-Electron P2P uses the `/peer/` WS path described in §3-12
+  - The HTTP server stub for `/web/` exists but only serves `dist/` static files; no `/web/` WS handler yet
+
+- **Phase B (PWA companion, future work, separate spec)**:
+  - Implement `createWebSocketApiClient` (the browser-side `apiClient`)
+  - Implement `/web/` WS handler in main process (JWT auth, message routing)
+  - Issue PWA pairing JWT via Settings → "Pair browser device" → QR code
+  - Add `manifest.json` + service worker to `dist/` so the page is installable as a PWA
+  - Renderer code: zero changes (other than the optional service-worker registration)
+
+This split means **Phase B is essentially "implement the missing transport + add manifest"**, not "rewrite the UI". One UI codebase, two runtimes.
+
+### Why not pure web app (lgtm-anywhere style)
+
+We considered making ClaudeBar purely a local web server with Electron as a thin frame loading `localhost`. Rejected because:
+
+- Loses Electron-native features the spec relies on: tray integration, global shortcut, `powerSaveBlocker` for host machines (§16), shell-env hydration to find `claude` binary, native window chrome with traffic-light padding, on-launch from Finder, dock icon hide
+- Existing `electron/main.ts`, `electron/preload.ts`, all `electron/ipc/*` are written as Electron IPC and would need full rewrite
+- The transport abstraction described above gets us 95% of the "web app" benefit (one UI codebase, runs anywhere) without losing native integration
+
+### Implications for v1 task list
+
+The first phase of multi-device implementation does the abstraction migration BEFORE adding the peer transport, because the new `peers` IPC and the new transport server should be built against the abstracted apiClient pattern from day one.
+
+## 16. Future considerations: PWA companion
+
+Concrete plan for Phase B (after multi-device v1 ships):
+
+- **Same React bundle** — no UI rebuild
+- **Discovery**: PWA cannot do mDNS / Tailscale; user types or scans QR for the host's address (e.g. `wss://laptop.tailnet.local:47891/web/`)
+- **Pairing**: similar PIN model as Mac-to-Mac, but PIN issues a JWT (signed by the host's device key) rather than exchanging a peer pubkey. JWT carries `{ deviceId, label, expiresAt }`. PWA stores JWT in IndexedDB.
+- **Auth on `/web/` WS**: bearer JWT in initial message; server validates signature against its own pubkey
+- **No mTLS on PWA path** — browsers can't reliably present client certs; we accept this as a security tradeoff (JWT + mandatory WSS suffice for the single-user case)
+- **Forward-compatible with v1**: the `/peer/` and `/web/` paths are designed to coexist; same handlers, different auth front-ends.
+
+## 17. Risks and open questions
 
 - **mDNS reliability under VPN/firewall**: macOS's mDNS responder is generally reliable on the LAN, but corporate VPNs sometimes block or hijack `.local.` resolution. If the user's office Wi-Fi has aggressive client isolation, mDNS will fail and they must use Tailscale. Document this in README.
 - **Tailscale binary location**: We shell out to `tailscale`; it lives at `/Applications/Tailscale.app/Contents/MacOS/Tailscale` (GUI install) or `/usr/local/bin/tailscale` (CLI install). The shell-env hydration logic from v0.5.0 should already cover PATH discovery, but verify.
@@ -396,7 +465,7 @@ These are forward-compatible additions; v1 design needs no changes today, just a
 - **Battery / wakelock on mac-mini**: When the mac-mini is the host of an active controlled session, we want to prevent it from sleeping. Use `caffeinate` shell-out or Electron's `powerSaveBlocker` API. Add to spec under §6 lifecycle (host acquires power-save block while it has any controlled session).
 - **What if user removes a peer mid-session?** Server-side: drop all open WS connections from that pubkey, close any controlled sessions cleanly. Client-side: peer disappears from rail, any open chat view shows "peer removed" and closes after 5s.
 
-## 17. Success criteria for v1
+## 18. Success criteria for v1
 
 - Pair two Macs in <2 min from cold (install → enter PIN → see remote sessions in rail)
 - LAN session take-over latency: first event after click < 500ms
