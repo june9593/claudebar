@@ -33,6 +33,9 @@ interface AppSettings {
   windowSize?: { w: number; h: number };
   windowPosition?: { x: number; y: number } | null;
   globalShortcut?: string;
+  /** Human label for THIS machine, shown to paired peers. Defaults to
+   *  os.hostname() at read time when unset. Multi-device A2a. */
+  machineName?: string;
 }
 
 const defaultChannels: Channel[] = [
@@ -119,6 +122,7 @@ export function setupSettingsIPC() {
       'globalShortcut', 'alwaysOnTop', 'windowSize', 'windowPosition',
       'claudePath', 'defaultModel', 'defaultPermissionMode', 'idleCloseMinutes',
       'enableSdkTrace',
+      'machineName',
     ];
     if (!allowedKeys.includes(key)) return;
 
