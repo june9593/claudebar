@@ -18,7 +18,7 @@ Head to the [Releases page](https://github.com/june9593/claudebar/releases) and 
 
 ### macOS (Apple Silicon)
 
-1. Download [`ClaudeBar-0.7.2-mac-arm64.dmg`](https://github.com/june9593/claudebar/releases/download/v0.7.2/ClaudeBar-0.7.2-mac-arm64.dmg).
+1. Download [`ClaudeBar-0.8.0-mac-arm64.dmg`](https://github.com/june9593/claudebar/releases/download/v0.8.0/ClaudeBar-0.8.0-mac-arm64.dmg).
 2. Open it and drag **ClaudeBar** into `/Applications`.
 3. **First launch** — the app isn't code-signed, so Gatekeeper will block it once. Pick one:
    - Finder → **right-click `ClaudeBar.app` → Open**, then click **Open** in the warning dialog.
