@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import type { ClaudeEvent, ClaudeEventEnvelope, ApprovalDecision, AskQuestion } from '../../shared/claude-events';
 import { useSessionStore } from '../stores/sessionStore';
 import { useApprovalsStore } from '../stores/approvalsStore';
+import { apiClient } from '../lib/apiClient';
 
 export interface ChatMessage {
   id: string;
@@ -125,8 +126,8 @@ export function useClaudeSession(
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const checkAndStart = useCallback(async () => {
-    if (!window.electronAPI?.claude) return;
-    const r = await window.electronAPI.claude.checkCli();
+    if (!apiClient.claude) return;
+    const r = await apiClient.claude.checkCli();
     if (!r.found || !r.path) {
       setCliMissing(true);
       return;
@@ -135,7 +136,7 @@ export function useClaudeSession(
     // failed-checkCli view (e.g. flaky `zsh -ilc` first invocation).
     setCliMissing(false);
     try {
-      await window.electronAPI.claude.start(channelId, projectDir, projectKey, sessionIdRef.current, r.path);
+      await apiClient.claude.start(channelId, projectDir, projectKey, sessionIdRef.current, r.path);
     } catch (e) {
       setError(`start failed: ${(e as Error).message}`);
     }
@@ -147,8 +148,8 @@ export function useClaudeSession(
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!window.electronAPI?.claude) return;
-      const list = await window.electronAPI.claude.listSessions(projectKey).catch(() => []);
+      if (!apiClient.claude) return;
+      const list = await apiClient.claude.listSessions(projectKey).catch(() => []);
       if (cancelled) return;
       const mapped: Session[] = list.map((s) => ({
         key: s.sessionId,
@@ -185,10 +186,10 @@ export function useClaudeSession(
   // History load reads the initial sessionId at mount time only; after a
   // hard switch the second effect re-loads it.
   useEffect(() => {
-    if (!window.electronAPI?.claude) return;
+    if (!apiClient.claude) return;
 
     // Load .jsonl history for instant context.
-    window.electronAPI.claude.loadHistory(projectKey, sessionIdRef.current).then((turns) => {
+    apiClient.claude.loadHistory(projectKey, sessionIdRef.current).then((turns) => {
       const seeded: ChatMessage[] = turns.map((t, i) => ({
         id: `cl-h-${i}`,
         role: t.role,
@@ -199,7 +200,7 @@ export function useClaudeSession(
     }).catch(() => { /* non-fatal */ });
 
     // Subscribe FIRST so we don't miss events from start().
-    const unsub = window.electronAPI.claude.onEvent((envelope: ClaudeEventEnvelope) => {
+    const unsub = apiClient.claude.onEvent((envelope: ClaudeEventEnvelope) => {
       if (envelope.channelId !== channelId) return;
       try {
         handleEvent(envelope.event);
@@ -379,7 +380,7 @@ export function useClaudeSession(
       unsub();
       // Tear down the SDK Query on unmount (or on dep change). The bridge
       // handles double-close gracefully.
-      window.electronAPI.claude.close(channelId).catch(() => { /* ignore */ });
+      apiClient.claude.close(channelId).catch(() => { /* ignore */ });
     };
   }, [channelId, projectDir, projectKey]);
 
@@ -400,8 +401,8 @@ export function useClaudeSession(
     // cleared so the next system/init from the new session is mirrored.
     acceptedRealIdRef.current = null;
     setMessages([]);
-    if (window.electronAPI?.claude) {
-      window.electronAPI.claude.loadHistory(projectKey, sessionId).then((turns) => {
+    if (apiClient.claude) {
+      apiClient.claude.loadHistory(projectKey, sessionId).then((turns) => {
         setMessages(turns.map((t, i) => ({
           id: `cl-h-${i}`,
           role: t.role,
@@ -414,7 +415,7 @@ export function useClaudeSession(
   }, [sessionId, projectKey]);
 
   const sendMessage = (text: string) => {
-    if (!window.electronAPI?.claude) return;
+    if (!apiClient.claude) return;
     setIsTyping(true);
     setMessages((prev) => [...prev, {
       id: `cl-u-${Date.now()}`,
@@ -422,29 +423,29 @@ export function useClaudeSession(
       content: text,
       timestamp: new Date().toISOString(),
     }]);
-    window.electronAPI.claude.send(channelId, text).catch((e: Error) => {
+    apiClient.claude.send(channelId, text).catch((e: Error) => {
       setError(`send failed: ${e.message}`);
       setIsTyping(false);
     });
   };
 
   const abort = () => {
-    if (!window.electronAPI?.claude) return;
-    window.electronAPI.claude.abort(channelId).catch(() => { /* ignore */ });
+    if (!apiClient.claude) return;
+    apiClient.claude.abort(channelId).catch(() => { /* ignore */ });
   };
 
   const approve = (decision: ApprovalDecision) => {
     const p = pendingApproval;
-    if (!p || !window.electronAPI?.claude) return;
+    if (!p || !apiClient.claude) return;
     setPendingApproval(null);
-    window.electronAPI.claude.approve(channelId, p.requestId, decision).catch(() => { /* ignore */ });
+    apiClient.claude.approve(channelId, p.requestId, decision).catch(() => { /* ignore */ });
   };
 
   const answer = (answers: string[][]) => {
     const p = pendingAsk;
-    if (!p || !window.electronAPI?.claude) return;
+    if (!p || !apiClient.claude) return;
     setPendingAsk(null);
-    window.electronAPI.claude.answer(channelId, p.requestId, answers).catch(() => { /* ignore */ });
+    apiClient.claude.answer(channelId, p.requestId, answers).catch(() => { /* ignore */ });
   };
 
   const switchSession = (newSessionId: string) => {
