@@ -76,6 +76,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generatePin: () => ipcRenderer.invoke('peers:generatePin'),
     cancelPin: () => ipcRenderer.invoke('peers:cancelPin'),
     activePin: () => ipcRenderer.invoke('peers:activePin'),
-    claimPin: (args: { pin: string; label: string }) => ipcRenderer.invoke('peers:claimPin', args),
+    claimPin: (args: { pin: string; label: string; hostAddress: string }) => ipcRenderer.invoke('peers:claimPin', args),
+    discoveredAddresses: () => ipcRenderer.invoke('peers:discoveredAddresses'),
+    onStatus: (cb: (evt: { type: 'connected' | 'disconnected'; peerId: string }) => void) => {
+      const handler = (_e: unknown, evt: { type: 'connected' | 'disconnected'; peerId: string }) => cb(evt);
+      ipcRenderer.on('peers:status', handler);
+      return () => ipcRenderer.removeListener('peers:status', handler);
+    },
   },
 });

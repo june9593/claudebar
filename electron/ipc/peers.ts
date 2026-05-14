@@ -1,7 +1,5 @@
-// IPC handlers for peer management — list/remove/label + PIN generation.
-// PIN state is in-memory only (a Map<pinHash, expiry>); never persisted.
-// In Phase A2a, claimPin just creates a fake peer entry so we can iterate
-// the UI; A2b replaces it with the real SPAKE2-style PAKE handshake.
+// IPC handlers for peer management — list/remove/label + PIN flow.
+// PIN state in-memory only; never persisted.
 //
 // Spec: docs/specs/2026-05-13-multi-device-design.md §4
 import { ipcMain } from 'electron';
@@ -10,50 +8,104 @@ import * as os from 'os';
 import { listPeers, addPeer, removePeer, updatePeer, type Peer } from '../peers';
 import { getDeviceIdentity } from '../device';
 import { getSettings, setSetting } from './settings';
+import { startTransportServer, stopTransportServer } from '../transport/server';
+import { runInitiator, handlePairingFrame } from '../transport/pairing';
+import { setClientHandlers } from '../transport/client';
+import { startDiscovery } from '../transport/discovery';
 
 interface ActivePin {
-  /** The 6-digit numeric PIN (string with leading zeros). */
   pin: string;
-  /** Expiry epoch ms. */
   expiresAt: number;
-  /** Number of wrong attempts so far. */
   attempts: number;
 }
 
-const PIN_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const PIN_TTL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
+const DEFAULT_PORT = 47891;
 
 let activePin: ActivePin | null = null;
 
 function generatePin(): string {
-  // 6 numeric digits with leading zeros preserved.
   const n = crypto.randomInt(0, 1_000_000);
   return n.toString().padStart(6, '0');
 }
 
+let onStatusChange:
+  | ((evt: { type: 'connected' | 'disconnected'; peerId: string }) => void)
+  | null = null;
+
+export function setPeerStatusBroadcaster(
+  fn: typeof onStatusChange,
+): void {
+  onStatusChange = fn;
+}
+
 export function setupPeersIPC(): void {
-  ipcMain.handle('peers:list', () => {
-    return listPeers();
+  // Start transport server + discovery. The port comes from settings.
+  const settings = getSettings() as { transportPort?: number };
+  const port = settings.transportPort || DEFAULT_PORT;
+
+  startTransportServer(port, {
+    onPeerConnected: (peerId) => {
+      onStatusChange?.({ type: 'connected', peerId });
+    },
+    onPeerDisconnected: (peerId) => {
+      onStatusChange?.({ type: 'disconnected', peerId });
+    },
+    onPairingFrame: (frame, ws) => {
+      handlePairingFrame(frame, ws, {
+        getActivePin: () =>
+          activePin && Date.now() < activePin.expiresAt ? activePin.pin : null,
+        registerWrongAttempt: () => {
+          if (!activePin) return 0;
+          activePin.attempts += 1;
+          if (activePin.attempts >= MAX_ATTEMPTS) {
+            activePin = null;
+            return 0;
+          }
+          return MAX_ATTEMPTS - activePin.attempts;
+        },
+        voidPin: () => {
+          activePin = null;
+        },
+      });
+    },
   });
 
-  ipcMain.handle('peers:remove', (_e, peerId: string) => {
-    removePeer(peerId);
+  setClientHandlers({
+    onConnected: (peerId) =>
+      onStatusChange?.({ type: 'connected', peerId }),
+    onDisconnected: (peerId) =>
+      onStatusChange?.({ type: 'disconnected', peerId }),
+    onMessage: (_peerId, _frame) => {
+      // A2b only carries pairing handshake + future heartbeats.
+      // Session events arrive in A3.
+    },
   });
 
-  ipcMain.handle('peers:setLabel', (_e, peerId: string, label: string) => {
-    updatePeer(peerId, { label });
-  });
+  startDiscovery(port);
+
+  ipcMain.handle('peers:list', () => listPeers());
+
+  ipcMain.handle('peers:remove', (_e, peerId: string) =>
+    removePeer(peerId),
+  );
+
+  ipcMain.handle(
+    'peers:setLabel',
+    (_e, peerId: string, label: string) =>
+      updatePeer(peerId, { label }),
+  );
 
   ipcMain.handle('peers:getMachineName', () => {
     const s = getSettings() as { machineName?: string };
     return s.machineName || os.hostname();
   });
 
-  ipcMain.handle('peers:setMachineName', (_e, name: string) => {
-    setSetting('machineName', name);
-  });
+  ipcMain.handle('peers:setMachineName', (_e, name: string) =>
+    setSetting('machineName', name),
+  );
 
-  /** Generate a fresh PIN. Invalidates any previous active PIN. */
   ipcMain.handle('peers:generatePin', () => {
     activePin = {
       pin: generatePin(),
@@ -63,13 +115,10 @@ export function setupPeersIPC(): void {
     return { pin: activePin.pin, expiresAt: activePin.expiresAt };
   });
 
-  /** Cancel any active PIN (e.g. user clicked Cancel before pairing happened). */
   ipcMain.handle('peers:cancelPin', () => {
     activePin = null;
   });
 
-  /** Get info about the currently active PIN (so re-mounted UI can resume the
-   *  countdown). Returns null if no PIN active. */
   ipcMain.handle('peers:activePin', () => {
     if (!activePin) return null;
     if (Date.now() > activePin.expiresAt) {
@@ -79,39 +128,45 @@ export function setupPeersIPC(): void {
     return { pin: activePin.pin, expiresAt: activePin.expiresAt };
   });
 
-  /** Claim a PIN (called by the OTHER machine in real pairing). In A2a this
-   *  is a stub that just stores a fake peer entry so we can iterate the UI.
-   *  A2b replaces this with the real PAKE handshake. */
-  ipcMain.handle('peers:claimPin', (_e, args: { pin: string; label: string }) => {
-    if (!activePin) {
-      return { ok: false, error: 'no-active-pin' };
-    }
-    if (Date.now() > activePin.expiresAt) {
-      activePin = null;
-      return { ok: false, error: 'pin-expired' };
-    }
-    if (activePin.pin !== args.pin) {
-      activePin.attempts += 1;
-      if (activePin.attempts >= MAX_ATTEMPTS) {
-        activePin = null;
-        return { ok: false, error: 'too-many-attempts' };
+  /** Renderer-driven initiator side of pairing: enter PIN + label + host:port,
+   *  run the pairing handshake against the remote /pair/ endpoint. */
+  ipcMain.handle(
+    'peers:claimPin',
+    async (
+      _e,
+      args: { pin: string; label: string; hostAddress: string },
+    ): Promise<
+      | { ok: true; peer: Peer }
+      | {
+          ok: false;
+          error: string;
+        }
+    > => {
+      if (!args.hostAddress) {
+        return { ok: false, error: 'no-host-address' };
       }
-      return { ok: false, error: 'wrong-pin', attemptsRemaining: MAX_ATTEMPTS - activePin.attempts };
-    }
+      const result = await runInitiator({
+        pin: args.pin,
+        label: args.label,
+        hostAddress: args.hostAddress,
+      });
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.error || 'pairing-failed',
+        };
+      }
+      return { ok: true, peer: result.peer! };
+    },
+  );
 
-    // PIN matched. In A2a we mint a fake peer entry. The pubkey is OUR own,
-    // which is bogus but lets us iterate UI; A2b replaces this with the real
-    // peer pubkey received over the PAKE handshake.
-    const ourId = getDeviceIdentity();
-    const peer: Peer = {
-      id: `stub-${Date.now()}`,
-      label: args.label || 'Unnamed peer',
-      publicKeyPem: ourId.publicKeyPem,
-      lastSeenAt: new Date().toISOString(),
-      lastAddress: '',
-    };
-    addPeer(peer);
-    activePin = null;
-    return { ok: true, peer };
+  /** List discovered peer addresses (mDNS) so initiator UI can pick one.
+   *  Stub for v1 — manual entry only. mDNS-driven dropdown is post-A2b. */
+  ipcMain.handle('peers:discoveredAddresses', () => {
+    return [];
   });
+}
+
+export function shutdownPeersIPC(): void {
+  stopTransportServer();
 }

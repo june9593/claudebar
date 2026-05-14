@@ -6,7 +6,7 @@ import { setupPluginsIPC } from './ipc/plugins';
 import { setupSkillsIPC } from './ipc/skills';
 import { setupCommandsIPC } from './ipc/commands';
 import { setupStatsIPC } from './ipc/stats';
-import { setupPeersIPC } from './ipc/peers';
+import { setupPeersIPC, setPeerStatusBroadcaster } from './ipc/peers';
 import { getDeviceIdentity } from './device';
 import { setupClaudeBridge, killAllClaudeChannels } from './claude-bridge';
 import { hydrateShellEnv } from './shell-env';
@@ -273,6 +273,9 @@ app.whenReady().then(async () => {
   // before user can open Settings → Pairing.
   getDeviceIdentity();
   setupPeersIPC();
+  setPeerStatusBroadcaster((evt) => {
+    mainWindow?.webContents.send('peers:status', evt);
+  });
   setupClaudeBridge();
   createPetWindow(
     showWindow,

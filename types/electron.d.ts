@@ -97,10 +97,12 @@ export interface ElectronAPI {
     generatePin(): Promise<{ pin: string; expiresAt: number }>;
     cancelPin(): Promise<void>;
     activePin(): Promise<{ pin: string; expiresAt: number } | null>;
-    claimPin(args: { pin: string; label: string }): Promise<
+    claimPin(args: { pin: string; label: string; hostAddress: string }): Promise<
       | { ok: true; peer: { id: string; label: string; publicKeyPem: string; lastSeenAt: string; lastAddress: string } }
-      | { ok: false; error: 'no-active-pin' | 'pin-expired' | 'wrong-pin' | 'too-many-attempts'; attemptsRemaining?: number }
+      | { ok: false; error: string }
     >;
+    discoveredAddresses(): Promise<string[]>;
+    onStatus(cb: (evt: { type: 'connected' | 'disconnected'; peerId: string }) => void): () => void;
   };
 }
 

@@ -11,13 +11,26 @@ export function PairingPanel() {
   const [enterPinMode, setEnterPinMode] = useState<boolean>(false);
   const [enteredPin, setEnteredPin] = useState<string>('');
   const [enteredLabel, setEnteredLabel] = useState<string>('');
+  const [enteredHostAddress, setEnteredHostAddress] = useState<string>('');
   const [enteredError, setEnteredError] = useState<string | null>(null);
+  const [statusByPeer, setStatusByPeer] = useState<Record<string, 'online' | 'offline'>>({});
 
   // Initial load.
   useEffect(() => {
     void apiClient.peers.getMachineName().then(setMachineName);
     void apiClient.peers.list().then(setPeers);
     void apiClient.peers.activePin().then(setActivePin);
+  }, []);
+
+  // Subscribe to live peer status (connected / disconnected events from
+  // main process transport).
+  useEffect(() => {
+    return apiClient.peers.onStatus((evt) => {
+      setStatusByPeer((s) => ({
+        ...s,
+        [evt.peerId]: evt.type === 'connected' ? 'online' : 'offline',
+      }));
+    });
   }, []);
 
   // PIN countdown — tick once per second while a PIN is active.
@@ -60,20 +73,35 @@ export function PairingPanel() {
       setEnteredError('Give the remote machine a label');
       return;
     }
-    const result = await apiClient.peers.claimPin({ pin: cleanPin, label: enteredLabel.trim() });
+    if (!enteredHostAddress.trim()) {
+      setEnteredError('Host address required (e.g. 192.168.1.42:47891 or mac-mini.local:47891)');
+      return;
+    }
+    const result = await apiClient.peers.claimPin({
+      pin: cleanPin,
+      label: enteredLabel.trim(),
+      hostAddress: enteredHostAddress.trim(),
+    });
     if (result.ok) {
       setEnterPinMode(false);
       setEnteredPin('');
       setEnteredLabel('');
+      setEnteredHostAddress('');
       setPeers(await apiClient.peers.list());
     } else {
-      const msg = {
-        'no-active-pin': 'No active PIN on this machine. (A2a stub — both halves of the pair share state.)',
+      const msgMap: Record<string, string> = {
+        'no-host-address': 'Host address missing',
+        'no-active-pin': 'No active PIN on the host machine — generate one there first',
         'pin-expired': 'PIN expired',
-        'wrong-pin': `Wrong PIN${'attemptsRemaining' in result ? ` (${result.attemptsRemaining} tries left)` : ''}`,
+        'wrong-pin': 'Wrong PIN',
         'too-many-attempts': 'Too many wrong attempts; PIN voided',
-      }[result.error];
-      setEnteredError(msg);
+        'connection-failed': 'Could not connect to that address',
+        'timeout': 'Pairing timed out',
+        'closed': 'Connection closed before pairing completed',
+        'malformed-reply': 'Got a malformed reply (peer version mismatch?)',
+        'pairing-failed': 'Pairing failed',
+      };
+      setEnteredError(msgMap[result.error] || `Pairing failed: ${result.error}`);
     }
   };
 
@@ -126,9 +154,15 @@ export function PairingPanel() {
               background: 'var(--color-bg-secondary)',
             }}>
               <span style={{ fontSize: 12, fontWeight: 500 }}>{p.label}</span>
-              <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
-                ● offline (A2b)
-              </span>
+              {statusByPeer[p.id] === 'online' ? (
+                <span style={{ fontSize: 10, color: 'var(--color-status-connected, #0a0)' }}>
+                  ● online
+                </span>
+              ) : (
+                <span style={{ fontSize: 10, color: 'var(--color-text-tertiary)' }}>
+                  ● offline
+                </span>
+              )}
               <button
                 onClick={() => onRemovePeer(p.id)}
                 style={{ ...buttonStyle, marginLeft: 'auto' }}
@@ -158,6 +192,13 @@ export function PairingPanel() {
               placeholder="Label (e.g. mac-mini)"
               style={inputStyle}
             />
+            <input
+              type="text"
+              value={enteredHostAddress}
+              onChange={(e) => setEnteredHostAddress(e.target.value)}
+              placeholder="Host address (e.g. mac-mini.local:47891)"
+              style={inputStyle}
+            />
             {enteredError && (
               <div style={{ fontSize: 11, color: 'var(--color-status-disconnected, #e53)' }}>
                 {enteredError}
@@ -166,7 +207,7 @@ export function PairingPanel() {
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={onClaimPin} style={buttonStyle}>Connect</button>
               <button
-                onClick={() => { setEnterPinMode(false); setEnteredPin(''); setEnteredLabel(''); setEnteredError(null); }}
+                onClick={() => { setEnterPinMode(false); setEnteredPin(''); setEnteredLabel(''); setEnteredHostAddress(''); setEnteredError(null); }}
                 style={{ ...buttonStyle, background: 'transparent', color: 'var(--color-text-tertiary)' }}
               >Cancel</button>
             </div>
